@@ -1,0 +1,2803 @@
+\batchmode %% Suppresses most terminal output.
+\documentclass{article}
+\usepackage{color}
+\definecolor{boxshade}{gray}{0.85}
+\setlength{\textwidth}{360pt}
+\setlength{\textheight}{541pt}
+\usepackage{latexsym}
+\usepackage{ifthen}
+% \usepackage{color}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SWITCHES                                                                  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newboolean{shading} 
+\setboolean{shading}{false}
+\makeatletter
+ %% this is needed only when inserted into the file, not when
+ %% used as a package file.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                           %
+% DEFINITIONS OF SYMBOL-PRODUCING COMMANDS                                  %
+%                                                                           %
+%    TLA+      LaTeX                                                        %
+%    symbol    command                                                      %
+%    ------    -------                                                      %
+%    =>        \implies                                                     %
+%    <:        \ltcolon                                                     %
+%    :>        \colongt                                                     %
+%    ==        \defeq                                                       %
+%    ..        \dotdot                                                      %
+%    ::        \coloncolon                                                  %
+%    =|        \eqdash                                                      %
+%    ++        \pp                                                          %
+%    --        \mm                                                          %
+%    **        \stst                                                        %
+%    //        \slsl                                                        %
+%    ^         \ct                                                          %
+%    \A        \A                                                           %
+%    \E        \E                                                           %
+%    \AA       \AA                                                          %
+%    \EE       \EE                                                          %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newlength{\symlength}
+\newcommand{\implies}{\Rightarrow}
+\newcommand{\ltcolon}{\mathrel{<\!\!\mbox{:}}}
+\newcommand{\colongt}{\mathrel{\!\mbox{:}\!\!>}}
+\newcommand{\defeq}{\;\mathrel{\smash   %% keep this symbol from being too tall
+    {{\stackrel{\scriptscriptstyle\Delta}{=}}}}\;}
+\newcommand{\dotdot}{\mathrel{\ldotp\ldotp}}
+\newcommand{\coloncolon}{\mathrel{::\;}}
+\newcommand{\eqdash}{\mathrel = \joinrel \hspace{-.28em}|}
+\newcommand{\pp}{\mathbin{++}}
+\newcommand{\mm}{\mathbin{--}}
+\newcommand{\stst}{*\!*}
+\newcommand{\slsl}{/\!/}
+\newcommand{\ct}{\hat{\hspace{.4em}}}
+\newcommand{\A}{\forall}
+\newcommand{\E}{\exists}
+\renewcommand{\AA}{\makebox{$\raisebox{.05em}{\makebox[0pt][l]{%
+   $\forall\hspace{-.517em}\forall\hspace{-.517em}\forall$}}%
+   \forall\hspace{-.517em}\forall \hspace{-.517em}\forall\,$}}
+\newcommand{\EE}{\makebox{$\raisebox{.05em}{\makebox[0pt][l]{%
+   $\exists\hspace{-.517em}\exists\hspace{-.517em}\exists$}}%
+   \exists\hspace{-.517em}\exists\hspace{-.517em}\exists\,$}}
+\newcommand{\whileop}{\.{\stackrel
+  {\mbox{\raisebox{-.3em}[0pt][0pt]{$\scriptscriptstyle+\;\,$}}}%
+  {-\hspace{-.16em}\triangleright}}}
+
+% Commands are defined to produce the upper-case keywords.
+% Note that some have space after them.
+\newcommand{\ASSUME}{\textsc{assume }}
+\newcommand{\ASSUMPTION}{\textsc{assumption }}
+\newcommand{\AXIOM}{\textsc{axiom }}
+\newcommand{\BOOLEAN}{\textsc{boolean }}
+\newcommand{\CASE}{\textsc{case }}
+\newcommand{\CONSTANT}{\textsc{constant }}
+\newcommand{\CONSTANTS}{\textsc{constants }}
+\newcommand{\ELSE}{\settowidth{\symlength}{\THEN}%
+   \makebox[\symlength][l]{\textsc{ else}}}
+\newcommand{\EXCEPT}{\textsc{ except }}
+\newcommand{\EXTENDS}{\textsc{extends }}
+\newcommand{\FALSE}{\textsc{false}}
+\newcommand{\IF}{\textsc{if }}
+\newcommand{\IN}{\settowidth{\symlength}{\LET}%
+   \makebox[\symlength][l]{\textsc{in}}}
+\newcommand{\INSTANCE}{\textsc{instance }}
+\newcommand{\LET}{\textsc{let }}
+\newcommand{\LOCAL}{\textsc{local }}
+\newcommand{\MODULE}{\textsc{module }}
+\newcommand{\OTHER}{\textsc{other }}
+\newcommand{\STRING}{\textsc{string}}
+\newcommand{\THEN}{\textsc{ then }}
+\newcommand{\THEOREM}{\textsc{theorem }}
+\newcommand{\LEMMA}{\textsc{lemma }}
+\newcommand{\PROPOSITION}{\textsc{proposition }}
+\newcommand{\COROLLARY}{\textsc{corollary }}
+\newcommand{\TRUE}{\textsc{true}}
+\newcommand{\VARIABLE}{\textsc{variable }}
+\newcommand{\VARIABLES}{\textsc{variables }}
+\newcommand{\WITH}{\textsc{ with }}
+\newcommand{\WF}{\textrm{WF}}
+\newcommand{\SF}{\textrm{SF}}
+\newcommand{\CHOOSE}{\textsc{choose }}
+\newcommand{\ENABLED}{\textsc{enabled }}
+\newcommand{\UNCHANGED}{\textsc{unchanged }}
+\newcommand{\SUBSET}{\textsc{subset }}
+\newcommand{\UNION}{\textsc{union }}
+\newcommand{\DOMAIN}{\textsc{domain }}
+% Added for tla2tex
+\newcommand{\BY}{\textsc{by }}
+\newcommand{\OBVIOUS}{\textsc{obvious }}
+\newcommand{\HAVE}{\textsc{have }}
+\newcommand{\QED}{\textsc{qed }}
+\newcommand{\TAKE}{\textsc{take }}
+\newcommand{\DEF}{\textsc{ def }}
+\newcommand{\HIDE}{\textsc{hide }}
+\newcommand{\RECURSIVE}{\textsc{recursive }}
+\newcommand{\USE}{\textsc{use }}
+\newcommand{\DEFINE}{\textsc{define }}
+\newcommand{\PROOF}{\textsc{proof }}
+\newcommand{\WITNESS}{\textsc{witness }}
+\newcommand{\PICK}{\textsc{pick }}
+\newcommand{\DEFS}{\textsc{defs }}
+\newcommand{\PROVE}{\settowidth{\symlength}{\ASSUME}%
+   \makebox[\symlength][l]{\textsc{prove}}\@s{-4.1}}%
+  %% The \@s{-4.1) is a kludge added on 24 Oct 2009 [happy birthday, Ellen]
+  %% so the correct alignment occurs if the user types
+  %%   ASSUME X
+  %%   PROVE  Y
+  %% because it cancels the extra 4.1 pts added because of the 
+  %% extra space after the PROVE.  This seems to works OK.
+  %% However, the 4.1 equals Parameters.LaTeXLeftSpace(1) and
+  %% should be changed if that method ever changes.
+\newcommand{\SUFFICES}{\textsc{suffices }}
+\newcommand{\NEW}{\textsc{new }}
+\newcommand{\LAMBDA}{\textsc{lambda }}
+\newcommand{\STATE}{\textsc{state }}
+\newcommand{\ACTION}{\textsc{action }}
+\newcommand{\TEMPORAL}{\textsc{temporal }}
+\newcommand{\ONLY}{\textsc{only }}              %% added by LL on 2 Oct 2009
+\newcommand{\OMITTED}{\textsc{omitted }}        %% added by LL on 31 Oct 2009
+\newcommand{\@pfstepnum}[2]{\ensuremath{\langle#1\rangle}\textrm{#2}}
+\newcommand{\bang}{\@s{1}\mbox{\small !}\@s{1}}
+%% We should format || differently in PlusCal code than in TLA+ formulas.
+\newcommand{\p@barbar}{\ifpcalsymbols
+   \,\,\rule[-.25em]{.075em}{1em}\hspace*{.2em}\rule[-.25em]{.075em}{1em}\,\,%
+   \else \,||\,\fi}
+%% PlusCal keywords
+\newcommand{\p@fair}{\textbf{fair }}
+\newcommand{\p@semicolon}{\textbf{\,; }}
+\newcommand{\p@algorithm}{\textbf{algorithm }}
+\newcommand{\p@mmfair}{\textbf{-{}-fair }}
+\newcommand{\p@mmalgorithm}{\textbf{-{}-algorithm }}
+\newcommand{\p@assert}{\textbf{assert }}
+\newcommand{\p@await}{\textbf{await }}
+\newcommand{\p@begin}{\textbf{begin }}
+\newcommand{\p@end}{\textbf{end }}
+\newcommand{\p@call}{\textbf{call }}
+\newcommand{\p@define}{\textbf{define }}
+\newcommand{\p@do}{\textbf{ do }}
+\newcommand{\p@either}{\textbf{either }}
+\newcommand{\p@or}{\textbf{or }}
+\newcommand{\p@goto}{\textbf{goto }}
+\newcommand{\p@if}{\textbf{if }}
+\newcommand{\p@then}{\,\,\textbf{then }}
+\newcommand{\p@else}{\ifcsyntax \textbf{else } \else \,\,\textbf{else }\fi}
+\newcommand{\p@elsif}{\,\,\textbf{elsif }}
+\newcommand{\p@macro}{\textbf{macro }}
+\newcommand{\p@print}{\textbf{print }}
+\newcommand{\p@procedure}{\textbf{procedure }}
+\newcommand{\p@process}{\textbf{process }}
+\newcommand{\p@return}{\textbf{return}}
+\newcommand{\p@skip}{\textbf{skip}}
+\newcommand{\p@variable}{\textbf{variable }}
+\newcommand{\p@variables}{\textbf{variables }}
+\newcommand{\p@while}{\textbf{while }}
+\newcommand{\p@when}{\textbf{when }}
+\newcommand{\p@with}{\textbf{with }}
+\newcommand{\p@lparen}{\textbf{(\,\,}}
+\newcommand{\p@rparen}{\textbf{\,\,) }}   
+\newcommand{\p@lbrace}{\textbf{\{\,\,}}   
+\newcommand{\p@rbrace}{\textbf{\,\,\} }}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REDEFINE STANDARD COMMANDS TO MAKE THEM FORMAT BETTER %
+%                                                       %
+% We redefine \in and \notin                            %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\renewcommand{\_}{\rule{.4em}{.06em}\hspace{.05em}}
+\newlength{\equalswidth}
+\let\oldin=\in
+\let\oldnotin=\notin
+\renewcommand{\in}{%
+   {\settowidth{\equalswidth}{$\.{=}$}\makebox[\equalswidth][c]{$\oldin$}}}
+\renewcommand{\notin}{%
+   {\settowidth{\equalswidth}{$\.{=}$}\makebox[\equalswidth]{$\oldnotin$}}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                  %
+% HORIZONTAL BARS:                                 %
+%                                                  %
+%   \moduleLeftDash    |~~~~~~~~~~                 %
+%   \moduleRightDash    ~~~~~~~~~~|                %
+%   \midbar            |----------|                %
+%   \bottombar         |__________|                %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newlength{\charwidth}\settowidth{\charwidth}{{\small\tt M}}
+\newlength{\boxrulewd}\setlength{\boxrulewd}{.4pt}
+\newlength{\boxlineht}\setlength{\boxlineht}{.5\baselineskip}
+\newcommand{\boxsep}{\charwidth}
+\newlength{\boxruleht}\setlength{\boxruleht}{.5ex}
+\newlength{\boxruledp}\setlength{\boxruledp}{-\boxruleht}
+\addtolength{\boxruledp}{\boxrulewd}
+\newcommand{\boxrule}{\leaders\hrule height \boxruleht depth \boxruledp
+                      \hfill\mbox{}}
+\newcommand{\@computerule}{%
+  \setlength{\boxruleht}{.5ex}%
+  \setlength{\boxruledp}{-\boxruleht}%
+  \addtolength{\boxruledp}{\boxrulewd}}
+
+\newcommand{\bottombar}{\hspace{-\boxsep}%
+  \raisebox{-\boxrulewd}[0pt][0pt]{\rule[.5ex]{\boxrulewd}{\boxlineht}}%
+  \boxrule
+  \raisebox{-\boxrulewd}[0pt][0pt]{%
+      \rule[.5ex]{\boxrulewd}{\boxlineht}}\hspace{-\boxsep}\vspace{0pt}}
+
+\newcommand{\moduleLeftDash}%
+   {\hspace*{-\boxsep}%
+     \raisebox{-\boxlineht}[0pt][0pt]{\rule[.5ex]{\boxrulewd
+               }{\boxlineht}}%
+    \boxrule\hspace*{.4em }}
+
+\newcommand{\moduleRightDash}%
+    {\hspace*{.4em}\boxrule
+    \raisebox{-\boxlineht}[0pt][0pt]{\rule[.5ex]{\boxrulewd
+               }{\boxlineht}}\hspace{-\boxsep}}%\vspace{.2em}
+
+\newcommand{\midbar}{\hspace{-\boxsep}\raisebox{-.5\boxlineht}[0pt][0pt]{%
+   \rule[.5ex]{\boxrulewd}{\boxlineht}}\boxrule\raisebox{-.5\boxlineht%
+   }[0pt][0pt]{\rule[.5ex]{\boxrulewd}{\boxlineht}}\hspace{-\boxsep}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% FORMATING COMMANDS                                                        %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PLUSCAL SHADING                                                           %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% The TeX pcalshading switch is set on to cause PlusCal shading to be
+% performed.  This changes the behavior of the following commands and
+% environments to cause full-width shading to be performed on all lines.
+% 
+%   \tstrut \@x cpar mcom \@pvspace
+% 
+% The TeX pcalsymbols switch is turned on when typesetting a PlusCal algorithm,
+% whether or not shading is being performed.  It causes symbols (other than
+% parentheses and braces and PlusCal-only keywords) that should be typeset
+% differently depending on whether they are in an algorithm to be typeset
+% appropriately.  Currently, the only such symbol is "||".
+%
+% The TeX csyntax switch is turned on when typesetting a PlusCal algorithm in
+% c-syntax.  This allows symbols to be format differently in the two syntaxes.
+% The "else" keyword is the only one that is.
+
+\newif\ifpcalshading \pcalshadingfalse
+\newif\ifpcalsymbols \pcalsymbolsfalse
+\newif\ifcsyntax     \csyntaxtrue
+
+% The \@pvspace command makes a vertical space.  It uses \vspace
+% except with \ifpcalshading, in which case it sets \pvcalvspace
+% and the space is added by a following \@x command.
+%
+\newlength{\pcalvspace}\setlength{\pcalvspace}{0pt}%
+\newcommand{\@pvspace}[1]{%
+  \ifpcalshading
+     \par\global\setlength{\pcalvspace}{#1}%
+  \else
+     \par\vspace{#1}%
+  \fi
+}
+
+% The lcom environment was changed to set \lcomindent equal to
+% the indentation it produces.  This length is used by the
+% cpar environment to make shading extend for the full width
+% of the line.  This assumes that lcom environments are not
+% nested.  I hope TLATeX does not nest them.
+%
+\newlength{\lcomindent}%
+\setlength{\lcomindent}{0pt}%
+
+%\tstrut: A strut to produce inter-paragraph space in a comment.
+%\rstrut: A strut to extend the bottom of a one-line comment so
+%         there's no break in the shading between comments on 
+%         successive lines.
+\newcommand\tstrut%
+  {\raisebox{\vshadelen}{\raisebox{-.25em}{\rule{0pt}{1.15em}}}%
+   \global\setlength{\vshadelen}{0pt}}
+\newcommand\rstrut{\raisebox{-.25em}{\rule{0pt}{1.15em}}%
+ \global\setlength{\vshadelen}{0pt}}
+
+
+% \.{op} formats operator op in math mode with empty boxes on either side.
+% Used because TeX otherwise vary the amount of space it leaves around op.
+\renewcommand{\.}[1]{\ensuremath{\mbox{}#1\mbox{}}}
+
+% \@s{n} produces an n-point space
+\newcommand{\@s}[1]{\hspace{#1pt}}           
+
+% \@x{txt} starts a specification line in the beginning with txt
+% in the final LaTeX source.
+\newlength{\@xlen}
+\newcommand\xtstrut%
+  {\setlength{\@xlen}{1.05em}%
+   \addtolength{\@xlen}{\pcalvspace}%
+    \raisebox{\vshadelen}{\raisebox{-.25em}{\rule{0pt}{\@xlen}}}%
+   \global\setlength{\vshadelen}{0pt}%
+   \global\setlength{\pcalvspace}{0pt}}
+
+\newcommand{\@x}[1]{\par
+  \ifpcalshading
+  \makebox[0pt][l]{\shadebox{\xtstrut\hspace*{\textwidth}}}%
+  \fi
+  \mbox{$\mbox{}#1\mbox{}$}}  
+
+% \@xx{txt} continues a specification line with the text txt.
+\newcommand{\@xx}[1]{\mbox{$\mbox{}#1\mbox{}$}}  
+
+% \@y{cmt} produces a one-line comment.
+\newcommand{\@y}[1]{\mbox{\footnotesize\hspace{.65em}%
+  \ifthenelse{\boolean{shading}}{%
+      \shadebox{#1\hspace{-\the\lastskip}\rstrut}}%
+               {#1\hspace{-\the\lastskip}\rstrut}}}
+
+% \@z{cmt} produces a zero-width one-line comment.
+\newcommand{\@z}[1]{\makebox[0pt][l]{\footnotesize
+  \ifthenelse{\boolean{shading}}{%
+      \shadebox{#1\hspace{-\the\lastskip}\rstrut}}%
+               {#1\hspace{-\the\lastskip}\rstrut}}}
+
+
+% \@w{str} produces the TLA+ string "str".
+\newcommand{\@w}[1]{\textsf{``{#1}''}}             
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SHADING                                                                   %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\graymargin{1}
+  % The number of points of margin in the shaded box.
+
+% \definecolor{boxshade}{gray}{.85}
+% Defines the darkness of the shading: 1 = white, 0 = black
+% Added by TLATeX only if needed.
+
+% \shadebox{txt} puts txt in a shaded box.
+\newlength{\templena}
+\newlength{\templenb}
+\newsavebox{\tempboxa}
+\newcommand{\shadebox}[1]{{\setlength{\fboxsep}{\graymargin pt}%
+     \savebox{\tempboxa}{#1}%
+     \settoheight{\templena}{\usebox{\tempboxa}}%
+     \settodepth{\templenb}{\usebox{\tempboxa}}%
+     \hspace*{-\fboxsep}\raisebox{0pt}[\templena][\templenb]%
+        {\colorbox{boxshade}{\usebox{\tempboxa}}}\hspace*{-\fboxsep}}}
+
+% \vshade{n} makes an n-point inter-paragraph space, with
+%  shading if the `shading' flag is true.
+\newlength{\vshadelen}
+\setlength{\vshadelen}{0pt}
+\newcommand{\vshade}[1]{\ifthenelse{\boolean{shading}}%
+   {\global\setlength{\vshadelen}{#1pt}}%
+   {\vspace{#1pt}}}
+
+\newlength{\boxwidth}
+\newlength{\multicommentdepth}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THE cpar ENVIRONMENT                                                      %
+% ^^^^^^^^^^^^^^^^^^^^                                                      %
+% The LaTeX input                                                           %
+%                                                                           %
+%   \begin{cpar}{pop}{nest}{isLabel}{d}{e}{arg6}                            %
+%     XXXXXXXXXXXXXXX                                                       %
+%     XXXXXXXXXXXXXXX                                                       %
+%     XXXXXXXXXXXXXXX                                                       %
+%   \end{cpar}                                                              %
+%                                                                           %
+% produces one of two possible results.  If isLabel is the letter "T",      %
+% it produces the following, where [label] is the result of typesetting     %
+% arg6 in an LR box, and d is is a number representing a distance in        %
+% points.                                                                   %
+%                                                                           %
+%   prevailing |<-- d -->[label]<- e ->XXXXXXXXXXXXXXX                      %
+%         left |                       XXXXXXXXXXXXXXX                      %
+%       margin |                       XXXXXXXXXXXXXXX                      %
+%                                                                           %
+% If isLabel is the letter "F", then it produces                            %
+%                                                                           %
+%   prevailing |<-- d -->XXXXXXXXXXXXXXXXXXXXXXX                            %
+%         left |         <- e ->XXXXXXXXXXXXXXXX                            %
+%       margin |                XXXXXXXXXXXXXXXX                            %
+%                                                                           %
+% where d and e are numbers representing distances in points.               %
+%                                                                           %
+% The prevailing left margin is the one in effect before the most recent    %
+% pop (argument 1) cpar environments with "T" as the nest argument, where   %
+% pop is a number \geq 0.                                                   %
+%                                                                           %
+% If the nest argument is the letter "T", then the prevailing left          %
+% margin is moved to the left of the second (and following) lines of        %
+% X's.  Otherwise, the prevailing left margin is left unchanged.            %
+%                                                                           %
+% An \unnest{n} command moves the prevailing left margin to where it was    %
+% before the most recent n cpar environments with "T" as the nesting        %
+% argument.                                                                 %
+%                                                                           %
+% The environment leaves no vertical space above or below it, or between    %
+% its paragraphs.  (TLATeX inserts the proper amount of vertical space.)    %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcounter{pardepth}
+\setcounter{pardepth}{0}
+
+% \setgmargin{txt} defines \gmarginN to be txt, where N is \roman{pardepth}.
+% \thegmargin equals \gmarginN, where N is \roman{pardepth}.
+\newcommand{\setgmargin}[1]{%
+  \expandafter\xdef\csname gmargin\roman{pardepth}\endcsname{#1}}
+\newcommand{\thegmargin}{\csname gmargin\roman{pardepth}\endcsname}
+\newcommand{\gmargin}{0pt}
+
+\newsavebox{\tempsbox}
+
+\newlength{\@cparht}
+\newlength{\@cpardp}
+\newenvironment{cpar}[6]{%
+  \addtocounter{pardepth}{-#1}%
+  \ifthenelse{\boolean{shading}}{\par\begin{lrbox}{\tempsbox}%
+                                 \begin{minipage}[t]{\linewidth}}{}%
+  \begin{list}{}{%
+     \edef\temp{\thegmargin}
+     \ifthenelse{\equal{#3}{T}}%
+       {\settowidth{\leftmargin}{\hspace{\temp}\footnotesize #6\hspace{#5pt}}%
+        \addtolength{\leftmargin}{#4pt}}%
+       {\setlength{\leftmargin}{#4pt}%
+        \addtolength{\leftmargin}{#5pt}%
+        \addtolength{\leftmargin}{\temp}%
+        \setlength{\itemindent}{-#5pt}}%
+      \ifthenelse{\equal{#2}{T}}{\addtocounter{pardepth}{1}%
+                                 \setgmargin{\the\leftmargin}}{}%
+      \setlength{\labelwidth}{0pt}%
+      \setlength{\labelsep}{0pt}%
+      \setlength{\itemindent}{-\leftmargin}%
+      \setlength{\topsep}{0pt}%
+      \setlength{\parsep}{0pt}%
+      \setlength{\partopsep}{0pt}%
+      \setlength{\parskip}{0pt}%
+      \setlength{\itemsep}{0pt}
+      \setlength{\itemindent}{#4pt}%
+      \addtolength{\itemindent}{-\leftmargin}}%
+   \ifthenelse{\equal{#3}{T}}%
+      {\item[\tstrut\footnotesize \hspace{\temp}{#6}\hspace{#5pt}]
+        }%
+      {\item[\tstrut\hspace{\temp}]%
+         }%
+   \footnotesize}
+ {\hspace{-\the\lastskip}\tstrut
+ \end{list}%
+  \ifthenelse{\boolean{shading}}%
+          {\end{minipage}%
+           \end{lrbox}%
+           \ifpcalshading
+             \setlength{\@cparht}{\ht\tempsbox}%
+             \setlength{\@cpardp}{\dp\tempsbox}%
+             \addtolength{\@cparht}{.15em}%
+             \addtolength{\@cpardp}{.2em}%
+             \addtolength{\@cparht}{\@cpardp}%
+            % I don't know what's going on here.  I want to add a
+            % \pcalvspace high shaded line, but I don't know how to
+            % do it.  A little trial and error shows that the following
+            % does a reasonable job approximating that, eliminating
+            % the line if \pcalvspace is small.
+            \addtolength{\@cparht}{\pcalvspace}%
+             \ifdim \pcalvspace > .8em
+               \addtolength{\pcalvspace}{-.2em}%
+               \hspace*{-\lcomindent}%
+               \shadebox{\rule{0pt}{\pcalvspace}\hspace*{\textwidth}}\par
+               \global\setlength{\pcalvspace}{0pt}%
+               \fi
+             \hspace*{-\lcomindent}%
+             \makebox[0pt][l]{\raisebox{-\@cpardp}[0pt][0pt]{%
+                 \shadebox{\rule{0pt}{\@cparht}\hspace*{\textwidth}}}}%
+             \hspace*{\lcomindent}\usebox{\tempsbox}%
+             \par
+           \else
+             \shadebox{\usebox{\tempsbox}}\par
+           \fi}%
+           {}%
+  }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THE ppar ENVIRONMENT                                                       %
+% ^^^^^^^^^^^^^^^^^^^^                                                       %
+% The environment                                                            %
+%                                                                            %
+%   \begin{ppar} ... \end{ppar}                                              %
+%                                                                            %
+% is equivalent to                                                           %
+%                                                                            %
+%   \begin{cpar}{0}{F}{F}{0}{0}{} ... \end{cpar}                             %
+%                                                                            %
+% The environment is put around each line of the output for a PlusCal        %
+% algorithm.                                                                 %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\newenvironment{ppar}{%
+%  \ifthenelse{\boolean{shading}}{\par\begin{lrbox}{\tempsbox}%
+%                                 \begin{minipage}[t]{\linewidth}}{}%
+%  \begin{list}{}{%
+%     \edef\temp{\thegmargin}
+%        \setlength{\leftmargin}{0pt}%
+%        \addtolength{\leftmargin}{\temp}%
+%        \setlength{\itemindent}{0pt}%
+%      \setlength{\labelwidth}{0pt}%
+%      \setlength{\labelsep}{0pt}%
+%      \setlength{\itemindent}{-\leftmargin}%
+%      \setlength{\topsep}{0pt}%
+%      \setlength{\parsep}{0pt}%
+%      \setlength{\partopsep}{0pt}%
+%      \setlength{\parskip}{0pt}%
+%      \setlength{\itemsep}{0pt}
+%      \setlength{\itemindent}{0pt}%
+%      \addtolength{\itemindent}{-\leftmargin}}%
+%      \item[\tstrut\hspace{\temp}]}%
+% {\hspace{-\the\lastskip}\tstrut
+% \end{list}%
+%  \ifthenelse{\boolean{shading}}{\end{minipage}  
+%                                 \end{lrbox}%
+%                                 \shadebox{\usebox{\tempsbox}}\par}{}%
+%  }
+
+ %%% TESTING
+ \newcommand{\xtest}[1]{\par
+ \makebox[0pt][l]{\shadebox{\xtstrut\hspace*{\textwidth}}}%
+ \mbox{$\mbox{}#1\mbox{}$}} 
+
+% \newcommand{\xxtest}[1]{\par
+% \makebox[0pt][l]{\shadebox{\xtstrut{#1}\hspace*{\textwidth}}}%
+% \mbox{$\mbox{}#1\mbox{}$}} 
+
+%\newlength{\pcalvspace}
+%\setlength{\pcalvspace}{0pt}
+% \newlength{\xxtestlen}
+% \setlength{\xxtestlen}{0pt}
+% \newcommand\xtstrut%
+%   {\setlength{\xxtestlen}{1.15em}%
+%    \addtolength{\xxtestlen}{\pcalvspace}%
+%     \raisebox{\vshadelen}{\raisebox{-.25em}{\rule{0pt}{\xxtestlen}}}%
+%    \global\setlength{\vshadelen}{0pt}%
+%    \global\setlength{\pcalvspace}{0pt}}
+   
+   %%%% TESTING
+   
+   %% The xcpar environment
+   %%  Note: overloaded use of \pcalvspace for testing.
+   %%
+%   \newlength{\xcparht}%
+%   \newlength{\xcpardp}%
+   
+%   \newenvironment{xcpar}[6]{%
+%  \addtocounter{pardepth}{-#1}%
+%  \ifthenelse{\boolean{shading}}{\par\begin{lrbox}{\tempsbox}%
+%                                 \begin{minipage}[t]{\linewidth}}{}%
+%  \begin{list}{}{%
+%     \edef\temp{\thegmargin}%
+%     \ifthenelse{\equal{#3}{T}}%
+%       {\settowidth{\leftmargin}{\hspace{\temp}\footnotesize #6\hspace{#5pt}}%
+%        \addtolength{\leftmargin}{#4pt}}%
+%       {\setlength{\leftmargin}{#4pt}%
+%        \addtolength{\leftmargin}{#5pt}%
+%        \addtolength{\leftmargin}{\temp}%
+%        \setlength{\itemindent}{-#5pt}}%
+%      \ifthenelse{\equal{#2}{T}}{\addtocounter{pardepth}{1}%
+%                                 \setgmargin{\the\leftmargin}}{}%
+%      \setlength{\labelwidth}{0pt}%
+%      \setlength{\labelsep}{0pt}%
+%      \setlength{\itemindent}{-\leftmargin}%
+%      \setlength{\topsep}{0pt}%
+%      \setlength{\parsep}{0pt}%
+%      \setlength{\partopsep}{0pt}%
+%      \setlength{\parskip}{0pt}%
+%      \setlength{\itemsep}{0pt}%
+%      \setlength{\itemindent}{#4pt}%
+%      \addtolength{\itemindent}{-\leftmargin}}%
+%   \ifthenelse{\equal{#3}{T}}%
+%      {\item[\xtstrut\footnotesize \hspace{\temp}{#6}\hspace{#5pt}]%
+%        }%
+%      {\item[\xtstrut\hspace{\temp}]%
+%         }%
+%   \footnotesize}
+% {\hspace{-\the\lastskip}\tstrut
+% \end{list}%
+%  \ifthenelse{\boolean{shading}}{\end{minipage}  
+%                                 \end{lrbox}%
+%                                 \setlength{\xcparht}{\ht\tempsbox}%
+%                                 \setlength{\xcpardp}{\dp\tempsbox}%
+%                                 \addtolength{\xcparht}{.15em}%
+%                                 \addtolength{\xcpardp}{.2em}%
+%                                 \addtolength{\xcparht}{\xcpardp}%
+%                                 \hspace*{-\lcomindent}%
+%                                 \makebox[0pt][l]{\raisebox{-\xcpardp}[0pt][0pt]{%
+%                                      \shadebox{\rule{0pt}{\xcparht}\hspace*{\textwidth}}}}%
+%                                 \hspace*{\lcomindent}\usebox{\tempsbox}%
+%                                 \par}{}%
+%  }
+%  
+% \newlength{\xmcomlen}
+%\newenvironment{xmcom}[1]{%
+%  \setcounter{pardepth}{0}%
+%  \hspace{.65em}%
+%  \begin{lrbox}{\alignbox}\sloppypar%
+%      \setboolean{shading}{false}%
+%      \setlength{\boxwidth}{#1pt}%
+%      \addtolength{\boxwidth}{-.65em}%
+%      \begin{minipage}[t]{\boxwidth}\footnotesize
+%      \parskip=0pt\relax}%
+%       {\end{minipage}\end{lrbox}%
+%       \setlength{\xmcomlen}{\textwidth}%
+%       \addtolength{\xmcomlen}{-\wd\alignbox}%
+%       \settodepth{\alignwidth}{\usebox{\alignbox}}%
+%       \global\setlength{\multicommentdepth}{\alignwidth}%
+%       \setlength{\boxwidth}{\alignwidth}%
+%       \global\addtolength{\alignwidth}{-\maxdepth}%
+%       \addtolength{\boxwidth}{.1em}%
+%       \raisebox{0pt}[0pt][0pt]{%
+%        \ifthenelse{\boolean{shading}}%
+%          {\hspace*{-\xmcomlen}\shadebox{\rule[-\boxwidth]{0pt}{0pt}%
+%                                 \hspace*{\xmcomlen}\usebox{\alignbox}}}%
+%          {\usebox{\alignbox}}}%
+%       \vspace*{\alignwidth}\pagebreak[0]\vspace{-\alignwidth}\par}
+% % a multi-line comment, whose first argument is its width in points.
+%  
+   
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THE lcom ENVIRONMENT                                                       %
+% ^^^^^^^^^^^^^^^^^^^^                                                       %
+% A multi-line comment with no text to its left is typeset in an lcom        % 
+% environment, whose argument is a number representing the indentation       % 
+% of the left margin, in points.  All the text of the comment should be      % 
+% inside cpar environments.                                                  % 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{lcom}[1]{%
+  \setlength{\lcomindent}{#1pt} % Added for PlusCal handling.
+  \par\vspace{.2em}%
+  \sloppypar
+  \setcounter{pardepth}{0}%
+  \footnotesize
+  \begin{list}{}{%
+    \setlength{\leftmargin}{#1pt}
+    \setlength{\labelwidth}{0pt}%
+    \setlength{\labelsep}{0pt}%
+    \setlength{\itemindent}{0pt}%
+    \setlength{\topsep}{0pt}%
+    \setlength{\parsep}{0pt}%
+    \setlength{\partopsep}{0pt}%
+    \setlength{\parskip}{0pt}}
+    \item[]}%
+  {\end{list}\vspace{.3em}\setlength{\lcomindent}{0pt}%
+ }
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THE mcom ENVIRONMENT AND \mutivspace COMMAND                              %
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                              %
+%                                                                           %
+% A part of the spec containing a right-comment of the form                 %
+%                                                                           %
+%      xxxx (*************)                                                 %
+%      yyyy (* ccccccccc *)                                                 %
+%      ...  (* ccccccccc *)                                                 %
+%           (* ccccccccc *)                                                 %
+%           (* ccccccccc *)                                                 %
+%           (*************)                                                 %
+%                                                                           %
+% is typeset by                                                             %
+%                                                                           %
+%     XXXX \begin{mcom}{d}                                                  %
+%            CCCC ... CCC                                                   %
+%          \end{mcom}                                                       %
+%     YYYY ...                                                              %
+%     \multivspace{n}                                                       %
+%                                                                           %
+% where the number d is the width in points of the comment, n is the        %
+% number of xxxx, yyyy, ...  lines to the left of the comment.              %
+% All the text of the comment should be typeset in cpar environments.       %
+%                                                                           %
+% This puts the comment into a single box (so no page breaks can occur      %
+% within it).  The entire box is shaded iff the shading flag is true.       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newlength{\xmcomlen}%
+\newenvironment{mcom}[1]{%
+  \setcounter{pardepth}{0}%
+  \hspace{.65em}%
+  \begin{lrbox}{\alignbox}\sloppypar%
+      \setboolean{shading}{false}%
+      \setlength{\boxwidth}{#1pt}%
+      \addtolength{\boxwidth}{-.65em}%
+      \begin{minipage}[t]{\boxwidth}\footnotesize
+      \parskip=0pt\relax}%
+       {\end{minipage}\end{lrbox}%
+       \setlength{\xmcomlen}{\textwidth}%       % For PlusCal shading
+       \addtolength{\xmcomlen}{-\wd\alignbox}%  % For PlusCal shading
+       \settodepth{\alignwidth}{\usebox{\alignbox}}%
+       \global\setlength{\multicommentdepth}{\alignwidth}%
+       \setlength{\boxwidth}{\alignwidth}%      % For PlusCal shading
+       \global\addtolength{\alignwidth}{-\maxdepth}%
+       \addtolength{\boxwidth}{.1em}%           % For PlusCal shading
+      \raisebox{0pt}[0pt][0pt]{%
+        \ifthenelse{\boolean{shading}}%
+          {\ifpcalshading
+             \hspace*{-\xmcomlen}%
+             \shadebox{\rule[-\boxwidth]{0pt}{0pt}\hspace*{\xmcomlen}%
+                          \usebox{\alignbox}}%
+           \else
+             \shadebox{\usebox{\alignbox}}
+           \fi
+          }%
+          {\usebox{\alignbox}}}%
+       \vspace*{\alignwidth}\pagebreak[0]\vspace{-\alignwidth}\par}
+ % a multi-line comment, whose first argument is its width in points.
+
+
+% \multispace{n} produces the vertical space indicated by "|"s in 
+% this situation
+%   
+%     xxxx (*************)
+%     xxxx (* ccccccccc *)
+%      |   (* ccccccccc *)
+%      |   (* ccccccccc *)
+%      |   (* ccccccccc *)
+%      |   (*************)
+%
+% where n is the number of "xxxx" lines.
+\newcommand{\multivspace}[1]{\addtolength{\multicommentdepth}{-#1\baselineskip}%
+ \addtolength{\multicommentdepth}{1.2em}%
+ \ifthenelse{\lengthtest{\multicommentdepth > 0pt}}%
+    {\par\vspace{\multicommentdepth}\par}{}}
+
+%\newenvironment{hpar}[2]{%
+%  \begin{list}{}{\setlength{\leftmargin}{#1pt}%
+%                 \addtolength{\leftmargin}{#2pt}%
+%                 \setlength{\itemindent}{-#2pt}%
+%                 \setlength{\topsep}{0pt}%
+%                 \setlength{\parsep}{0pt}%
+%                 \setlength{\partopsep}{0pt}%
+%                 \setlength{\parskip}{0pt}%
+%                 \addtolength{\labelsep}{0pt}}%
+%  \item[]\footnotesize}{\end{list}}
+%    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    % Typesets a sequence of paragraphs like this:                         %
+%    %                                                                      %
+%    %      left |<-- d1 --> XXXXXXXXXXXXXXXXXXXXXXXX                       %
+%    %    margin |           <- d2 -> XXXXXXXXXXXXXXX                       %
+%    %           |                    XXXXXXXXXXXXXXX                       %
+%    %           |                                                          %
+%    %           |                    XXXXXXXXXXXXXXX                       %
+%    %           |                    XXXXXXXXXXXXXXX                       %
+%    %                                                                      %
+%    % where d1 = #1pt and d2 = #2pt, but with no vspace between            %
+%    % paragraphs.                                                          %
+%    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Commands for repeated characters that produce dashes.              %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \raisedDash{wd}{ht}{thk} makes a horizontal line wd characters wide, 
+% raised a distance ht ex's above the baseline, with a thickness of 
+% thk em's.
+\newcommand{\raisedDash}[3]{\raisebox{#2ex}{\setlength{\alignwidth}{.5em}%
+  \rule{#1\alignwidth}{#3em}}}
+
+% The following commands take a single argument n and produce the
+% output for n repeated characters, as follows
+%   \cdash:    -
+%   \tdash:    ~
+%   \ceqdash:  =
+%   \usdash:   _
+\newcommand{\cdash}[1]{\raisedDash{#1}{.5}{.04}}
+\newcommand{\usdash}[1]{\raisedDash{#1}{0}{.04}}
+\newcommand{\ceqdash}[1]{\raisedDash{#1}{.5}{.08}}
+\newcommand{\tdash}[1]{\raisedDash{#1}{1}{.08}}
+
+\newlength{\spacewidth}
+\setlength{\spacewidth}{.2em}
+\newcommand{\e}[1]{\hspace{#1\spacewidth}}
+%% \e{i} produces space corresponding to i input spaces.
+
+
+%% Alignment-file Commands
+
+\newlength{\alignboxwidth}
+\newlength{\alignwidth}
+\newsavebox{\alignbox}
+
+% \al{i}{j}{txt} is used in the alignment file to put "%{i}{j}{wd}"
+% in the log file, where wd is the width of the line up to that point,
+% and txt is the following text.
+\newcommand{\al}[3]{%
+  \typeout{\%{#1}{#2}{\the\alignwidth}}%
+  \cl{#3}}
+
+%% \cl{txt} continues a specification line in the alignment file
+%% with text txt.
+\newcommand{\cl}[1]{%
+  \savebox{\alignbox}{\mbox{$\mbox{}#1\mbox{}$}}%
+  \settowidth{\alignboxwidth}{\usebox{\alignbox}}%
+  \addtolength{\alignwidth}{\alignboxwidth}%
+  \usebox{\alignbox}}
+
+% \fl{txt} in the alignment file begins a specification line that
+% starts with the text txt.
+\newcommand{\fl}[1]{%
+  \par
+  \savebox{\alignbox}{\mbox{$\mbox{}#1\mbox{}$}}%
+  \settowidth{\alignwidth}{\usebox{\alignbox}}%
+  \usebox{\alignbox}}
+
+
+
+  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Ordinarily, TeX typesets letters in math mode in a special math italic    %
+% font.  This makes it typeset "it" to look like the product of the         %
+% variables i and t, rather than like the word "it".  The following         %
+% commands tell TeX to use an ordinary italic font instead.                 %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\ifx\documentclass\undefined
+\else
+  \DeclareSymbolFont{tlaitalics}{\encodingdefault}{cmr}{m}{it}
+  \let\itfam\symtlaitalics
+\fi
+
+\makeatletter
+\newcommand{\tlx@c}{\c@tlx@ctr\advance\c@tlx@ctr\@ne}
+\newcounter{tlx@ctr}
+\c@tlx@ctr=\itfam \multiply\c@tlx@ctr"100\relax \advance\c@tlx@ctr "7061\relax
+\mathcode`a=\tlx@c \mathcode`b=\tlx@c \mathcode`c=\tlx@c \mathcode`d=\tlx@c
+\mathcode`e=\tlx@c \mathcode`f=\tlx@c \mathcode`g=\tlx@c \mathcode`h=\tlx@c
+\mathcode`i=\tlx@c \mathcode`j=\tlx@c \mathcode`k=\tlx@c \mathcode`l=\tlx@c
+\mathcode`m=\tlx@c \mathcode`n=\tlx@c \mathcode`o=\tlx@c \mathcode`p=\tlx@c
+\mathcode`q=\tlx@c \mathcode`r=\tlx@c \mathcode`s=\tlx@c \mathcode`t=\tlx@c
+\mathcode`u=\tlx@c \mathcode`v=\tlx@c \mathcode`w=\tlx@c \mathcode`x=\tlx@c
+\mathcode`y=\tlx@c \mathcode`z=\tlx@c
+\c@tlx@ctr=\itfam \multiply\c@tlx@ctr"100\relax \advance\c@tlx@ctr "7041\relax
+\mathcode`A=\tlx@c \mathcode`B=\tlx@c \mathcode`C=\tlx@c \mathcode`D=\tlx@c
+\mathcode`E=\tlx@c \mathcode`F=\tlx@c \mathcode`G=\tlx@c \mathcode`H=\tlx@c
+\mathcode`I=\tlx@c \mathcode`J=\tlx@c \mathcode`K=\tlx@c \mathcode`L=\tlx@c
+\mathcode`M=\tlx@c \mathcode`N=\tlx@c \mathcode`O=\tlx@c \mathcode`P=\tlx@c
+\mathcode`Q=\tlx@c \mathcode`R=\tlx@c \mathcode`S=\tlx@c \mathcode`T=\tlx@c
+\mathcode`U=\tlx@c \mathcode`V=\tlx@c \mathcode`W=\tlx@c \mathcode`X=\tlx@c
+\mathcode`Y=\tlx@c \mathcode`Z=\tlx@c
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                THE describe ENVIRONMENT                %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%
+% It is like the description environment except it takes an argument
+% ARG that should be the text of the widest label.  It adjusts the
+% indentation so each item with label LABEL produces
+%%      LABEL             blah blah blah
+%%      <- width of ARG ->blah blah blah
+%%                        blah blah blah
+\newenvironment{describe}[1]%
+   {\begin{list}{}{\settowidth{\labelwidth}{#1}%
+            \setlength{\labelsep}{.5em}%
+            \setlength{\leftmargin}{\labelwidth}% 
+            \addtolength{\leftmargin}{\labelsep}%
+            \addtolength{\leftmargin}{\parindent}%
+            \def\makelabel##1{\rm ##1\hfill}}%
+            \setlength{\topsep}{0pt}}%% 
+                % Sets \topsep to 0 to reduce vertical space above
+                % and below embedded displayed equations
+   {\end{list}}
+
+%   For tlatex.TeX
+\usepackage{verbatim}
+\makeatletter
+\def\tla{\let\%\relax%
+         \@bsphack
+         \typeout{\%{\the\linewidth}}%
+             \let\do\@makeother\dospecials\catcode`\^^M\active
+             \let\verbatim@startline\relax
+             \let\verbatim@addtoline\@gobble
+             \let\verbatim@processline\relax
+             \let\verbatim@finish\relax
+             \verbatim@}
+\let\endtla=\@esphack
+
+\let\pcal=\tla
+\let\endpcal=\endtla
+\let\ppcal=\tla
+\let\endppcal=\endtla
+
+% The tlatex environment is used by TLATeX.TeX to typeset TLA+.
+% TLATeX.TLA starts its files by writing a \tlatex command.  This
+% command/environment sets \parindent to 0 and defines \% to its
+% standard definition because the writing of the log files is messed up
+% if \% is defined to be something else.  It also executes
+% \@computerule to determine the dimensions for the TLA horizonatl
+% bars.
+\newenvironment{tlatex}{\@computerule%
+                        \setlength{\parindent}{0pt}%
+                       \makeatletter\chardef\%=`\%}{}
+
+
+% The notla environment produces no output.  You can turn a 
+% tla environment to a notla environment to prevent tlatex.TeX from
+% re-formatting the environment.
+
+\def\notla{\let\%\relax%
+         \@bsphack
+             \let\do\@makeother\dospecials\catcode`\^^M\active
+             \let\verbatim@startline\relax
+             \let\verbatim@addtoline\@gobble
+             \let\verbatim@processline\relax
+             \let\verbatim@finish\relax
+             \verbatim@}
+\let\endnotla=\@esphack
+
+\let\nopcal=\notla
+\let\endnopcal=\endnotla
+\let\noppcal=\notla
+\let\endnoppcal=\endnotla
+
+%%%%%%%%%%%%%%%%%%%%%%%% end of tlatex.sty file %%%%%%%%%%%%%%%%%%%%%%% 
+% last modified on Fri  3 August 2012 at 14:23:49 PST by lamport
+
+\begin{document}
+\tlatex
+\setboolean{shading}{true}
+ \@x{}\moduleLeftDash\@xx{ {\MODULE}
+ TunableMongoDB\_RBK}\moduleRightDash\@xx{}%
+\@x{ {\EXTENDS} Naturals ,\, FiniteSets ,\, Sequences ,\, TLC}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ constants and variables
+}%
+\@xx{}%
+\@x{ {\CONSTANTS} Client ,\, Server ,\,\@s{8.2}}%
+\@y{\@s{0}%
+ the set of clients and servers
+}%
+\@xx{}%
+\@x{\@s{54.75} Key ,\, Value ,\,\@s{20.5}}%
+\@y{\@s{0}%
+ the set of keys and values
+}%
+\@xx{}%
+\@x{\@s{54.75} Nil ,\,\@s{55.29}}%
+\@y{\@s{0}%
+ model value, place holder
+}%
+\@xx{}%
+\@x{\@s{54.75} OpTimes ,\,\@s{28.69}}%
+\@y{\@s{0}%
+ \ensuremath{op} count at most
+}%
+\@xx{}%
+\@x{\@s{54.75} PtStop ,\,\@s{39.78}}%
+\@y{\@s{0}%
+ max physical time
+}%
+\@xx{}%
+\@x{\@s{54.75} Number\@s{41.66}}%
+\@y{\@s{0}%
+ \ensuremath{writeConcern} number
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{ {\VARIABLES} Primary ,\,\@s{30.69}}%
+\@y{\@s{0}%
+ Primary node
+}%
+\@xx{}%
+\@x{\@s{51.42} Secondary ,\,\@s{23.29}}%
+\@y{\@s{0}%
+ secondary nodes
+}%
+\@xx{}%
+\@x{\@s{51.42} Oplog ,\,\@s{42.59}}%
+\@y{\@s{0}%
+ \ensuremath{oplog[s]}: \ensuremath{oplog} at \ensuremath{server[s]
+}}%
+\@xx{}%
+\@x{\@s{51.42} Store ,\,\@s{44.89}}%
+\@y{\@s{0}%
+ \ensuremath{store[s]}: data stored at \ensuremath{server[s]
+}}%
+\@xx{}%
+\@x{\@s{51.42} Ct ,\,\@s{56.58}}%
+\@y{\@s{0}%
+ \ensuremath{Ct[s]}: cluster time at node \ensuremath{s
+}}%
+\@xx{}%
+\@x{\@s{51.42} Ot ,\,\@s{56.07}}%
+\@y{\@s{0}%
+ \ensuremath{Ot[s]}: the last applied operation time at server \ensuremath{s
+}}%
+\@xx{}%
+\@x{\@s{51.42} InMsgc ,\,\@s{35.71}}%
+\@y{\@s{0}%
+ \ensuremath{InMsgc[c]}: the channel of messages at client \ensuremath{c
+ \.{\in} Client
+}}%
+\@xx{}%
+\@x{\@s{51.42} InMsgs ,\,\@s{35.96}}%
+\@y{\@s{0}%
+ \ensuremath{InMsgc[s]}: the channel of messages at server \ensuremath{s
+ \.{\in} Server
+}}%
+\@xx{}%
+\@x{\@s{51.42} ServerMsg ,\,\@s{21.61}}%
+\@y{\@s{0}%
+ \ensuremath{ServerMsg[s]}: the channel of heartbeat \ensuremath{msgs} at
+ server \ensuremath{s
+}}%
+\@xx{}%
+\@x{\@s{51.42} BlockedClient ,\,\@s{8.14}}%
+\@y{\@s{0}%
+ \ensuremath{BlockedClient}: \ensuremath{Client} operations in progress
+}%
+\@xx{}%
+\@x{\@s{51.42} BlockedThread ,\,\@s{4.1}}%
+\@y{\@s{0}%
+ \ensuremath{BlockedThread}: blocked user thread and content
+}%
+\@xx{}%
+\@x{\@s{51.42} OpCount ,\,\@s{27.70}}%
+\@y{\@s{0}%
+ \ensuremath{OpCount[c]}: \ensuremath{op} count for client \ensuremath{c
+}}%
+\@xx{}%
+\@x{\@s{51.42} Pt ,\,\@s{56.95}}%
+\@y{\@s{0}%
+ \ensuremath{Pt[s]}: physical time at server \ensuremath{s
+}}%
+\@xx{}%
+\@x{\@s{51.42} Cp ,\,\@s{55.11}}%
+\@y{\@s{0}%
+ \ensuremath{Cp[s]}: majority commit point at server \ensuremath{s
+}}%
+\@xx{}%
+\@x{\@s{51.42} State ,\,\@s{45.28}}%
+\@y{\@s{0}%
+ \ensuremath{State[s]}: the latest \ensuremath{Ot} of all servers that server
+ \ensuremath{s} knows
+}%
+\@xx{}%
+\@x{\@s{51.42} CalState ,\,\@s{30.45}}%
+\@y{\@s{0}%
+ \ensuremath{CalState}: sorted \ensuremath{State[Primary]
+}}%
+\@xx{}%
+\@x{\@s{51.42} SnapshotTable ,\,\@s{4.90}}%
+\@y{\@s{0}%
+ \ensuremath{SnapshotTable[s]} : snapshot mapping table at server
+ \ensuremath{s
+}}%
+\@xx{}%
+\@x{\@s{51.42} History ,\,\@s{37.06}}%
+\@y{\@s{0}%
+ \ensuremath{History[c]}: \ensuremath{History} sequence at client
+ \ensuremath{c
+}}%
+\@xx{}%
+\@x{\@s{51.42} CurrentTerm ,\,\@s{11.90}}%
+\@y{\@s{0}%
+ \ensuremath{CurrentTerm[s]}: current election term at server \ensuremath{s
+ \.{\rightarrow}} updated in \ensuremath{update\_position}, heartbeat and
+ replicate
+}%
+\@xx{}%
+\@x{\@s{51.42} ReadyToServe ,\,\@s{8.2}}%
+\@y{\@s{0}%
+ equal to 0 before any primary is elected
+}%
+\@xx{}%
+\@x{\@s{51.42} SyncSource\@s{24.17}}%
+\@y{\@s{0}%
+ sync source of server node \ensuremath{s
+}}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}\midbar\@xx{}%
+\@x{ {\ASSUME} Cardinality ( Client )\@s{1.66} \.{\geq} 1\@s{4.10}}%
+\@y{\@s{0}%
+ at least one clinet
+}%
+\@xx{}%
+\@x{ {\ASSUME} Cardinality ( Server ) \.{\geq} 2\@s{4.10}}%
+\@y{\@s{0}%
+ at least one primary and one secondary
+}%
+\@xx{}%
+\@x{ {\ASSUME} Cardinality ( Key ) \.{\geq} 1\@s{4.1}}%
+\@y{\@s{0}%
+ at least one object
+}%
+\@xx{}%
+\@x{ {\ASSUME} Cardinality ( Value ) \.{\geq} 2\@s{4.1}}%
+\@y{\@s{0}%
+ at least two values to update
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ helpers
+}%
+\@xx{}%
+\@x{ HLCLt ( x ,\, y ) \.{\defeq} {\IF} x . p \.{<} y . p}%
+\@x{\@s{75.76} \.{\THEN} {\TRUE}}%
+\@x{\@s{75.76} \.{\ELSE} {\IF} x . p \.{=} y . p}%
+\@x{\@s{107.07} \.{\THEN} {\IF} x . l \.{<} y . l}%
+\@x{\@s{138.38} \.{\THEN} {\TRUE}}%
+\@x{\@s{138.38} \.{\ELSE} {\FALSE}}%
+\@x{\@s{107.07} \.{\ELSE} {\FALSE}}%
+ \@x{ HLCMin ( x ,\, y )\@s{1.49} \.{\defeq} {\IF} HLCLt ( x ,\, y ) \.{\THEN}
+ x \.{\ELSE} y}%
+ \@x{ HLCMax ( x ,\, y ) \.{\defeq} {\IF} HLCLt ( x ,\, y ) \.{\THEN}
+ y\@s{0.10} \.{\ELSE} x}%
+\@x{ HLCType \.{\defeq} [ p \.{:} Nat ,\, l \.{:} Nat ]}%
+ \@x{ Min ( x ,\, y )\@s{1.49} \.{\defeq} {\IF} x \.{<} y \.{\THEN} x
+ \.{\ELSE} y}%
+\@x{ Max ( x ,\, y ) \.{\defeq} {\IF} x \.{>} y \.{\THEN} x \.{\ELSE} y}%
+\@pvspace{8.0pt}%
+ \@x{ vars \.{\defeq} {\langle} Primary ,\, Secondary ,\, Oplog ,\, Store ,\,
+ Ct ,\, Ot ,\, InMsgc ,\,}%
+\@x{\@s{41.61} InMsgs ,\, ServerMsg ,\, BlockedClient ,\, BlockedThread ,\,}%
+ \@x{\@s{41.61} OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable
+ ,\,}%
+ \@x{\@s{41.61} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ {\RECURSIVE} CreateState ( \_ ,\, \_ )}%
+\@y{\@s{0}%
+ init state
+}%
+\@xx{}%
+\@x{ CreateState ( len ,\, seq ) \.{\defeq} {\IF} len \.{=} 0 \.{\THEN} seq}%
+ \@x{\@s{110.69} \.{\ELSE} CreateState ( len \.{-} 1 ,\, Append ( seq ,\, [ p
+ \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ] ) )}%
+\@pvspace{8.0pt}%
+\@x{}\midbar\@xx{}%
+ \@x{ InitPrimary \.{\defeq} Primary \.{=} {\CHOOSE} s \.{\in} Server \.{:}
+ {\TRUE}}%
+ \@x{ InitSecondary \.{\defeq} Secondary \.{=} Server \.{\,\backslash\,} \{
+ Primary \}}%
+ \@x{ InitOplog \.{\defeq} Oplog \.{=} [ s\@s{1.47} \.{\in} Server \.{\mapsto}
+ {\langle} {\rangle} ]}%
+ \@x{ InitStore\@s{2.30} \.{\defeq} Store\@s{2.30} \.{=} [ n \.{\in} Server
+ \.{\cup} Client\@s{4.1} \.{\mapsto} [ k \.{\in} Key \.{\mapsto} Nil ] ]}%
+ \@x{ InitCt\@s{0.51} \.{\defeq} Ct\@s{0.51} \.{=} [ n\@s{4.46} \.{\in} Server
+ \.{\cup} Client \.{\mapsto} [ p \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ] ]}%
+ \@x{ InitOt \.{\defeq} Ot \.{=} [ n\@s{4.46} \.{\in} Server \.{\cup} Client
+ \.{\mapsto} [ p \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ] ]}%
+ \@x{ InitInMsgc \.{\defeq} InMsgc \.{=} [ c\@s{6.91} \.{\in} Client\@s{1.66}
+ \.{\mapsto} {\langle} {\rangle} ]}%
+ \@x{ InitInMsgs\@s{0.25} \.{\defeq} InMsgs\@s{0.25} \.{=} [ s\@s{7.17}
+ \.{\in} Server \.{\mapsto} {\langle} {\rangle} ]}%
+ \@x{ InitServerMsg \.{\defeq} ServerMsg \.{=} [ s \.{\in} Server \.{\mapsto}
+ {\langle} {\rangle} ]}%
+ \@x{ InitBlockedClient\@s{4.04} \.{\defeq} BlockedClient\@s{4.04} \.{=} \{
+ \}}%
+ \@x{ InitBlockedThread \.{\defeq} BlockedThread \.{=} [ s \.{\in} Client
+ \.{\mapsto} Nil ]}%
+ \@x{ InitOpCount \.{\defeq} OpCount \.{=} [ c \.{\in} Client \.{\mapsto}
+ OpTimes ]}%
+ \@x{ InitPt\@s{1.84} \.{\defeq} Pt\@s{1.84} \.{=} [ s\@s{1.47} \.{\in} Server
+ \.{\mapsto} 1 ]}%
+ \@x{ InitCp \.{\defeq} Cp \.{=} [ n \.{\in} Server \.{\cup} Client
+ \.{\mapsto} [ p \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ] ]}%
+ \@x{ InitCalState \.{\defeq} CalState \.{=} CreateState ( Cardinality (
+ Server ) ,\, {\langle} {\rangle} )}%
+\@x{\@s{131.39}}%
+\@y{\@s{0}%
+ create initial \ensuremath{state(for} \ensuremath{calculate)
+}}%
+\@xx{}%
+ \@x{ InitState \.{\defeq} State \.{=} [ s\@s{8.62} \.{\in} Server \.{\mapsto}
+ [ s0 \.{\in} Server \.{\mapsto}}%
+\@x{\@s{184.46} [ p \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ] ] ]}%
+ \@x{ InitSnap \.{\defeq} SnapshotTable \.{=} [ s \.{\in} Server \.{\mapsto}
+ {\langle} [ ot \.{\mapsto} [ p \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ] ,\,}%
+ \@x{\@s{205.46} store \.{\mapsto} [ k \.{\in} Key \.{\mapsto} Nil ] ]
+ {\rangle} ]}%
+ \@x{ InitHistory \.{\defeq} History \.{=} [ c \.{\in} Client \.{\mapsto}
+ {\langle} {\rangle} ]\@s{4.1}}%
+\@y{\@s{0}%
+ History operation \ensuremath{seq} is empty
+}%
+\@xx{}%
+ \@x{ InitCurrentTerm \.{\defeq} CurrentTerm \.{=} [ s \.{\in} Server
+ \.{\mapsto} 0 ]}%
+\@x{ InitReadyToServe \.{\defeq} ReadyToServe \.{=} 0}%
+ \@x{ InitSyncSource \.{\defeq} SyncSource \.{=} [ s \.{\in} Server
+ \.{\mapsto} Nil ]}%
+\@pvspace{8.0pt}%
+\@x{ Init \.{\defeq}}%
+ \@x{\@s{16.4} \.{\land} InitPrimary \.{\land} InitSecondary \.{\land}
+ InitOplog \.{\land} InitStore \.{\land} InitCt}%
+ \@x{\@s{16.4} \.{\land} InitOt \.{\land} InitPt \.{\land} InitCp \.{\land}
+ InitCalState \.{\land} InitInMsgc \.{\land} InitInMsgs}%
+ \@x{\@s{16.4} \.{\land} InitServerMsg \.{\land} InitBlockedClient \.{\land}
+ InitBlockedThread \.{\land} InitOpCount}%
+ \@x{\@s{16.4} \.{\land} InitState \.{\land} InitSnap \.{\land} InitHistory
+ \.{\land} InitCurrentTerm\@s{7.24} \.{\land} InitReadyToServe}%
+\@x{\@s{16.4} \.{\land} InitSyncSource}%
+\@x{}\midbar\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ snapshot
+}%
+\@xx{}%
+\@x{ {\RECURSIVE} SelectSnapshot\_rec ( \_ ,\, \_ ,\, \_ )}%
+\@x{ SelectSnapshot\_rec ( stable ,\, cp ,\, index ) \.{\defeq}}%
+ \@x{\@s{16.4} {\IF} HLCLt ( cp ,\, stable [ index ] . ot ) \.{\THEN} stable [
+ index \.{-} 1 ] . store}%
+ \@x{\@s{16.4} \.{\ELSE} {\IF} index \.{=} Len ( stable ) \.{\THEN} stable [
+ index ] . store}%
+ \@x{\@s{16.4} \.{\ELSE} SelectSnapshot\_rec ( stable ,\, cp ,\, index \.{+} 1
+ )}%
+\@pvspace{8.0pt}%
+ \@x{ SelectSnapshot ( stable ,\, cp ) \.{\defeq} SelectSnapshot\_rec ( stable
+ ,\, cp ,\, 1 )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ snapshot periodly
+}%
+\@xx{}%
+\@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
+\@x{ Snapshot \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
+ \@x{\@s{39.64} SnapshotTable \.{'} \.{=}\@s{4.1} [ SnapshotTable {\EXCEPT}
+ {\bang} [ s ] \.{=}}%
+ \@x{\@s{125.76} Append ( @ ,\, [ ot \.{\mapsto} Ot [ s ] ,\, store
+ \.{\mapsto} Store [ s ] ] ) ]}%
+\@x{\@s{127.08}}%
+\@y{\@s{0}%
+ create a new snapshot
+}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\,}%
+\@x{\@s{89.98} InMsgs ,\, ServerMsg ,\, BlockedClient ,\, BlockedThread ,\,}%
+ \@x{\@s{89.98} OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, History ,\,
+ CurrentTerm ,\,}%
+\@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{}\midbar\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ \ensuremath{DH} helpers
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+ \@x{ LogTerm ( i ,\, index ) \.{\defeq} {\IF} index \.{=} 0 \.{\THEN} 0
+ \.{\ELSE} Oplog [ i ] [ index ] . term}%
+\@x{ LastTerm ( i ) \.{\defeq} LogTerm ( i ,\, Len ( Oplog [ i ] ) )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Is node \ensuremath{i} ahead of node \ensuremath{j
+}}%
+\@xx{}%
+ \@x{ NotBehind ( i ,\, j ) \.{\defeq} \.{\lor} LastTerm ( i ) \.{>} LastTerm
+ ( j )}%
+\@x{\@s{88.82} \.{\lor} \.{\land} LastTerm ( i ) \.{=} LastTerm ( j )}%
+\@x{\@s{99.93} \.{\land} Len ( Oplog [ i ] ) \.{\geq} Len ( Oplog [ j ] )}%
+\@pvspace{8.0pt}%
+ \@x{ IsMajority ( servers ) \.{\defeq} Cardinality ( servers ) \.{*} 2 \.{>}
+ Cardinality ( Server )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Return the maximum value from a set, or undefined if the set is empty.
+}%
+\@xx{}%
+ \@x{ MaxVal ( s ) \.{\defeq} {\CHOOSE} x \.{\in} s \.{:} \A\, y \.{\in} s
+ \.{:} x \.{\geq} y}%
+\@pvspace{8.0pt}%
+\@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ commit point
+}%
+\@xx{}%
+\@x{ {\RECURSIVE} AddState ( \_ ,\, \_ ,\, \_ )}%
+ \@x{ AddState ( new ,\, state ,\, index ) \.{\defeq} {\IF} index \.{=} 1
+ \.{\land} HLCLt ( new ,\, state [ 1 ] ) \.{\THEN}\@s{4.1} {\langle} new
+ {\rangle} \.{\circ} state}%
+\@y{\@s{0}%
+ less than the first
+}%
+\@xx{}%
+ \@x{\@s{142.14} \.{\ELSE} {\IF} index \.{=} Len ( state ) \.{+} 1 \.{\THEN}
+ state \.{\circ} {\langle} new {\rangle}}%
+ \@x{\@s{142.14} \.{\ELSE} {\IF} HLCLt ( new ,\, state [ index ] ) \.{\THEN}
+ SubSeq ( state ,\, 1 ,\, index \.{-} 1 ) \.{\circ} {\langle} new {\rangle}
+ \.{\circ} SubSeq ( state ,\, index ,\, Len ( state ) )}%
+\@x{\@s{142.14} \.{\ELSE} AddState ( new ,\, state ,\, index \.{+} 1 )}%
+\@x{ {\RECURSIVE} RemoveState ( \_ ,\, \_ ,\, \_ )}%
+ \@x{ RemoveState ( old ,\, state ,\, index ) \.{\defeq} {\IF} state [ index ]
+ \.{=} old \.{\THEN} SubSeq ( state ,\, 1 ,\, index \.{-} 1 ) \.{\circ}
+ SubSeq ( state ,\, index \.{+} 1 ,\, Len ( state ) )}%
+\@x{\@s{154.73} \.{\ELSE} RemoveState ( old ,\, state ,\, index \.{+} 1 )}%
+\@pvspace{8.0pt}%
+ \@x{ AdvanceState ( new ,\, old ,\, state ) \.{\defeq} AddState ( new ,\,
+ RemoveState ( old ,\, state ,\, 1 ) ,\, 1 )}%
+\@pvspace{8.0pt}%
+\@x{ Stepdown \.{\defeq}}%
+\@x{\@s{53.70} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{53.70} \.{\land} \E\, s \.{\in} Primary \.{:}}%
+ \@x{\@s{68.91} \.{\land} Primary \.{'} \.{=} Primary \.{\,\backslash\,} \{ s
+ \}}%
+\@x{\@s{68.91} \.{\land} Secondary \.{'} \.{=} Secondary \.{\cup} \{ s \}}%
+ \@x{\@s{53.70} \.{\land} {\UNCHANGED} {\langle} Oplog ,\, Store ,\, Ct ,\, Ot
+ ,\, InMsgc ,\, InMsgs ,\, ServerMsg ,\,}%
+ \@x{\@s{131.38} BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\, Cp
+ ,\,}%
+ \@x{\@s{131.38} State ,\, CalState ,\, SnapshotTable ,\, History ,\,
+ CurrentTerm ,\,}%
+\@x{\@s{131.38} ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ There are majority nodes agree to elect node \ensuremath{i} to become primary
+}%
+\@xx{}%
+\@x{ ElectPrimary ( i ,\, majorNodes ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} \A\, j \.{\in} majorNodes \.{:} \.{\land} NotBehind (
+ i ,\, j )}%
+\@x{\@s{113.25} \.{\land} CurrentTerm [ i ] \.{\geq} CurrentTerm [ j ]}%
+\@x{\@s{16.4} \.{\land} IsMajority ( majorNodes )}%
+\@x{\@s{27.51}}%
+\@y{\@s{0}%
+ voted nodes for \ensuremath{i} cannot be primary anymore
+}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} Primary \.{'} \.{=} \.{\LET} possiblePrimary
+ \.{\defeq} Primary \.{\,\backslash\,} majorNodes}%
+\@x{\@s{80.96} \.{\IN} possiblePrimary \.{\cup} \{ i \}}%
+\@x{\@s{27.51}}%
+\@y{\@s{0}%
+ add voted nodes into secondaries
+}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} Secondary \.{'} \.{=} \.{\LET} possibleSecondary
+ \.{\defeq} Secondary \.{\cup} majorNodes}%
+\@x{\@s{88.36} \.{\IN} possibleSecondary \.{\,\backslash\,} \{ i \}}%
+ \@x{\@s{16.4} \.{\land} CurrentTerm \.{'} \.{=} [ index \.{\in} Server
+ \.{\mapsto} {\IF} index \.{\in} ( majorNodes \.{\cup} \{ i \} )}%
+\@x{\@s{186.62} \.{\THEN} CurrentTerm [ i ] \.{+} 1}%
+\@x{\@s{186.62} \.{\ELSE} CurrentTerm [ index ] ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Oplog ,\, Store ,\, Ct ,\, Ot
+ ,\, InMsgc ,\, InMsgs ,\, ServerMsg ,\, BlockedClient ,\,}%
+ \@x{\@s{89.98} BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, State ,\, CalState
+ ,\, SnapshotTable ,\,}%
+ \@x{\@s{89.98} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ TurnOnReadyToServe \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{=} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Primary \.{:}}%
+ \@x{\@s{31.61} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
+ {\bang} [ s ] \.{=} CurrentTerm [ s ] \.{+} 1 ]}%
+\@x{\@s{31.61} \.{\land} ReadyToServe \.{'} \.{=} ReadyToServe \.{+} 1}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\,\@s{4.1} Secondary
+ ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\, ServerMsg ,\,
+ BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, State ,\,
+ CalState ,\, SnapshotTable ,\, History ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ AdvanceCp \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ Primary ]
+ \.{=} CalState [ Cardinality ( Server ) \.{\div} 2 \.{+} 1 ] ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\, ServerMsg ,\,
+ BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\, CalState ,\, State
+ ,\, SnapshotTable ,\, History ,\, CurrentTerm ,\, ReadyToServe ,\,
+ SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ heartbeat
+}%
+\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ Only \ensuremath{Primary} node sends heartbeat once advance pt
+}%
+\@xx{}%
+\@x{ BroadcastHeartbeat ( s ) \.{\defeq}}%
+ \@x{\@s{16.4} \.{\LET} msg \.{\defeq} [ type \.{\mapsto}\@w{heartbeat} ,\, s
+ \.{\mapsto} s ,\, aot \.{\mapsto} Ot [ s ] ,\, ct \.{\mapsto} Ct [ s ] ,\,
+ cp \.{\mapsto} Cp [ s ] ,\, term \.{\mapsto} CurrentTerm [ s ] ]}%
+ \@x{\@s{16.4} \.{\IN} ServerMsg \.{'} \.{=} [ x \.{\in} Server \.{\mapsto}
+ {\IF} x \.{=} s \.{\THEN} ServerMsg [ x ]}%
+\@x{\@s{202.01} \.{\ELSE} Append ( ServerMsg [ x ] ,\, msg ) ]}%
+\@pvspace{8.0pt}%
+\@x{ ServerTakeHeartbeat \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
+\@x{\@s{31.61} \.{\land} Len ( ServerMsg [ s ] ) \.{\neq} 0\@s{4.1}}%
+\@y{\@s{0}%
+ message channel is not empty
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} ServerMsg [ s ] . type\@s{3.62} \.{=}\@w{heartbeat}}%
+ \@x{\@s{31.61} \.{\land} Ct \.{'} \.{=} [ Ct {\EXCEPT} {\bang} [ s ] \.{=}
+ HLCMax ( Ct [ s ] ,\, ServerMsg [ s ] [ 1 ] . ct ) ]}%
+\@x{\@s{31.61} \.{\land} State \.{'} \.{=}}%
+\@x{\@s{46.82} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
+ \@x{\@s{67.22} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ ServerMsg [ s ]
+ [ 1 ] . s ] \.{=}}%
+\@x{\@s{99.23} ServerMsg [ s ] [ 1 ] . aot ]}%
+\@x{\@s{46.82} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
+\@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} \.{\LET} newcal \.{\defeq}}%
+\@x{\@s{96.41} {\IF} s \.{\in} Primary}%
+\@y{\@s{0}%
+ primary node: update \ensuremath{CalState
+}}%
+\@xx{}%
+ \@x{\@s{96.41} \.{\THEN}\@s{4.1} AdvanceState ( ServerMsg [ s ] [ 1 ] . aot
+ ,\,}%
+\@x{\@s{172.82} State [ s ] [ ServerMsg [ s ] [ 1 ] . s ] ,\, CalState )}%
+\@x{\@s{96.41} \.{\ELSE} CalState \.{\IN} newcal}%
+\@x{\@s{31.61} \.{\land} Cp \.{'} \.{=} \.{\LET} newcp \.{\defeq}}%
+\@x{\@s{71.75}}%
+\@y{\@s{0}%
+ primary node: compute new mcp
+}%
+\@xx{}%
+ \@x{\@s{71.75} {\IF} s \.{\in} Primary \.{\THEN} CalState \.{'} [ Cardinality
+ ( Server ) \.{\div} 2 \.{+} 1 ]}%
+\@x{\@s{71.75}}%
+\@y{\@s{0}%
+ secondary node: update mcp
+}%
+\@xx{}%
+ \@x{\@s{71.75} \.{\ELSE} {\IF} {\lnot} HLCLt ( ServerMsg [ s ] [ 1 ] . cp ,\,
+ Cp [ s ] )}%
+ \@x{\@s{103.06} \.{\land}\@s{1.04} {\lnot} HLCLt ( Ot [ s ] ,\, ServerMsg [ s
+ ] [ 1 ] . cp )}%
+\@x{\@s{71.75} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
+\@x{\@s{71.75} \.{\ELSE} Cp [ s ]}%
+\@x{\@s{71.75} \.{\IN} [ Cp {\EXCEPT} {\bang} [ s ] \.{=} newcp ]}%
+ \@x{\@s{27.51} \.{\land} ServerMsg \.{'} \.{=} [ ServerMsg {\EXCEPT} {\bang}
+ [ s ] \.{=} Tail ( @ ) ]}%
+ \@x{\@s{27.51} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
+ {\bang} [ s ] \.{=} Max ( CurrentTerm [ s ] ,\, ServerMsg [ s ] [ 1 ] . term
+ ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
+ \@x{\@s{35.71} BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\,
+ SnapshotTable ,\, History ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ServerTakeUpdatePosition \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
+\@x{\@s{31.61} \.{\land} Len ( ServerMsg [ s ] ) \.{\neq} 0\@s{4.1}}%
+\@y{\@s{0}%
+ message channel is not empty
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} ServerMsg [ s ] . type\@s{3.62}
+ \.{=}\@w{update\_position}}%
+ \@x{\@s{31.61} \.{\land} Ct \.{'} \.{=} [ Ct {\EXCEPT} {\bang} [ s ] \.{=}
+ HLCMax ( Ct [ s ] ,\, ServerMsg [ s ] [ 1 ] . ct ) ]}%
+\@y{\@s{0}%
+ update \ensuremath{ct} accordingly
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} State \.{'} \.{=}}%
+\@x{\@s{46.82} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
+ \@x{\@s{67.22} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ ServerMsg [ s ]
+ [ 1 ] . s ] \.{=}}%
+\@x{\@s{99.23} ServerMsg [ s ] [ 1 ] . aot ]}%
+\@x{\@s{46.82} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
+\@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} \.{\LET} newcal \.{\defeq}}%
+\@x{\@s{96.41} {\IF} s \.{\in} Primary}%
+\@y{\@s{0}%
+ primary node: update \ensuremath{CalState
+}}%
+\@xx{}%
+ \@x{\@s{96.41} \.{\THEN}\@s{4.1} AdvanceState ( ServerMsg [ s ] [ 1 ] . aot
+ ,\,}%
+\@x{\@s{172.82} State [ s ] [ ServerMsg [ s ] [ 1 ] . s ] ,\, CalState )}%
+\@x{\@s{96.41} \.{\ELSE} CalState \.{\IN} newcal}%
+\@x{\@s{31.61} \.{\land} Cp \.{'} \.{=} \.{\LET} newcp \.{\defeq}}%
+\@x{\@s{71.75}}%
+\@y{\@s{0}%
+ primary node: compute new mcp
+}%
+\@xx{}%
+ \@x{\@s{71.75} {\IF} s \.{\in} Primary \.{\THEN} CalState \.{'} [ Cardinality
+ ( Server ) \.{\div} 2 \.{+} 1 ]}%
+\@x{\@s{71.75}}%
+\@y{\@s{0}%
+ secondary node: update mcp
+}%
+\@xx{}%
+ \@x{\@s{71.75} \.{\ELSE} {\IF} {\lnot} HLCLt ( ServerMsg [ s ] [ 1 ] . cp ,\,
+ Cp [ s ] )}%
+ \@x{\@s{103.06} \.{\land}\@s{1.04} {\lnot} HLCLt ( Ot [ s ] ,\, ServerMsg [ s
+ ] [ 1 ] . cp )}%
+\@x{\@s{71.75} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
+\@x{\@s{71.75} \.{\ELSE} Cp [ s ]}%
+\@x{\@s{71.75} \.{\IN} [ Cp {\EXCEPT} {\bang} [ s ] \.{=} newcp ]}%
+ \@x{\@s{27.51} \.{\land} ServerMsg \.{'} \.{=} \.{\LET} newServerMsg
+ \.{\defeq} [ ServerMsg {\EXCEPT} {\bang} [ s ] \.{=} Tail ( @ ) ]}%
+ \@x{\@s{121.55} appendMsg \.{\defeq} [ type \.{\mapsto}\@w{update\_position}
+ ,\, s \.{\mapsto} s ,\, aot \.{\mapsto} ServerMsg [ s ] [ 1 ] . aot ,\, ct
+ \.{\mapsto} ServerMsg [ s ] [ 1 ] . ct ,\, cp \.{\mapsto} ServerMsg [ s ] [
+ 1 ] . cp ,\, term \.{\mapsto} ServerMsg [ s ] [ 1 ] . term ]}%
+\@x{\@s{121.55} newMsg \.{\defeq} {\IF} s \.{\in} Primary}%
+\@x{\@s{175.85} \.{\THEN} newServerMsg}%
+\@y{\@s{0}%
+ If \ensuremath{s} is primary, accept the \ensuremath{msg}, else forward it
+ to its sync source
+}%
+\@xx{}%
+ \@x{\@s{175.85} \.{\ELSE} [ newServerMsg {\EXCEPT} {\bang} [ SyncSource [ s ]
+ ] \.{=} Append ( newServerMsg [ SyncSource [ s ] ] ,\, appendMsg ) ]}%
+\@x{\@s{101.15} \.{\IN} newMsg}%
+ \@x{\@s{27.51} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
+ {\bang} [ s ] \.{=} Max ( CurrentTerm [ s ] ,\, ServerMsg [ s ] [ 1 ] . term
+ ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
+ \@x{\@s{35.71} BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\,
+ SnapshotTable ,\, History ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{16.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ clock
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+ \@x{ UnchangedExPt\@s{0.37} \.{\defeq} {\langle} Primary ,\, Secondary ,\,
+ InMsgc ,\, InMsgs ,\, ServerMsg ,\, Oplog ,\, Store ,\,}%
+\@x{\@s{92.92} Ct ,\, Ot ,\, BlockedClient ,\, OpCount {\rangle}}%
+ \@x{ UnchangedExCt \.{\defeq} {\langle} Primary ,\, Secondary ,\, InMsgc ,\,
+ InMsgs ,\, ServerMsg ,\, Oplog ,\, Store ,\,}%
+\@x{\@s{92.92} Pt ,\, Ot ,\, BlockedClient ,\, OpCount {\rangle}}%
+\@pvspace{8.0pt}%
+ \@x{ MaxPt \.{\defeq} \.{\LET} x \.{\defeq} {\CHOOSE} s \.{\in} Server \.{:}
+ \A\, s1 \.{\in} Server \.{\,\backslash\,} \{ s \} \.{:}}%
+\@x{\@s{141.48} Pt [ s ] \.{\geq} Pt [ s1 ] \.{\IN} Pt [ x ]}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{%
+ 建模了\ensuremath{NTP}协议，但是并没有使用，因为物理时钟只有在\ensuremath{Primary}节点用到
+}%
+\@xx{}%
+\@x{ NTPSync \.{\defeq}}%
+\@y{\@s{0}%
+ simplify \ensuremath{NTP} protocal
+}%
+\@xx{}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} Pt \.{'} \.{=} [ s \.{\in} Server \.{\mapsto} MaxPt
+ ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
+ \@x{\@s{90.19} ServerMsg ,\, BlockedClient ,\, BlockedThread ,\, OpCount ,\,
+ Cp ,\,}%
+ \@x{\@s{90.19} CalState ,\, State ,\, SnapshotTable ,\, History ,\,
+ CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ AdvancePt \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
+\@x{\@s{38.83} \.{\land} s \.{=} Primary\@s{83.63}}%
+\@y{\@s{0}%
+ for simplicity
+}%
+\@xx{}%
+\@x{\@s{38.83} \.{\land} Pt [ s ] \.{\leq} PtStop}%
+ \@x{\@s{38.83} \.{\land} Pt \.{'} \.{=} [ Pt {\EXCEPT} {\bang} [ s ] \.{=} @
+ \.{+} 1 ]}%
+\@y{\@s{0}%
+ advance physical time
+}%
+\@xx{}%
+\@x{\@s{38.83} \.{\land} BroadcastHeartbeat ( s )\@s{42.59}}%
+\@y{\@s{0}%
+ broadcast heartbeat periodly
+}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\, State ,\,}%
+ \@x{\@s{27.51} BlockedClient ,\, BlockedThread ,\, OpCount ,\, Cp ,\,
+ CalState ,\, SnapshotTable ,\, History ,\, CurrentTerm ,\,}%
+\@x{\@s{27.51} ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+ \@x{ Tick ( s ) \.{\defeq} Ct \.{'} \.{=} {\IF} Ct [ s ] . p \.{\geq} Pt [ s
+ ] \.{\THEN} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto} @ . p ,\, l
+ \.{\mapsto} @ . l \.{+} 1 ] ]}%
+ \@x{\@s{157.05} \.{\ELSE} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto}
+ Pt [ s ] ,\, l \.{\mapsto} 0 ] ]}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Replication
+}%
+\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ Idea: 进行replicate的时候，首先进行\ensuremath{canSyncFrom}的判断，拥有更多\ensuremath{log}且大于等于term的才能作为同步源
+}%
+\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ 其次，开始同步之后，把当前节点的同步源设置为\ensuremath{SyncSource[s]}，随后向\ensuremath{SyncSource}的信道里加入\ensuremath{UpdatePosition}消息
+}%
+\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ 最后，关于\ensuremath{UpdatePosition}的转发，需要加入一个额外的action，如果自己的信道里有type为\ensuremath{updatePosition}的消息，则向上层节点转发
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Can node \ensuremath{i} sync from node \ensuremath{j}\.{?}
+}%
+\@xx{}%
+\@x{ CanSyncFrom ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} Len ( Oplog [ i ] ) \.{<} Len ( Oplog [ j ] )}%
+ \@x{\@s{16.4} \.{\land} LastTerm ( i ) \.{=} LogTerm ( j ,\, Len ( Oplog [ i
+ ] ) )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ \ensuremath{Oplog} entries needed to replicate from \ensuremath{j} to
+ \ensuremath{i
+}}%
+\@xx{}%
+\@x{ ReplicateOplog ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\LET} len\_i\@s{0.42} \.{\defeq} Len ( Oplog [ i ] )}%
+\@x{\@s{36.79} len\_j \.{\defeq} Len ( Oplog [ j ] )}%
+\@x{\@s{16.4} \.{\IN} {\IF} i \.{\neq} Primary \.{\land} len\_i \.{<} len\_j}%
+ \@x{\@s{107.78} \.{\THEN} SubSeq ( Oplog [ j ] ,\, len\_i \.{+} 1 ,\, len\_j
+ )}%
+\@x{\@s{107.78} \.{\ELSE} {\langle} {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Replicate oplog from node \ensuremath{j} to node \ensuremath{i}, and update
+ related structures accordingly
+}%
+\@xx{}%
+\@x{\@s{4.1} Replicate ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} CanSyncFrom ( i ,\, j )}%
+\@x{\@s{16.4} \.{\land} i \.{\in} Secondary}%
+ \@x{\@s{16.4} \.{\land} ReplicateOplog ( i ,\, j ) \.{\neq} {\langle}
+ {\rangle}}%
+ \@x{\@s{16.4} \.{\land} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang} [ i ]
+ \.{=} @ \.{\circ} ReplicateOplog ( i ,\, j ) ]}%
+ \@x{\@s{16.4} \.{\land} Store \.{'}\@s{2.30} \.{=} [ Store {\EXCEPT} {\bang}
+ [ i ]\@s{2.30} \.{=}\@s{4.1} Store [ j ] ]}%
+ \@x{\@s{16.4} \.{\land} Ct \.{'}\@s{1.47} \.{=} [ Ct {\EXCEPT} {\bang} [ i
+ ]\@s{1.47} \.{=} HLCMax ( Ct [ i ] ,\, Ct [ j ] ) ]\@s{2.94}}%
+\@y{\@s{0}%
+ update \ensuremath{Ct[i]
+}}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} Ot \.{'}\@s{0.96} \.{=} [ Ot {\EXCEPT} {\bang} [ i
+ ]\@s{0.96} \.{=} HLCMax ( Ot [ i ] ,\, Ot [ j ] ) ]\@s{1.92}}%
+\@y{\@s{0}%
+ update \ensuremath{Ot[i]
+}}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ i ] \.{=}
+ HLCMax ( Cp [ i ] ,\, Cp [ j ] ) ]}%
+\@y{\@s{0}%
+ update \ensuremath{Cp[i]
+}}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
+ {\bang} [ i ] \.{=} Max ( CurrentTerm [ i ] ,\, CurrentTerm [ j ] ) ]}%
+\@y{\@s{0}%
+ update \ensuremath{CurrentTerm
+}}%
+\@xx{}%
+\@x{\@s{16.4} \.{\land} State \.{'} \.{=}}%
+\@x{\@s{50.24} \.{\LET} SubHbState \.{\defeq} State [ i ]}%
+ \@x{\@s{70.63} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ j ] \.{=} Ot [
+ j ] ]}%
+\@x{\@s{50.24} \.{\IN} [ State {\EXCEPT} {\bang} [ i ] \.{=} hb ]}%
+\@y{\@s{0}%
+ update \ensuremath{j}\mbox{'}s state \ensuremath{i} knows
+}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} \.{\LET} msg \.{\defeq} [ type
+ \.{\mapsto}\@w{update\_position} ,\, s \.{\mapsto} i ,\, aot \.{\mapsto} Ot
+ \.{'} [ i ] ,\, ct \.{\mapsto} Ct \.{'} [ i ] ,\, cp \.{\mapsto} Cp \.{'} [
+ i ] ]}%
+ \@x{\@s{27.51} \.{\IN} ServerMsg \.{'} \.{=} [ ServerMsg {\EXCEPT} {\bang} [
+ j ] \.{=} Append ( ServerMsg [ j ] ,\, msg ) ]}%
+ \@x{\@s{16.4} \.{\land} SyncSource \.{'} \.{=} [ SyncSource {\EXCEPT} {\bang}
+ [ i ] \.{=} j ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ InMsgc ,\, InMsgs ,\, BlockedClient ,\,}%
+ \@x{\@s{94.08} BlockedThread ,\, OpCount ,\, Pt ,\, CalState ,\,
+ SnapshotTable ,\,}%
+\@x{\@s{94.08} History ,\, ReadyToServe {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ server get
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{ ServerGetReply\_local\_sleep \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
+\@x{\@s{31.61} \.{\land} Len ( InMsgs [ s ] ) \.{\neq} 0\@s{28.7}}%
+\@y{\@s{0}%
+ message channel is not empty
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . op \.{=}\@w{get}\@s{10.98}}%
+\@y{\@s{0}%
+ \ensuremath{msg} type: get
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . rc\@s{1.98}
+ \.{=}\@w{local}\@s{4.73}}%
+\@y{\@s{0}%
+ Read Concern: local
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Ct \.{'} \.{=} [ Ct {\EXCEPT} {\bang} [ s ] \.{=}
+ HLCMax ( Ct [ s ] ,\, InMsgs [ s ] [ 1 ] . ct ) ]}%
+\@y{\@s{0}%
+ Update \ensuremath{Ct} according to \ensuremath{InMsg
+}}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
+ {\bang} [ InMsgs [ s ] [ 1 ] . c ] \.{=}}%
+ \@x{\@s{122.77} [ type \.{\mapsto}\@w{read\_local} ,\, s \.{\mapsto} s ,\, k
+ \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, ot \.{\mapsto} InMsgs [ s ] [ 1 ] .
+ ot ] ]}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Tail ( @ ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
+\@x{\@s{89.98} BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\,}%
+\@x{\@s{89.98} CalState ,\, State ,\, SnapshotTable ,\, History ,\,}%
+\@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{16.0pt}%
+\@x{ ServerGetReply\_local\_wake \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, c \.{\in} Client \.{:}}%
+\@x{\@s{31.61} \.{\land} BlockedThread [ c ] \.{\neq} Nil}%
+\@x{\@s{31.61} \.{\land} BlockedThread [ c ] . type \.{=}\@w{read\_local}}%
+ \@x{\@s{31.61} \.{\land} {\lnot} HLCLt ( Ot [ BlockedThread [ c ] . s ] ,\,
+ BlockedThread [ c ] . ot )}%
+\@y{\@s{0}%
+ wait until \ensuremath{Ot[s] \.{\geq}} target \ensuremath{ot
+}}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} InMsgc \.{'} \.{=} [ InMsgc {\EXCEPT} {\bang} [ c ]
+ \.{=} Append ( @ ,\, [ op \.{\mapsto}\@w{get} ,\, k \.{\mapsto}
+ BlockedThread [ c ] . k ,\, v \.{\mapsto}}%
+ \@x{\@s{98.03} Store [ BlockedThread [ c ] . s ] [ BlockedThread [ c ] . k ]
+ ,\, ct \.{\mapsto} Ct [ BlockedThread [ c ] . s ] ,\, ot \.{\mapsto} Ot [
+ BlockedThread [ c ] . s ] ] ) ]}%
+\@x{\@s{46.82}}%
+\@y{\@s{0}%
+ send \ensuremath{msg} to client
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
+ {\bang} [ c ] \.{=} Nil ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgs ,\, ServerMsg ,\,}%
+\@x{\@s{89.98} BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\,}%
+\@x{\@s{89.98} CalState ,\, State ,\, SnapshotTable ,\, History ,\,}%
+\@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ServerGetReply\_majority\_sleep \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
+\@x{\@s{31.61} \.{\land} Len ( InMsgs [ s ] ) \.{\neq} 0\@s{28.21}}%
+\@y{\@s{0}%
+ message channel is not empty
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . op \.{=}\@w{get}\@s{10.50}}%
+\@y{\@s{0}%
+ \ensuremath{msg} type: get
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . rc\@s{1.98} \.{=}\@w{major}}%
+\@y{\@s{0}%
+ Read Concern: majority
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Ct \.{'} \.{=} [ Ct {\EXCEPT} {\bang} [ s ] \.{=}
+ HLCMax ( Ct [ s ] ,\, InMsgs [ s ] [ 1 ] . ct ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
+ {\bang} [ InMsgs [ s ] [ 1 ] . c ] \.{=}}%
+ \@x{\@s{122.77} [ type \.{\mapsto}\@w{read\_major} ,\, s \.{\mapsto} s ,\, k
+ \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, ot \.{\mapsto} InMsgs [ s ] [ 1 ] .
+ ot ] ]}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Tail ( @ ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
+\@x{\@s{89.98} BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\,}%
+\@x{\@s{89.98} CalState ,\, State ,\, SnapshotTable ,\, History ,\,}%
+\@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ServerGetReply\_majority\_wake \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, c \.{\in} Client \.{:}}%
+\@x{\@s{31.61} \.{\land} BlockedThread [ c ] \.{\neq} Nil}%
+\@x{\@s{31.61} \.{\land} BlockedThread [ c ] . type \.{=}\@w{read\_major}}%
+ \@x{\@s{31.61} \.{\land} {\lnot} HLCLt ( Ot [ BlockedThread [ c ] . s ] ,\,
+ BlockedThread [ c ] . ot )}%
+\@y{\@s{0}%
+ wait until \ensuremath{Ot[s] \.{\geq}} target \ensuremath{ot
+}}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} InMsgc \.{'} \.{=} [ InMsgc {\EXCEPT} {\bang} [ c ]
+ \.{=} Append ( @ ,\, [ op \.{\mapsto}\@w{get} ,\, k \.{\mapsto}
+ BlockedThread [ c ] . k ,\, v \.{\mapsto}}%
+ \@x{\@s{98.03} SelectSnapshot ( SnapshotTable [ BlockedThread [ c ] . s ] ,\,
+ Cp [ BlockedThread [ c ] . s ] ) [ BlockedThread [ c ] . k ] ,\, ct}%
+ \@x{\@s{98.03} \.{\mapsto} Ct [ BlockedThread [ c ] . s ] ,\, ot \.{\mapsto}
+ Cp [ BlockedThread [ c ] . s ] ] ) ]}%
+\@x{\@s{46.82}}%
+\@y{\@s{0}%
+ send \ensuremath{msg} to client
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
+ {\bang} [ c ] \.{=} Nil ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgs ,\, ServerMsg ,\,}%
+\@x{\@s{89.98} BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\,}%
+\@x{\@s{89.98} CalState ,\, State ,\, SnapshotTable ,\, History ,\,}%
+\@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ServerGetReply\_linearizable\_sleep \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
+\@x{\@s{31.61} \.{\land} s \.{=} Primary}%
+\@x{\@s{31.61} \.{\land} Len ( InMsgs [ s ] ) \.{\neq} 0}%
+\@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . op \.{=}\@w{get}}%
+\@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . rc\@s{1.98} \.{=}\@w{linea}}%
+\@y{\@s{0}%
+ Read Concern: linearizable
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} Tick ( s )\@s{4.1}}%
+\@y{\@s{0}%
+ advance cluster time
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang} [
+ Primary ] \.{=}}%
+ \@x{\@s{84.27} Append ( @ ,\, {\langle} Nil ,\, Nil ,\, Ct \.{'} [ s ]
+ {\rangle} ) ]}%
+\@x{\@s{84.27}}%
+\@y{\@s{0}%
+ append noop operation to \ensuremath{oplog[s]
+}}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Ot \.{'} \.{=} [ Ot {\EXCEPT} {\bang} [ s ]
+ \.{=}\@s{4.1} Ct \.{'} [ s ] ]}%
+\@x{\@s{77.67}}%
+\@y{\@s{0}%
+ advance the last applied operation time \ensuremath{Ot[s]
+}}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} State \.{'} \.{=}}%
+\@x{\@s{46.82} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
+ \@x{\@s{67.22} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ Primary ] \.{=}
+ Ot \.{'} [ Primary ] ]}%
+\@x{\@s{46.82} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
+\@y{\@s{0}%
+ update primary state
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} AdvanceState ( Ot \.{'} [
+ Primary ] ,\, Ot [ Primary ] ,\, CalState )}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Tail ( @ ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
+ {\bang} [ InMsgs [ s ] [ 1 ] . c ] \.{=}}%
+ \@x{\@s{122.77} [ type \.{\mapsto}\@w{read\_linea} ,\, ot \.{\mapsto} Ct
+ \.{'} [ s ] ,\, s \.{\mapsto} s ,\, k}%
+ \@x{\@s{122.77} \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, v \.{\mapsto} Store [
+ s ] [ InMsgs [ s ] [ 1 ] . k ] ] ]}%
+\@x{\@s{83.72}}%
+\@y{\@s{0}%
+ add the user thread to \ensuremath{BlockedThread[c]
+}}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Store ,\, InMsgc ,\, ServerMsg ,\, BlockedClient ,\,}%
+\@x{\@s{89.98} OpCount ,\, Pt ,\, Cp ,\, SnapshotTable ,\, History ,\,}%
+\@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ServerGetReply\_linearizable\_wake \.{\defeq}}%
+\@x{\@s{24.59} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{24.59} \.{\land} \E\, c \.{\in} Client \.{:}}%
+\@x{\@s{32.8} \.{\land} BlockedThread [ c ] \.{\neq} Nil}%
+\@x{\@s{32.8} \.{\land} BlockedThread [ c ] . type \.{=}\@w{read\_linea}}%
+ \@x{\@s{32.8} \.{\land}\@s{4.1} {\lnot} HLCLt ( Cp [ BlockedThread [ c ] . s
+ ] ,\, BlockedThread [ c ] . ot )}%
+\@y{\@s{0}%
+ \ensuremath{cp[s] \.{\geq}} target \ensuremath{ot
+}}%
+\@xx{}%
+ \@x{\@s{32.8} \.{\land} InMsgc \.{'} \.{=} [ InMsgc {\EXCEPT} {\bang} [ c ]
+ \.{=} Append ( @ ,\, [ op \.{\mapsto}\@w{get} ,\, k}%
+ \@x{\@s{95.12} \.{\mapsto} BlockedThread [ c ] . k ,\, v \.{\mapsto}
+ BlockedThread [ c ] . v ,\, ct}%
+ \@x{\@s{95.12} \.{\mapsto} Ct [ BlockedThread [ c ] . s ] ,\, ot \.{\mapsto}
+ BlockedThread [ c ] . ot ] ) ]}%
+ \@x{\@s{32.8} \.{\land} BlockedThread \.{'} \.{=}\@s{4.1} [ BlockedThread
+ {\EXCEPT} {\bang} [ c ] \.{=} Nil ]}%
+\@y{\@s{0}%
+ remove blocked state
+}%
+\@xx{}%
+ \@x{\@s{24.59} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgs ,\,}%
+\@x{\@s{98.18} ServerMsg ,\, BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\,}%
+\@x{\@s{98.18} CalState ,\, State ,\, SnapshotTable ,\, History ,\,}%
+\@x{\@s{98.18} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ server put
+}%
+\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ 注意：只有收到写操作时才会记录server的oplog
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{ ServerPutReply\_zero \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Primary \.{:}}%
+\@x{\@s{31.61} \.{\land} Len ( InMsgs [ s ] ) \.{\neq} 0\@s{26.92}}%
+\@y{\@s{0}%
+ message channel is not empty
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . op\@s{0.95}
+ \.{=}\@w{put}\@s{7.36}}%
+\@y{\@s{0}%
+ \ensuremath{msg} type: put
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . wc \.{=}\@w{zero}\@s{4.10}}%
+\@y{\@s{0}%
+ Write Concern: 0
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} Tick ( s )\@s{79.10}}%
+\@y{\@s{0}%
+ advance cluster time
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Ot \.{'} \.{=} [ Ot {\EXCEPT} {\bang} [ s ]
+ \.{=}\@s{4.1} Ct \.{'} [ s ] ]}%
+\@x{\@s{97.81}}%
+\@y{\@s{0}%
+ advance the last applied operation time \ensuremath{Ot[Primary]
+}}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Store \.{'}\@s{2.30} \.{=} [ Store {\EXCEPT} {\bang}
+ [ s ] [ InMsgs [ s ] [ 1 ] . k ] \.{=} InMsgs [ s ] [ 1 ] . v ]}%
+\@x{\@s{84.27}}%
+\@y{\@s{0}%
+ append operation to \ensuremath{oplog[primary]
+}}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Oplog \.{'} \.{=} \.{\LET} entry \.{\defeq} [ k
+ \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs [ s ] [ 1 ] . v
+ ,\, ot \.{\mapsto} Ot \.{'} [ s ] ,\, term \.{\mapsto} CurrentTerm [ s ] ]}%
+\@x{\@s{104.67} newLog \.{\defeq} Append ( Oplog [ s ] ,\, entry )}%
+\@x{\@s{84.27} \.{\IN} [ Oplog {\EXCEPT} {\bang} [ s ] \.{=} newLog ]}%
+\@x{\@s{31.61} \.{\land} State \.{'}\@s{2.68} \.{=}}%
+\@x{\@s{46.82} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
+ \@x{\@s{67.22} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ s ] \.{=} Ot
+ \.{'} [ s ] ]}%
+\@x{\@s{46.82} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
+\@y{\@s{0}%
+ update primary state
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} AdvanceState ( Ot \.{'} [ s ]
+ ,\, Ot [ s ] ,\, CalState )}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Tail ( @ ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ InMsgc ,\, ServerMsg ,\, BlockedClient ,\,}%
+\@x{\@s{64.41} BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, SnapshotTable ,\,}%
+ \@x{\@s{64.41} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
+\@x{}\midbar\@xx{}%
+\begin{lcom}{0}%
+\begin{cpar}{0}{T}{F}{5.0}{0}{}%
+**************************************************************************
+\end{cpar}%
+\begin{cpar}{1}{F}{F}{0}{0}{}%
+ \ensuremath{DH} modified: Add \ensuremath{k} and \ensuremath{v} message when
+ block thread, and return them when wake
+\end{cpar}%
+\begin{cpar}{0}{T}{F}{2.5}{0}{}%
+**************************************************************************
+\end{cpar}%
+\end{lcom}%
+\@x{ ServerPutReply\_number\_sleep \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Primary \.{:}}%
+\@x{\@s{31.61} \.{\land} Len ( InMsgs [ s ] ) \.{\neq} 0\@s{32.09}}%
+\@y{\@s{0}%
+ message channel is not empty
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . op\@s{0.95}
+ \.{=}\@w{put}\@s{12.53}}%
+\@y{\@s{0}%
+ \ensuremath{msg} type: put
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . wc \.{=}\@w{num}\@s{8.2}}%
+\@y{\@s{0}%
+ Write Concern: \ensuremath{num
+}}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} Tick ( s )\@s{84.27}}%
+\@y{\@s{0}%
+ advance cluster time
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Ot \.{'} \.{=} [ Ot {\EXCEPT} {\bang} [ s ]
+ \.{=}\@s{4.1} Ct \.{'} [ s ] ]}%
+\@x{\@s{97.81}}%
+\@y{\@s{0}%
+ advance the last applied operation time \ensuremath{Ot[Primary]
+}}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Store \.{'} \.{=} [ Store {\EXCEPT} {\bang} [ s ] [
+ InMsgs [ s ] [ 1 ] . k ] \.{=} InMsgs [ s ] [ 1 ] . v ]}%
+\@x{}%
+\@y{\@s{17.5}%
+ \ensuremath{\.{\land} Oplog\.{'} \.{=}} [ \ensuremath{Oplog}
+ \ensuremath{{\EXCEPT} {\bang}[s] \.{=}
+}}%
+\@xx{}%
+\@x{}%
+\@y{\@s{47.5}%
+ \ensuremath{Append(@,\, {\langle}InMsgs[s][1].k,\, InMsgs[s][1].v,\,
+ Ot\.{'}[s],\, CurrentTerm[s]{\rangle})}]
+}%
+\@xx{}%
+ \@x{\@s{32.8} \.{\land} \.{\LET} entry \.{\defeq} [ k \.{\mapsto} InMsgs [ s
+ ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs [ s ] [ 1 ] . v ,\, ot \.{\mapsto} Ot
+ \.{'} [ s ] ,\, term \.{\mapsto} CurrentTerm [ s ] ]}%
+\@x{\@s{64.31} newLog \.{\defeq} Append ( Oplog [ s ] ,\, entry )}%
+ \@x{\@s{43.91} \.{\IN} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang} [ s ]
+ \.{=} newLog ]}%
+\@x{\@s{32.8} \.{\land} State \.{'} \.{=}}%
+\@x{\@s{48.01} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
+ \@x{\@s{68.41} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ s ] \.{=} Ot
+ \.{'} [ s ] ]}%
+\@x{\@s{48.01} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
+\@y{\@s{0}%
+ update primary state
+}%
+\@xx{}%
+ \@x{\@s{32.8} \.{\land} CalState \.{'} \.{=} AdvanceState ( Ot \.{'} [ s ]
+ ,\, Ot [ s ] ,\, CalState )}%
+ \@x{\@s{32.8} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
+ {\bang} [ InMsgs [ s ] [ 1 ] . c ] \.{=} [ type}%
+ \@x{\@s{48.01} \.{\mapsto}\@w{write\_num} ,\, ot \.{\mapsto} Ot \.{'} [ s ]
+ ,\, s \.{\mapsto} s ,\, numnode \.{\mapsto} InMsgs [ s ] [ 1 ] . num ,\,}%
+ \@x{\@s{48.01} k \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs
+ [ s ] [ 1 ] . v ] ]}%
+\@x{\@s{89.74}}%
+\@y{\@s{0}%
+ add the user \ensuremath{thHistory} to \ensuremath{BlockedThread[c]
+}}%
+\@xx{}%
+ \@x{\@s{32.8} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Tail ( @ ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ InMsgc ,\, ServerMsg ,\, BlockedClient ,\,}%
+\@x{\@s{89.98} OpCount ,\, Pt ,\, Cp ,\, SnapshotTable ,\,}%
+ \@x{\@s{89.98} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
+\@pvspace{16.0pt}%
+\@x{ ServerPutReply\_number\_wake \.{\defeq}}%
+\@x{\@s{24.59} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{24.59} \.{\land} \E\, c \.{\in} Client \.{:}}%
+\@x{\@s{32.8} \.{\land} BlockedThread [ c ] \.{\neq}\@s{4.1} Nil}%
+\@x{\@s{32.8} \.{\land} BlockedThread [ c ] . type \.{=}\@w{write\_num}}%
+ \@x{\@s{32.8} \.{\land}\@s{4.1} {\lnot} HLCLt ( CalState [ Cardinality (
+ Server ) \.{-} BlockedThread [ c ] . numnode \.{+} 1 ] ,\,}%
+\@x{\@s{89.97} BlockedThread [ c ] . ot )\@s{4.1}}%
+\@y{\@s{0}%
+ \ensuremath{CalState[s][n\.{-} num \.{+} 1] \.{\geq}} target \ensuremath{ot
+}}%
+\@xx{}%
+ \@x{\@s{32.8} \.{\land} InMsgc \.{'} \.{=} [ InMsgc {\EXCEPT} {\bang} [ c ]
+ \.{=}\@s{4.1} Append ( @ ,\, [ op \.{\mapsto}\@w{put} ,\, ct}%
+ \@x{\@s{95.12} \.{\mapsto} Ct [ Primary ] ,\, ot \.{\mapsto} BlockedThread [
+ c ] . ot ,\, k \.{\mapsto} BlockedThread [ c ] . k ,\, v \.{\mapsto}
+ BlockedThread [ c ] . v ] ) ]}%
+ \@x{\@s{32.8} \.{\land} BlockedThread \.{'} \.{=}\@s{4.1} [ BlockedThread
+ {\EXCEPT} {\bang} [ c ] \.{=} Nil ]}%
+\@x{\@s{249.28}}%
+\@y{\@s{0}%
+ remove blocked state
+}%
+\@xx{}%
+ \@x{\@s{24.59} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgs ,\,}%
+\@x{\@s{98.18} ServerMsg ,\, BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\,}%
+\@x{\@s{98.18} CalState ,\, State ,\, SnapshotTable ,\, History ,\,}%
+\@x{\@s{98.18} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{16.0pt}%
+\begin{lcom}{0}%
+\begin{cpar}{0}{T}{F}{5.0}{0}{}%
+**************************************************************************
+\end{cpar}%
+\begin{cpar}{1}{F}{F}{0}{0}{}%
+ \ensuremath{DH} modified: Add \ensuremath{k} and \ensuremath{v} message when
+ block thread, and return them when wake
+\end{cpar}%
+\begin{cpar}{0}{T}{F}{2.5}{0}{}%
+**************************************************************************
+\end{cpar}%
+\end{lcom}%
+\@x{ ServerPutReply\_majority\_sleep \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Primary \.{:}}%
+\@x{\@s{31.61} \.{\land} Len ( InMsgs [ s ] ) \.{\neq} 0}%
+\@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . op\@s{0.95} \.{=}\@w{put}}%
+\@x{\@s{31.61} \.{\land} InMsgs [ s ] [ 1 ] . wc \.{=}\@w{major}}%
+\@x{\@s{31.61} \.{\land} Tick ( s )}%
+ \@x{\@s{31.61} \.{\land} Ot \.{'} \.{=} [ Ot {\EXCEPT} {\bang} [ s ]
+ \.{=}\@s{4.1} Ct \.{'} [ s ] ]}%
+ \@x{\@s{31.61} \.{\land} Store \.{'} \.{=} [ Store {\EXCEPT} {\bang} [ s ] [
+ InMsgs [ s ] [ 1 ] . k ] \.{=} InMsgs [ s ] [ 1 ] . v ]}%
+\@x{}%
+\@y{\@s{17.5}%
+ \ensuremath{\.{\land} Oplog\.{'} \.{=}} [ \ensuremath{Oplog}
+ \ensuremath{{\EXCEPT} {\bang}[Primary] \.{=}
+}}%
+\@xx{}%
+\@x{}%
+\@y{\@s{47.5}%
+ \ensuremath{Append(@,\, {\langle}InMsgs[s][1].k,\, InMsgs[s][1].v,\,
+ Ot\.{'}[Primary],\, CurrentTerm[Primary]{\rangle})}]
+}%
+\@xx{}%
+ \@x{\@s{32.8} \.{\land} \.{\LET} entry \.{\defeq} [ k \.{\mapsto} InMsgs [ s
+ ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs [ s ] [ 1 ] . v ,\, ot \.{\mapsto} Ot
+ \.{'} [ s ] ,\, term \.{\mapsto} CurrentTerm [ s ] ]}%
+\@x{\@s{64.31} newLog \.{\defeq} Append ( Oplog [ s ] ,\, entry )}%
+ \@x{\@s{43.91} \.{\IN} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang} [ s ]
+ \.{=} newLog ]}%
+\@x{\@s{32.8} \.{\land} State \.{'} \.{=}}%
+\@x{\@s{48.01} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
+ \@x{\@s{68.41} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ s ] \.{=} Ot
+ \.{'} [ s ] ]}%
+\@x{\@s{48.01} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
+\@y{\@s{0}%
+ update primary state
+}%
+\@xx{}%
+ \@x{\@s{32.8} \.{\land} CalState \.{'} \.{=} AdvanceState ( Ot \.{'} [ s ]
+ ,\, Ot [ s ] ,\, CalState )}%
+ \@x{\@s{32.8} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
+ {\bang} [ InMsgs [ s ] [ 1 ] . c ] \.{=} [ type \.{\mapsto}\@w{write\_major}
+ ,\, ot}%
+ \@x{\@s{84.91} \.{\mapsto} Ot \.{'} [ s ] ,\, s \.{\mapsto} s ,\, k
+ \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs [ s ] [ 1 ] . v
+ ] ]}%
+ \@x{\@s{32.8} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Tail ( @ ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ InMsgc ,\, ServerMsg ,\, BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\,
+ SnapshotTable ,\, History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ServerPutReply\_majority\_wake \.{\defeq}}%
+\@x{\@s{24.59} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{24.59} \.{\land} \E\, c \.{\in} Client \.{:}}%
+\@x{\@s{32.8} \.{\land} BlockedThread [ c ] \.{\neq}\@s{4.1} Nil}%
+\@x{\@s{32.8} \.{\land} BlockedThread [ c ] . type \.{=}\@w{write\_major}}%
+ \@x{\@s{32.8} \.{\land}\@s{4.1} {\lnot} HLCLt ( Cp [ Primary ] ,\,
+ BlockedThread [ c ] . ot )}%
+ \@x{\@s{32.8} \.{\land} InMsgc \.{'} \.{=} [ InMsgc {\EXCEPT} {\bang} [ c ]
+ \.{=}}%
+ \@x{\@s{48.01} Append ( @ ,\, [ op \.{\mapsto}\@w{put} ,\, ct \.{\mapsto} Ct
+ [ BlockedThread [ c ] . s ] ,\, ot \.{\mapsto} BlockedThread [ c ] . ot ,\,
+ k \.{\mapsto} BlockedThread [ c ] . k ,\, v \.{\mapsto} BlockedThread [ c ]
+ . v ] ) ]}%
+ \@x{\@s{32.8} \.{\land} BlockedThread \.{'} \.{=}\@s{4.1} [ BlockedThread
+ {\EXCEPT} {\bang} [ c ] \.{=} Nil ]}%
+ \@x{\@s{24.59} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgs ,\, ServerMsg ,\, BlockedClient ,\,
+ OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\, History
+ ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ client get
+}%
+\@xx{}%
+\@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
+\@x{ ClientGetRequest\_local\_primary \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} \E\, k \.{\in} Key ,\, c \.{\in} Client
+ \.{\,\backslash\,} BlockedClient ,\, s \.{\in} Primary \.{:}}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Append ( @ ,\,}%
+ \@x{\@s{46.82} [ op \.{\mapsto}\@w{get} ,\, c \.{\mapsto} c ,\, rc
+ \.{\mapsto}\@w{local} ,\, k \.{\mapsto} k ,\, ct \.{\mapsto} Ct [ c ] ,\, ot
+ \.{\mapsto} Ot [ c ] ] ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
+ c \}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
+\@x{\@s{89.98} BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\,}%
+\@x{\@s{89.98} State ,\, SnapshotTable ,\, History ,\,}%
+\@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ClientGetRequest\_local\_secondary \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} \E\, k \.{\in} Key ,\, c \.{\in} Client
+ \.{\,\backslash\,} BlockedClient ,\, s \.{\in} Secondary \.{:}}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Append ( @ ,\,}%
+ \@x{\@s{46.82} [ op \.{\mapsto}\@w{get} ,\, c \.{\mapsto} c ,\, rc
+ \.{\mapsto}\@w{local} ,\, k \.{\mapsto} k ,\, ct \.{\mapsto} Ct [ c ] ,\, ot
+ \.{\mapsto} Ot [ c ] ] ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
+ c \}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\, BlockedThread ,\,
+ OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\, History
+ ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ClientGetRequest\_majority\_primary \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} \E\, k \.{\in} Key ,\, c \.{\in} Client
+ \.{\,\backslash\,} BlockedClient ,\, s \.{\in} Primary \.{:}}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Append ( @ ,\,}%
+ \@x{\@s{46.82} [ op \.{\mapsto}\@w{get} ,\, c \.{\mapsto} c ,\, rc
+ \.{\mapsto}\@w{major} ,\, k \.{\mapsto} k ,\, ct \.{\mapsto} Ct [ c ] ,\, ot
+ \.{\mapsto} Ot [ c ] ] ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
+ c \}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED}\@s{4.1} {\langle} Primary ,\, Secondary
+ ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\, BlockedThread
+ ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\,
+ History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ClientGetRequest\_majority\_secondary \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} \E\, k \.{\in} Key ,\, c \.{\in} Client
+ \.{\,\backslash\,} BlockedClient ,\, s \.{\in} Secondary \.{:}}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Append ( @ ,\,}%
+ \@x{\@s{46.82} [ op \.{\mapsto}\@w{get} ,\, c \.{\mapsto} c ,\, rc
+ \.{\mapsto}\@w{major} ,\, k \.{\mapsto} k ,\, ct \.{\mapsto} Ct [ c ] ,\, ot
+ \.{\mapsto} Ot [ c ] ] ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
+ c \}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED}\@s{4.1} {\langle} Primary ,\, Secondary
+ ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\, BlockedThread
+ ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\,
+ History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ClientGetRequest\_linearizable \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} \E\, k \.{\in} Key ,\, c \.{\in} Client
+ \.{\,\backslash\,} BlockedClient ,\, s \.{\in} Primary \.{:}}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=} Append ( @ ,\,}%
+ \@x{\@s{46.82} [ op \.{\mapsto}\@w{get} ,\, c \.{\mapsto} c ,\, rc
+ \.{\mapsto}\@w{linea} ,\, k \.{\mapsto} k ,\, ct \.{\mapsto} Ct [ c ] ,\, ot
+ \.{\mapsto} Ot [ c ] ] ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
+ c \}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED}\@s{4.1} {\langle} Primary ,\, Secondary
+ ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\, BlockedThread
+ ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\,
+ History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ client put
+}%
+\@xx{}%
+\begin{lcom}{0}%
+\begin{cpar}{0}{T}{F}{5.0}{0}{}%
+**************************************************************************
+\end{cpar}%
+\begin{cpar}{1}{F}{F}{0}{0}{}%
+\ensuremath{DH} modified: change the state of history when write with w:0
+\end{cpar}%
+\begin{cpar}{0}{T}{F}{2.5}{0}{}%
+**************************************************************************
+\end{cpar}%
+\end{lcom}%
+\@x{ ClientPutRequest\_zero \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} \E\, k \.{\in} Key ,\, v \.{\in} Value ,\, c \.{\in}
+ Client \.{\,\backslash\,} BlockedClient ,\, s \.{\in} Primary \.{:}}%
+\@x{\@s{31.61} \.{\land} OpCount [ c ] \.{\neq} 0}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=}}%
+ \@x{\@s{46.82} Append ( @ ,\, [ op \.{\mapsto}\@w{put} ,\, c \.{\mapsto} c
+ ,\, wc \.{\mapsto}\@w{zero} ,\, k}%
+ \@x{\@s{102.21} \.{\mapsto} k ,\, v \.{\mapsto} v ,\, ct \.{\mapsto} Ct [ c ]
+ ] ) ]}%
+ \@x{\@s{31.61} \.{\land} OpCount \.{'} \.{=} [ OpCount {\EXCEPT} {\bang} [ c
+ ] \.{=} @ \.{-} 1 ]}%
+ \@x{\@s{31.61} \.{\land} History \.{'}\@s{7.32} \.{=} [ History {\EXCEPT}
+ {\bang} [ c ] \.{=} Append ( @ ,\, [ op \.{\mapsto}\@w{put} ,\, ts
+ \.{\mapsto} InMsgc [ c ] [ 1 ] . ot ,\, k \.{\mapsto} k ,\, v \.{\mapsto} v
+ ] ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\,}%
+ \@x{\@s{89.98} ServerMsg ,\, BlockedClient ,\, BlockedThread ,\, Pt ,\, Cp
+ ,\,}%
+\@x{\@s{89.98} CalState ,\, State ,\, SnapshotTable ,\,}%
+\@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ClientPutRequest\_number \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} \E\, k \.{\in} Key ,\, v \.{\in} Value ,\, c \.{\in}
+ Client \.{\,\backslash\,} BlockedClient ,\, num \.{\in} Number ,\, s \.{\in}
+ Primary \.{:}}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=}}%
+ \@x{\@s{46.82} Append ( @ ,\, [ op \.{\mapsto}\@w{put} ,\, c \.{\mapsto} c
+ ,\, wc \.{\mapsto}\@w{num} ,\, num \.{\mapsto} num ,\, k \.{\mapsto} k ,\, v
+ \.{\mapsto} v ,\, ct \.{\mapsto} Ct [ c ] ] ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
+ c \}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} OpCount ,\, Primary ,\,
+ Secondary ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
+ \@x{\@s{89.98} BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\, State ,\,
+ SnapshotTable ,\, History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{ ClientPutRequest\_majority \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+ \@x{\@s{16.4} \.{\land} \E\, k \.{\in} Key ,\, v \.{\in} Value ,\, c \.{\in}
+ Client \.{\,\backslash\,} BlockedClient ,\, s \.{\in} Primary \.{:}}%
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \.{=}}%
+ \@x{\@s{46.82} Append ( @ ,\, [ op \.{\mapsto}\@w{put} ,\, c \.{\mapsto} c
+ ,\, wc \.{\mapsto}\@w{major} ,\, k \.{\mapsto} k ,\, v \.{\mapsto} v ,\, ct
+ \.{\mapsto} Ct [ c ] ] ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
+ c \}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} OpCount ,\, Primary ,\,
+ Secondary ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,
+ BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\,
+ History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{16.0pt}%
+\begin{lcom}{0}%
+\begin{cpar}{0}{T}{F}{5.0}{0}{}%
+**************************************************************************
+\end{cpar}%
+\begin{cpar}{1}{F}{F}{0}{0}{}%
+ \ensuremath{DH} modified: record the \ensuremath{k} and \ensuremath{v} in
+ \ensuremath{msg} to history
+\end{cpar}%
+\begin{cpar}{0}{T}{F}{2.5}{0}{}%
+**************************************************************************
+\end{cpar}%
+\end{lcom}%
+\@x{ ClientGetResponse \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, c \.{\in} Client \.{:}}%
+\@x{\@s{31.61} \.{\land} OpCount [ c ] \.{\neq} 0\@s{38.33}}%
+\@y{\@s{0}%
+ client \ensuremath{c} has operation times
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} Len ( InMsgc [ c ] ) \.{\neq} 0\@s{21.81}}%
+\@y{\@s{0}%
+ message channel is not empty
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} InMsgc [ c ] [ 1 ] . op \.{=}\@w{get}\@s{4.09}}%
+\@y{\@s{0}%
+ \ensuremath{msg} type: get
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Store \.{'} \.{=} [ Store {\EXCEPT} {\bang} [ c ] [
+ InMsgc [ c ] [ 1 ] . k ] \.{=} InMsgc [ c ] [ 1 ] . v ]}%
+\@x{\@s{46.82}}%
+\@y{\@s{0}%
+ store data
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} History \.{'} \.{=} [ History {\EXCEPT} {\bang} [ c
+ ] \.{=} Append ( @ ,\, [ op}%
+ \@x{\@s{98.71} \.{\mapsto}\@w{get} ,\, ts \.{\mapsto} InMsgc [ c ] [ 1 ] . ot
+ ,\, k \.{\mapsto} InMsgc [ c ] [ 1 ] . k ,\, v \.{\mapsto} InMsgc [ c ] [ 1
+ ] . v ] ) ]}%
+\@pvspace{8.0pt}%
+ \@x{\@s{31.61} \.{\land} InMsgc \.{'} \.{=} [ InMsgc {\EXCEPT} {\bang} [ c ]
+ \.{=} Tail ( @ ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} {\IF} Len ( InMsgc \.{'} [
+ c ] ) \.{=} 0}%
+\@x{\@s{118.72} \.{\THEN} BlockedClient \.{\,\backslash\,} \{ c \}}%
+\@x{\@s{118.72} \.{\ELSE} BlockedClient\@s{4.1}}%
+\@y{\@s{0}%
+ remove blocked state
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} OpCount \.{'} \.{=} [ OpCount {\EXCEPT} {\bang} [ c
+ ] \.{=} @ \.{-} 1 ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Ct ,\, Ot ,\, InMsgs ,\, ServerMsg ,\,}%
+ \@x{\@s{89.98} BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\, State ,\,
+ SnapshotTable ,\,}%
+\@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+\begin{lcom}{0}%
+\begin{cpar}{0}{T}{F}{5.0}{0}{}%
+**************************************************************************
+\end{cpar}%
+\begin{cpar}{1}{F}{F}{0}{0}{}%
+ \ensuremath{DH} modified: record the \ensuremath{k} and \ensuremath{v} in
+ \ensuremath{msg} to history， record \ensuremath{ot} from server
+\end{cpar}%
+\begin{cpar}{0}{T}{F}{2.5}{0}{}%
+**************************************************************************
+\end{cpar}%
+\end{lcom}%
+\@x{ ClientPutResponse \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, c \.{\in} Client \.{:}}%
+\@x{\@s{31.61} \.{\land} OpCount [ c ] \.{\neq} 0\@s{39.22}}%
+\@y{\@s{0}%
+ client \ensuremath{c} has operation times
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} Len ( InMsgc [ c ] ) \.{\neq} 0\@s{22.70}}%
+\@y{\@s{0}%
+ message channel is not empty
+}%
+\@xx{}%
+\@x{\@s{31.61} \.{\land} InMsgc [ c ] [ 1 ] . op \.{=}\@w{put}\@s{4.09}}%
+\@y{\@s{0}%
+ \ensuremath{msg} type: put
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} Ct \.{'}\@s{0.51} \.{=} [ Ct {\EXCEPT} {\bang} [ c
+ ]\@s{0.51} \.{=} HLCMax ( @ ,\, InMsgc [ c ] [ 1 ] . ct ) ]}%
+ \@x{\@s{31.61} \.{\land} Ot \.{'} \.{=} [ Ot {\EXCEPT} {\bang} [ c ] \.{=}
+ HLCMax ( @ ,\, InMsgc [ c ] [ 1 ] . ot ) ]}%
+\@y{\@s{0}%
+ Update \ensuremath{Ot} to record ``my write'' \ensuremath{ot
+}}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} History \.{'} \.{=} [ History {\EXCEPT} {\bang} [ c
+ ] \.{=} Append ( @ ,\, [ op}%
+ \@x{\@s{98.71} \.{\mapsto}\@w{put} ,\, ts \.{\mapsto} InMsgc [ c ] [ 1 ] . ot
+ ,\, k \.{\mapsto} InMsgc [ c ] [ 1 ] . k ,\, v \.{\mapsto} InMsgc [ c ] [ 1
+ ] . v ] ) ]}%
+ \@x{\@s{31.61} \.{\land} InMsgc \.{'} \.{=} [ InMsgc {\EXCEPT} {\bang} [ c ]
+ \.{=} Tail ( @ ) ]}%
+ \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} {\IF} Len ( InMsgc \.{'} [
+ c ] ) \.{=} 0}%
+\@x{\@s{118.72} \.{\THEN} BlockedClient \.{\,\backslash\,} \{ c \}}%
+\@x{\@s{118.72} \.{\ELSE} BlockedClient\@s{4.1}}%
+\@y{\@s{0}%
+ remove blocked state
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} OpCount \.{'} \.{=} [ OpCount {\EXCEPT} {\bang} [ c
+ ] \.{=} @ \.{-} 1 ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, InMsgs ,\, ServerMsg ,\,}%
+ \@x{\@s{89.98} BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\, State ,\,
+ SnapshotTable ,\,}%
+\@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{32.0pt}%
+ \@x{ ClientGetRequest\_local \.{\defeq} \.{\lor}
+ ClientGetRequest\_local\_primary}%
+\@x{\@s{119.11} \.{\lor} ClientGetRequest\_local\_secondary}%
+ \@x{ ClientGetRequest\_majority \.{\defeq} \.{\lor}
+ ClientGetRequest\_majority\_primary}%
+\@x{\@s{136.97} \.{\lor} ClientGetRequest\_majority\_secondary}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ all possible client get actions
+}%
+\@xx{}%
+\@x{ ClientGetRequest \.{\defeq} \.{\lor} ClientGetRequest\_local}%
+\@x{\@s{94.66} \.{\lor} ClientGetRequest\_majority}%
+\@x{\@s{94.66} \.{\lor} ClientGetRequest\_linearizable}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ all possible clent put actions
+}%
+\@xx{}%
+\@x{ ClientPutRequest \.{\defeq} \.{\lor} ClientPutRequest\_zero}%
+\@x{\@s{94.48} \.{\lor} ClientPutRequest\_number}%
+\@x{\@s{94.48} \.{\lor} ClientPutRequest\_majority}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ all possible server get actions
+}%
+\@xx{}%
+\@x{ ServerGetReply \.{\defeq} \.{\lor} ServerGetReply\_local\_sleep}%
+\@x{\@s{87.19} \.{\lor} ServerGetReply\_local\_wake}%
+\@x{\@s{87.19} \.{\lor} ServerGetReply\_majority\_sleep}%
+\@x{\@s{87.19} \.{\lor} ServerGetReply\_majority\_wake}%
+\@x{\@s{87.19} \.{\lor} ServerGetReply\_linearizable\_sleep}%
+\@x{\@s{87.19} \.{\lor} ServerGetReply\_linearizable\_wake}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ all possible server put actions
+}%
+\@xx{}%
+\@x{ ServerPutReply \.{\defeq} \.{\lor} ServerPutReply\_zero}%
+\@x{\@s{87.00} \.{\lor} ServerPutReply\_number\_sleep}%
+\@x{\@s{87.00} \.{\lor} ServerPutReply\_majority\_sleep}%
+\@x{\@s{87.00} \.{\lor} ServerPutReply\_number\_wake}%
+\@x{\@s{87.00} \.{\lor} ServerPutReply\_majority\_wake}%
+\@pvspace{24.0pt}%
+\@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Can node \ensuremath{i} rollback its \ensuremath{log} based on
+ \ensuremath{j}\mbox{'}s \ensuremath{log
+}}%
+\@xx{}%
+ \@x{ CanRollback ( i ,\, j ) \.{\defeq} \.{\land} Len ( Oplog [ i ]
+ )\@s{0.42} \.{>} 0}%
+\@x{\@s{96.25} \.{\land} Len ( Oplog [ j ] ) \.{>} 0}%
+\@x{\@s{96.25} \.{\land} LastTerm ( i ) \.{<} LastTerm ( j )}%
+\@x{\@s{96.25} \.{\land}}%
+\@x{\@s{108.55} \.{\lor} Len ( Oplog [ i ] ) \.{>} Len ( Oplog [ j ] )}%
+ \@x{\@s{108.55} \.{\lor} \.{\land} Len ( Oplog [ i ] ) \.{\leq} Len ( Oplog [
+ j ] )}%
+ \@x{\@s{119.66} \.{\land} LastTerm ( i ) \.{\neq} LogTerm ( j ,\, Len ( Oplog
+ [ i ] ) )}%
+\@x{\@s{119.66}}%
+\@y{%
+ 注意检查：是\ensuremath{Len(Oplog[i])}还是\ensuremath{Len(Oplog[i]\.{+}1\.{?}\.{-}1\.{?})
+}}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Returns the highest common index between two divergent logs,
+ \mbox{'}li\mbox{'} and \mbox{'}lj\mbox{'}.
+}%
+\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ If there is no common index between the logs, returns 0.
+}%
+\@xx{}%
+\@x{ RollbackCommonPoint ( i ,\, j ) \.{\defeq}}%
+ \@x{\@s{16.4} \.{\LET} commonIndices \.{\defeq} \{ k \.{\in} {\DOMAIN} Oplog
+ [ i ] \.{:}}%
+\@x{\@s{133.90} \.{\land} k \.{\leq} Len ( Oplog [ j ] )}%
+ \@x{\@s{133.90} \.{\land} Oplog [ i ] [ k ] \.{=} Oplog [ j ] [ k ] \}
+ \.{\IN}}%
+ \@x{\@s{36.79} {\IF} commonIndices \.{=} \{ \} \.{\THEN} 0 \.{\ELSE} MaxVal (
+ commonIndices )}%
+\@pvspace{8.0pt}%
+\@x{ RollbackOplog ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} i \.{\in} Secondary}%
+\@x{\@s{16.4} \.{\land} CanRollback ( i ,\, j )}%
+ \@x{\@s{16.4} \.{\land} \.{\LET} cmp \.{\defeq} RollbackCommonPoint ( i ,\, j
+ ) \.{\IN}}%
+ \@x{\@s{31.61} \.{\land}\@s{5.18} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang}
+ [ i ] \.{=} SubSeq ( Oplog [ i ] ,\, 1 ,\, cmp ) ]}%
+ \@x{\@s{31.61} \.{\land}\@s{5.18} CurrentTerm \.{'} \.{=} [ CurrentTerm
+ {\EXCEPT} {\bang} [ i ] \.{=} LogTerm ( j ,\, cmp ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
+\@x{\@s{89.98} ServerMsg ,\, BlockedClient ,\, BlockedThread ,\, OpCount ,\,}%
+ \@x{\@s{89.98} Pt ,\, Cp ,\, State ,\, CalState ,\, SnapshotTable ,\, History
+ ,\,}%
+\@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
+ \@x{ RollbackOplogAction \.{\defeq} \E\, i ,\, j \.{\in} Server \.{:}
+ RollbackOplog ( i ,\, j )}%
+\@pvspace{8.0pt}%
+ \@x{ ReplicateAction \.{\defeq} \E\, i ,\, j \.{\in} Server \.{:} Replicate (
+ i ,\, j )}%
+\@pvspace{8.0pt}%
+\@x{ ElectPrimaryAction \.{\defeq}}%
+ \@x{\@s{16.4} \E\, i \.{\in} Server \.{:} \E\, majorNodes \.{\in} {\SUBSET} (
+ Server ) \.{:} ElectPrimary ( i ,\, majorNodes )}%
+\@pvspace{8.0pt}%
+\@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ next state for all configurations
+}%
+\@xx{}%
+\@x{ Next \.{\defeq} \.{\lor} ClientGetRequest \.{\lor} ClientPutRequest}%
+\@x{\@s{39.83} \.{\lor} ClientGetResponse \.{\lor} ClientPutResponse}%
+\@x{\@s{39.83} \.{\lor} ServerGetReply \.{\lor} ServerPutReply}%
+\@x{\@s{39.83} \.{\lor} ReplicateAction}%
+\@x{\@s{39.83} \.{\lor} AdvancePt}%
+\@x{\@s{39.83} \.{\lor} ServerTakeHeartbeat}%
+\@x{\@s{39.83} \.{\lor} ServerTakeUpdatePosition}%
+\@x{\@s{39.83} \.{\lor} Snapshot}%
+\@x{\@s{39.83} \.{\lor} Stepdown}%
+\@x{\@s{39.83} \.{\lor} RollbackOplogAction}%
+\@x{\@s{39.83} \.{\lor} TurnOnReadyToServe}%
+\@x{\@s{39.83} \.{\lor} ElectPrimaryAction}%
+\@pvspace{8.0pt}%
+\@x{ Spec\@s{1.46} \.{\defeq} Init \.{\land} {\Box} [ Next ]_{ vars}}%
+\@pvspace{8.0pt}%
+\@x{ Next\_Except\_ClientRequset \.{\defeq} \.{\lor} ClientGetResponse}%
+\@x{\@s{138.44} \.{\lor} ClientPutResponse}%
+\@x{\@s{138.44} \.{\lor} ServerGetReply}%
+\@x{\@s{138.44} \.{\lor} ServerPutReply}%
+\@x{\@s{138.44} \.{\lor} ReplicateAction}%
+\@x{\@s{138.44} \.{\lor} AdvancePt}%
+\@x{\@s{138.44} \.{\lor} ServerTakeHeartbeat}%
+\@x{\@s{138.44} \.{\lor} ServerTakeUpdatePosition}%
+\@x{\@s{138.44} \.{\lor} Snapshot}%
+\@x{\@s{138.44} \.{\lor} Stepdown}%
+\@x{\@s{138.44} \.{\lor} RollbackOplogAction}%
+\@x{\@s{138.44} \.{\lor} TurnOnReadyToServe}%
+\@x{\@s{138.44} \.{\lor} ElectPrimaryAction}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_1 \.{\defeq} \.{\lor} ClientPutRequest\_majority}%
+\@x{\@s{88.50} \.{\lor} ClientGetRequest\_local\_primary}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_2 \.{\defeq} \.{\lor} ClientPutRequest\_majority}%
+\@x{\@s{88.50} \.{\lor} ClientGetRequest\_local\_secondary}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_3 \.{\defeq} \.{\lor} ClientPutRequest\_majority}%
+\@x{\@s{88.50} \.{\lor} ClientGetRequest\_majority\_primary}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_4 \.{\defeq} \.{\lor} ClientPutRequest\_majority}%
+\@x{\@s{88.50} \.{\lor} ClientGetRequest\_majority\_secondary}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_5 \.{\defeq} \.{\lor} ClientPutRequest\_majority}%
+\@x{\@s{88.50} \.{\lor} ClientGetRequest\_linearizable}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_6 \.{\defeq} \.{\lor} ClientPutRequest\_number}%
+\@x{\@s{88.50} \.{\lor} ClientGetRequest\_local\_primary}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_7 \.{\defeq} \.{\lor} ClientPutRequest\_number}%
+\@x{\@s{88.50} \.{\lor} ClientGetRequest\_local\_secondary}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_8 \.{\defeq} \.{\lor} ClientPutRequest\_number}%
+\@x{\@s{88.50} \.{\lor} ClientGetRequest\_majority\_primary}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_9 \.{\defeq} \.{\lor} ClientPutRequest\_number}%
+\@x{\@s{88.50} \.{\lor} ClientGetRequest\_majority\_secondary}%
+\@pvspace{8.0pt}%
+\@x{ ClientRequset\_10 \.{\defeq} \.{\lor} ClientPutRequest\_number}%
+\@x{\@s{93.50} \.{\lor} ClientGetRequest\_linearizable}%
+\@pvspace{8.0pt}%
+\@x{ Next1 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{44.83} \.{\lor} ClientRequset\_1}%
+\@pvspace{8.0pt}%
+\@x{ Next2 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{44.83} \.{\lor} ClientRequset\_2}%
+\@pvspace{8.0pt}%
+\@x{ Next3 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{44.83} \.{\lor} ClientRequset\_3}%
+\@pvspace{8.0pt}%
+\@x{ Next4 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{44.83} \.{\lor} ClientRequset\_4}%
+\@pvspace{8.0pt}%
+\@x{ Next5 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{44.83} \.{\lor} ClientRequset\_5}%
+\@pvspace{8.0pt}%
+\@x{ Next6 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{44.83} \.{\lor} ClientRequset\_6}%
+\@pvspace{8.0pt}%
+\@x{ Next7 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{44.83} \.{\lor} ClientRequset\_7}%
+\@pvspace{8.0pt}%
+\@x{ Next8 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{44.83} \.{\lor} ClientRequset\_8}%
+\@pvspace{8.0pt}%
+\@x{ Next9 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{44.83} \.{\lor} ClientRequset\_9}%
+\@pvspace{8.0pt}%
+\@x{ Next10 \.{\defeq} \.{\lor} Next\_Except\_ClientRequset}%
+\@x{\@s{49.83} \.{\lor} ClientRequset\_10}%
+\@pvspace{8.0pt}%
+\@x{ Spec1 \.{\defeq} Init \.{\land} {\Box} [ Next1 ]_{ vars}}%
+\@x{ Spec2 \.{\defeq} Init \.{\land} {\Box} [ Next2 ]_{ vars}}%
+\@x{ Spec3 \.{\defeq} Init \.{\land} {\Box} [ Next3 ]_{ vars}}%
+\@x{ Spec4 \.{\defeq} Init \.{\land} {\Box} [ Next4 ]_{ vars}}%
+\@x{ Spec5 \.{\defeq} Init \.{\land} {\Box} [ Next5 ]_{ vars}}%
+\@x{ Spec6 \.{\defeq} Init \.{\land} {\Box} [ Next6 ]_{ vars}}%
+\@x{ Spec7 \.{\defeq} Init \.{\land} {\Box} [ Next7 ]_{ vars}}%
+\@x{ Spec8 \.{\defeq} Init \.{\land} {\Box} [ Next8 ]_{ vars}}%
+\@x{ Spec9 \.{\defeq} Init \.{\land} {\Box} [ Next9 ]_{ vars}}%
+\@x{ Spec10 \.{\defeq} Init \.{\land} {\Box} [ Next10 ]_{ vars}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{%
+ Idea:用时钟来表示该操作的先后顺序（似乎需要限制只有\ensuremath{Primary}节点才能推进时钟，需要check）
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+ \@x{ MonotonicRead \.{\defeq} \A\, c \.{\in} Client \.{:} \A\, i ,\, j
+ \.{\in} {\DOMAIN} History [ c ] \.{:}}%
+\@x{\@s{94.77} \.{\land} i \.{<} j}%
+\@x{\@s{94.77} \.{\land} History [ c ] [ i ] . op\@s{0.42} \.{=}\@w{get}}%
+\@x{\@s{94.77} \.{\land} History [ c ] [ j ] . op \.{=}\@w{get}}%
+ \@x{\@s{94.77} \.{\implies} {\lnot} HLCLt ( History [ c ] [ j ] . ts ,\,
+ History [ c ] [ i ] . ts )}%
+\@pvspace{8.0pt}%
+ \@x{ MonotonicWrite \.{\defeq} \A\, c \.{\in} Client \.{:} \A\, i ,\, j
+ \.{\in} {\DOMAIN} History [ c ] \.{:}}%
+\@x{\@s{99.56} \.{\land} i \.{<} j}%
+\@x{\@s{99.56} \.{\land} History [ c ] [ i ] . op\@s{0.42} \.{=}\@w{put}}%
+\@x{\@s{99.56} \.{\land} History [ c ] [ j ] . op \.{=}\@w{put}}%
+ \@x{\@s{99.56} \.{\implies} {\lnot} HLCLt ( History [ c ] [ j ] . ts ,\,
+ History [ c ] [ i ] . ts )}%
+\@pvspace{8.0pt}%
+ \@x{ ReadYourWrite \.{\defeq} \A\, c \.{\in} Client \.{:} \A\, i ,\, j
+ \.{\in} {\DOMAIN} History [ c ] \.{:}}%
+\@x{\@s{76.60} \.{\land} i \.{<} j}%
+\@x{\@s{76.60} \.{\land} History [ c ] [ i ] . op\@s{0.42} \.{=}\@w{put}}%
+\@x{\@s{76.60} \.{\land} History [ c ] [ j ] . op \.{=}\@w{get}}%
+ \@x{\@s{76.60} \.{\implies} {\lnot} HLCLt ( History [ c ] [ j ] . ts ,\,
+ History [ c ] [ i ] . ts )}%
+\@pvspace{8.0pt}%
+ \@x{ WriteFollowRead \.{\defeq} \A\, c \.{\in} Client \.{:} \A\, i ,\, j
+ \.{\in} {\DOMAIN} History [ c ] \.{:}}%
+\@x{\@s{75.57} \.{\land}\@s{7.77} i \.{<} j}%
+ \@x{\@s{75.57} \.{\land}\@s{7.77} History [ c ] [ i ] . op\@s{0.42}
+ \.{=}\@w{get}}%
+\@x{\@s{75.57} \.{\land}\@s{7.77} History [ c ] [ j ] . op \.{=}\@w{put}}%
+ \@x{\@s{75.57} \.{\implies}\@s{3.33} {\lnot} HLCLt ( History [ c ] [ j ] . ts
+ ,\, History [ c ] [ i ] . ts )}%
+\@pvspace{24.0pt}%
+\@x{}\bottombar\@xx{}%
+\setboolean{shading}{false}
+\begin{lcom}{0}%
+\begin{cpar}{0}{F}{F}{0}{0}{}%
+\ensuremath{\.{\,\backslash\,}\.{*}} Modification \ensuremath{History
+}%
+\end{cpar}%
+\begin{cpar}{0}{F}{F}{0}{0}{}%
+ \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Thu}
+ \ensuremath{Apr} 07 01:04:14 \ensuremath{CST} 2022 by \ensuremath{dh
+}%
+\end{cpar}%
+\begin{cpar}{0}{F}{F}{0}{0}{}%
+ \ensuremath{\.{\,\backslash\,}\.{*}} Created \ensuremath{Thu}
+ \ensuremath{Mar} 31 20:33:19 \ensuremath{CST} 2022 by \ensuremath{dh
+}%
+\end{cpar}%
+\end{lcom}%
+\end{document}
