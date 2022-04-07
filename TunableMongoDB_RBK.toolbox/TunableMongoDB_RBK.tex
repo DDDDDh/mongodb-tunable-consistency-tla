@@ -1023,8 +1023,8 @@
 \@xx{}%
 \@x{\@s{51.42} ServerMsg ,\,\@s{21.61}}%
 \@y{\@s{0}%
- \ensuremath{ServerMsg[s]}: the channel of heartbeat \ensuremath{msgs} at
- server \ensuremath{s
+ \ensuremath{ServerMsg[s]}: the channel of heartbeat msgs at server
+ \ensuremath{s
 }}%
 \@xx{}%
 \@x{\@s{51.42} BlockedClient ,\,\@s{8.14}}%
@@ -1078,8 +1078,12 @@
 \@x{\@s{51.42} CurrentTerm ,\,\@s{11.90}}%
 \@y{\@s{0}%
  \ensuremath{CurrentTerm[s]}: current election term at server \ensuremath{s
- \.{\rightarrow}} updated in \ensuremath{update\_position}, heartbeat and
- replicate
+}}%
+\@xx{}%
+\@x{\@s{127.57}}%
+\@y{\@s{0}%
+ \ensuremath{\.{\rightarrow}} updated in \ensuremath{update\_position},
+ heartbeat and replicate
 }%
 \@xx{}%
 \@x{\@s{51.42} ReadyToServe ,\,\@s{8.2}}%
@@ -1117,16 +1121,18 @@
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- helpers
+ Helpers
 }%
 \@xx{}%
+\@x{}\midbar\@xx{}%
 \@x{ HLCLt ( x ,\, y ) \.{\defeq} {\IF} x . p \.{<} y . p}%
-\@x{\@s{75.76} \.{\THEN} {\TRUE}}%
+\@x{\@s{79.86} \.{\THEN} {\TRUE}}%
 \@x{\@s{75.76} \.{\ELSE} {\IF} x . p \.{=} y . p}%
-\@x{\@s{107.07} \.{\THEN} {\IF} x . l \.{<} y . l}%
-\@x{\@s{138.38} \.{\THEN} {\TRUE}}%
-\@x{\@s{138.38} \.{\ELSE} {\FALSE}}%
-\@x{\@s{107.07} \.{\ELSE} {\FALSE}}%
+\@x{\@s{79.86} \.{\THEN} {\IF} x . l \.{<} y . l}%
+\@x{\@s{123.33} \.{\THEN} {\TRUE}}%
+\@x{\@s{111.17} \.{\ELSE} {\FALSE}}%
+\@x{\@s{79.86} \.{\ELSE} {\FALSE}}%
+\@pvspace{8.0pt}%
  \@x{ HLCMin ( x ,\, y )\@s{1.49} \.{\defeq} {\IF} HLCLt ( x ,\, y ) \.{\THEN}
  x \.{\ELSE} y}%
  \@x{ HLCMax ( x ,\, y ) \.{\defeq} {\IF} HLCLt ( x ,\, y ) \.{\THEN}
@@ -1149,10 +1155,195 @@
  init state
 }%
 \@xx{}%
-\@x{ CreateState ( len ,\, seq ) \.{\defeq} {\IF} len \.{=} 0 \.{\THEN} seq}%
- \@x{\@s{110.69} \.{\ELSE} CreateState ( len \.{-} 1 ,\, Append ( seq ,\, [ p
+\@x{ CreateState ( len ,\, seq ) \.{\defeq}}%
+\@x{\@s{16.4} {\IF} len \.{=} 0 \.{\THEN} seq}%
+ \@x{\@s{16.4} \.{\ELSE} CreateState ( len \.{-} 1 ,\, Append ( seq ,\, [ p
  \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ] ) )}%
 \@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ snapshot helpers
+}%
+\@xx{}%
+\@x{ {\RECURSIVE} SelectSnapshot\_rec ( \_ ,\, \_ ,\, \_ )}%
+\@x{ SelectSnapshot\_rec ( stable ,\, cp ,\, index ) \.{\defeq}}%
+ \@x{\@s{16.4} {\IF} HLCLt ( cp ,\, stable [ index ] . ot ) \.{\THEN} stable [
+ index \.{-} 1 ] . store}%
+ \@x{\@s{16.4} \.{\ELSE} {\IF} index \.{=} Len ( stable ) \.{\THEN} stable [
+ index ] . store}%
+ \@x{\@s{16.4} \.{\ELSE} SelectSnapshot\_rec ( stable ,\, cp ,\, index \.{+} 1
+ )}%
+\@pvspace{8.0pt}%
+ \@x{ SelectSnapshot ( stable ,\, cp ) \.{\defeq} SelectSnapshot\_rec ( stable
+ ,\, cp ,\, 1 )}%
+\@pvspace{8.0pt}%
+ \@x{ LogTerm ( i ,\, index ) \.{\defeq} {\IF} index \.{=} 0 \.{\THEN} 0
+ \.{\ELSE} Oplog [ i ] [ index ] . term}%
+\@x{ LastTerm ( i ) \.{\defeq} LogTerm ( i ,\, Len ( Oplog [ i ] ) )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Is node \ensuremath{i} ahead of node \ensuremath{j
+}}%
+\@xx{}%
+ \@x{ NotBehind ( i ,\, j ) \.{\defeq} \.{\lor} LastTerm ( i ) \.{>} LastTerm
+ ( j )}%
+\@x{\@s{88.82} \.{\lor} \.{\land} LastTerm ( i ) \.{=} LastTerm ( j )}%
+\@x{\@s{99.93} \.{\land} Len ( Oplog [ i ] ) \.{\geq} Len ( Oplog [ j ] )}%
+\@pvspace{8.0pt}%
+ \@x{ IsMajority ( servers ) \.{\defeq} Cardinality ( servers ) \.{*} 2 \.{>}
+ Cardinality ( Server )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Return the maximum value from a set, or undefined if the set is empty.
+}%
+\@xx{}%
+ \@x{ MaxVal ( s ) \.{\defeq} {\CHOOSE} x \.{\in} s \.{:} \A\, y \.{\in} s
+ \.{:} x \.{\geq} y}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ commit point
+}%
+\@xx{}%
+\@x{ {\RECURSIVE} AddState ( \_ ,\, \_ ,\, \_ )}%
+\@x{ AddState ( new ,\, state ,\, index ) \.{\defeq}}%
+\@x{\@s{16.4} {\IF} index \.{=} 1 \.{\land} HLCLt ( new ,\, state [ 1 ] )}%
+\@x{\@s{32.65} \.{\THEN}\@s{4.1} {\langle} new {\rangle} \.{\circ} state}%
+\@y{\@s{0}%
+ less than the first
+}%
+\@xx{}%
+\@x{\@s{16.4} \.{\ELSE} {\IF} index \.{=} Len ( state ) \.{+} 1}%
+\@x{\@s{32.8} \.{\THEN} state \.{\circ} {\langle} new {\rangle}}%
+\@x{\@s{16.4} \.{\ELSE} {\IF} HLCLt ( new ,\, state [ index ] )}%
+ \@x{\@s{32.8} \.{\THEN} SubSeq ( state ,\, 1 ,\, index\@s{5.63} \.{-} 1 )
+ \.{\circ} {\langle} new {\rangle} \.{\circ} SubSeq ( state ,\, index ,\, Len
+ ( state ) )}%
+\@x{\@s{16.4} \.{\ELSE} AddState ( new ,\, state ,\, index \.{+} 1 )}%
+\@pvspace{8.0pt}%
+\@x{ {\RECURSIVE} RemoveState ( \_ ,\, \_ ,\, \_ )}%
+\@x{ RemoveState ( old ,\, state ,\, index ) \.{\defeq}}%
+\@x{\@s{16.4} {\IF} state [ index ] \.{=} old}%
+ \@x{\@s{32.65} \.{\THEN} SubSeq ( state ,\, 1 ,\, index \.{-} 1 ) \.{\circ}
+ SubSeq ( state ,\, index \.{+} 1 ,\, Len ( state ) )}%
+\@x{\@s{16.4} \.{\ELSE} RemoveState ( old ,\, state ,\, index \.{+} 1 )}%
+\@pvspace{8.0pt}%
+ \@x{ AdvanceState ( new ,\, old ,\, state ) \.{\defeq} AddState ( new ,\,
+ RemoveState ( old ,\, state ,\, 1 ) ,\, 1 )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ clock
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+ \@x{ UnchangedExPt\@s{0.37} \.{\defeq} {\langle} Primary ,\, Secondary ,\,
+ InMsgc ,\, InMsgs ,\, ServerMsg ,\, Oplog ,\, Store ,\,}%
+\@x{\@s{92.92} Ct ,\, Ot ,\, BlockedClient ,\, OpCount {\rangle}}%
+ \@x{ UnchangedExCt \.{\defeq} {\langle} Primary ,\, Secondary ,\, InMsgc ,\,
+ InMsgs ,\, ServerMsg ,\, Oplog ,\, Store ,\,}%
+\@x{\@s{92.92} Pt ,\, Ot ,\, BlockedClient ,\, OpCount {\rangle}}%
+ \@x{ MaxPt \.{\defeq} \.{\LET} x \.{\defeq} {\CHOOSE} s \.{\in} Server \.{:}
+ \A\, s1 \.{\in} Server \.{\,\backslash\,} \{ s \} \.{:}}%
+\@x{\@s{141.48} Pt [ s ] \.{\geq} Pt [ s1 ] \.{\IN} Pt [ x ]}%
+\@pvspace{8.0pt}%
+ \@x{ Tick ( s ) \.{\defeq} Ct \.{'} \.{=} {\IF} Ct [ s ] . p \.{\geq} Pt [ s
+ ] \.{\THEN} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto} @ . p ,\, l
+ \.{\mapsto} @ . l \.{+} 1 ] ]}%
+ \@x{\@s{157.05} \.{\ELSE} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto}
+ Pt [ s ] ,\, l \.{\mapsto} 0 ] ]}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ heartbeat
+}%
+\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ Only \ensuremath{Primary} node sends heartbeat once advance pt
+}%
+\@xx{}%
+\@x{ BroadcastHeartbeat ( s ) \.{\defeq}}%
+ \@x{\@s{16.4} \.{\LET} msg \.{\defeq} [ type \.{\mapsto}\@w{heartbeat} ,\, s
+ \.{\mapsto} s ,\, aot \.{\mapsto} Ot [ s ] ,\,}%
+ \@x{\@s{76.21} ct \.{\mapsto} Ct [ s ] ,\, cp\@s{11.23} \.{\mapsto} Cp [ s ]
+ ,\, term \.{\mapsto} CurrentTerm [ s ] ]}%
+ \@x{\@s{16.4} \.{\IN} ServerMsg \.{'} \.{=} [ x \.{\in} Server \.{\mapsto}
+ {\IF} x \.{=} s \.{\THEN} ServerMsg [ x ]}%
+\@x{\@s{202.01} \.{\ELSE} Append ( ServerMsg [ x ] ,\, msg ) ]}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Can node \ensuremath{i} sync from node \ensuremath{j}\.{?}
+}%
+\@xx{}%
+\@x{ CanSyncFrom ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} Len ( Oplog [ i ] ) \.{<} Len ( Oplog [ j ] )}%
+ \@x{\@s{16.4} \.{\land} LastTerm ( i ) \.{=} LogTerm ( j ,\, Len ( Oplog [ i
+ ] ) )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ \ensuremath{Oplog} entries needed to replicate from \ensuremath{j} to
+ \ensuremath{i
+}}%
+\@xx{}%
+\@x{ ReplicateOplog ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\LET} len\_i\@s{0.42} \.{\defeq} Len ( Oplog [ i ] )}%
+\@x{\@s{36.79} len\_j \.{\defeq} Len ( Oplog [ j ] )}%
+\@x{\@s{16.4} \.{\IN} {\IF} i \.{\neq} Primary \.{\land} len\_i \.{<} len\_j}%
+ \@x{\@s{107.78} \.{\THEN} SubSeq ( Oplog [ j ] ,\, len\_i \.{+} 1 ,\, len\_j
+ )}%
+\@x{\@s{107.78} \.{\ELSE} {\langle} {\rangle}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Can node \ensuremath{i} rollback its log based on \ensuremath{j}\mbox{'}s log
+}%
+\@xx{}%
+ \@x{ CanRollback ( i ,\, j ) \.{\defeq} \.{\land} Len ( Oplog [ i ]
+ )\@s{0.42} \.{>} 0}%
+\@x{\@s{96.25} \.{\land} Len ( Oplog [ j ] ) \.{>} 0}%
+\@x{\@s{96.25} \.{\land} LastTerm ( i ) \.{<} LastTerm ( j )}%
+\@x{\@s{96.25} \.{\land}}%
+\@x{\@s{108.55} \.{\lor} Len ( Oplog [ i ] ) \.{>} Len ( Oplog [ j ] )}%
+ \@x{\@s{108.55} \.{\lor} \.{\land} Len ( Oplog [ i ] ) \.{\leq} Len ( Oplog [
+ j ] )}%
+ \@x{\@s{119.66} \.{\land} LastTerm ( i ) \.{\neq} LogTerm ( j ,\, Len ( Oplog
+ [ i ] ) )}%
+\@x{\@s{119.66}}%
+\@y{%
+ 注意检查：是\ensuremath{Len(Oplog[i])}还是\ensuremath{Len(Oplog[i]\.{+}1\.{?}\.{-}1\.{?})
+}}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Returns the highest common index between two divergent logs,
+ \mbox{'}li\mbox{'} and \mbox{'}lj\mbox{'}.
+}%
+\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ If there is no common index between the logs, returns 0.
+}%
+\@xx{}%
+\@x{ RollbackCommonPoint ( i ,\, j ) \.{\defeq}}%
+ \@x{\@s{16.4} \.{\LET} commonIndices \.{\defeq} \{ k \.{\in} {\DOMAIN} Oplog
+ [ i ] \.{:}}%
+\@x{\@s{133.90} \.{\land} k \.{\leq} Len ( Oplog [ j ] )}%
+ \@x{\@s{133.90} \.{\land} Oplog [ i ] [ k ] \.{=} Oplog [ j ] [ k ] \}
+ \.{\IN}}%
+ \@x{\@s{36.79} {\IF} commonIndices \.{=} \{ \} \.{\THEN} 0 \.{\ELSE} MaxVal (
+ commonIndices )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ \ensuremath{Init} Part
+}%
+\@xx{}%
 \@x{}\midbar\@xx{}%
  \@x{ InitPrimary \.{\defeq} Primary \.{=} {\CHOOSE} s \.{\in} Server \.{:}
  {\TRUE}}%
@@ -1218,31 +1409,24 @@
  \@x{\@s{16.4} \.{\land} InitState \.{\land} InitSnap \.{\land} InitHistory
  \.{\land} InitCurrentTerm\@s{7.24} \.{\land} InitReadyToServe}%
 \@x{\@s{16.4} \.{\land} InitSyncSource}%
-\@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- snapshot
+ Next \ensuremath{State} Actions
 }%
 \@xx{}%
-\@x{ {\RECURSIVE} SelectSnapshot\_rec ( \_ ,\, \_ ,\, \_ )}%
-\@x{ SelectSnapshot\_rec ( stable ,\, cp ,\, index ) \.{\defeq}}%
- \@x{\@s{16.4} {\IF} HLCLt ( cp ,\, stable [ index ] . ot ) \.{\THEN} stable [
- index \.{-} 1 ] . store}%
- \@x{\@s{16.4} \.{\ELSE} {\IF} index \.{=} Len ( stable ) \.{\THEN} stable [
- index ] . store}%
- \@x{\@s{16.4} \.{\ELSE} SelectSnapshot\_rec ( stable ,\, cp ,\, index \.{+} 1
- )}%
-\@pvspace{8.0pt}%
- \@x{ SelectSnapshot ( stable ,\, cp ) \.{\defeq} SelectSnapshot\_rec ( stable
- ,\, cp ,\, 1 )}%
+\@x{}%
+\@y{\@s{0}%
+ Replication Protocol: possible actions
+}%
+\@xx{}%
+\@x{}\midbar\@xx{}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
  snapshot periodly
 }%
 \@xx{}%
-\@x{}\midbar\@xx{}%
-\@pvspace{8.0pt}%
 \@x{ Snapshot \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
 \@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
@@ -1261,69 +1445,7 @@
  \@x{\@s{89.98} OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, History ,\,
  CurrentTerm ,\,}%
 \@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
-\@pvspace{8.0pt}%
-\@x{}\midbar\@xx{}%
-\@x{}%
-\@y{\@s{0}%
- \ensuremath{DH} helpers
-}%
-\@xx{}%
-\@pvspace{8.0pt}%
- \@x{ LogTerm ( i ,\, index ) \.{\defeq} {\IF} index \.{=} 0 \.{\THEN} 0
- \.{\ELSE} Oplog [ i ] [ index ] . term}%
-\@x{ LastTerm ( i ) \.{\defeq} LogTerm ( i ,\, Len ( Oplog [ i ] ) )}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
- Is node \ensuremath{i} ahead of node \ensuremath{j
-}}%
-\@xx{}%
- \@x{ NotBehind ( i ,\, j ) \.{\defeq} \.{\lor} LastTerm ( i ) \.{>} LastTerm
- ( j )}%
-\@x{\@s{88.82} \.{\lor} \.{\land} LastTerm ( i ) \.{=} LastTerm ( j )}%
-\@x{\@s{99.93} \.{\land} Len ( Oplog [ i ] ) \.{\geq} Len ( Oplog [ j ] )}%
-\@pvspace{8.0pt}%
- \@x{ IsMajority ( servers ) \.{\defeq} Cardinality ( servers ) \.{*} 2 \.{>}
- Cardinality ( Server )}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
- Return the maximum value from a set, or undefined if the set is empty.
-}%
-\@xx{}%
- \@x{ MaxVal ( s ) \.{\defeq} {\CHOOSE} x \.{\in} s \.{:} \A\, y \.{\in} s
- \.{:} x \.{\geq} y}%
-\@pvspace{8.0pt}%
-\@x{}\midbar\@xx{}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
- commit point
-}%
-\@xx{}%
-\@x{ {\RECURSIVE} AddState ( \_ ,\, \_ ,\, \_ )}%
- \@x{ AddState ( new ,\, state ,\, index ) \.{\defeq} {\IF} index \.{=} 1
- \.{\land} HLCLt ( new ,\, state [ 1 ] ) \.{\THEN}\@s{4.1} {\langle} new
- {\rangle} \.{\circ} state}%
-\@y{\@s{0}%
- less than the first
-}%
-\@xx{}%
- \@x{\@s{142.14} \.{\ELSE} {\IF} index \.{=} Len ( state ) \.{+} 1 \.{\THEN}
- state \.{\circ} {\langle} new {\rangle}}%
- \@x{\@s{142.14} \.{\ELSE} {\IF} HLCLt ( new ,\, state [ index ] ) \.{\THEN}
- SubSeq ( state ,\, 1 ,\, index \.{-} 1 ) \.{\circ} {\langle} new {\rangle}
- \.{\circ} SubSeq ( state ,\, index ,\, Len ( state ) )}%
-\@x{\@s{142.14} \.{\ELSE} AddState ( new ,\, state ,\, index \.{+} 1 )}%
-\@x{ {\RECURSIVE} RemoveState ( \_ ,\, \_ ,\, \_ )}%
- \@x{ RemoveState ( old ,\, state ,\, index ) \.{\defeq} {\IF} state [ index ]
- \.{=} old \.{\THEN} SubSeq ( state ,\, 1 ,\, index \.{-} 1 ) \.{\circ}
- SubSeq ( state ,\, index \.{+} 1 ,\, Len ( state ) )}%
-\@x{\@s{154.73} \.{\ELSE} RemoveState ( old ,\, state ,\, index \.{+} 1 )}%
-\@pvspace{8.0pt}%
- \@x{ AdvanceState ( new ,\, old ,\, state ) \.{\defeq} AddState ( new ,\,
- RemoveState ( old ,\, state ,\, 1 ) ,\, 1 )}%
-\@pvspace{8.0pt}%
+\@pvspace{16.0pt}%
 \@x{ Stepdown \.{\defeq}}%
 \@x{\@s{53.70} \.{\land} ReadyToServe \.{>} 0}%
 \@x{\@s{53.70} \.{\land} \E\, s \.{\in} Primary \.{:}}%
@@ -1383,38 +1505,23 @@
  {\bang} [ s ] \.{=} CurrentTerm [ s ] \.{+} 1 ]}%
 \@x{\@s{31.61} \.{\land} ReadyToServe \.{'} \.{=} ReadyToServe \.{+} 1}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\,\@s{4.1} Secondary
- ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\, ServerMsg ,\,
- BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, State ,\,
- CalState ,\, SnapshotTable ,\, History ,\, SyncSource {\rangle}}%
+ ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
+ \@x{\@s{89.98} ServerMsg ,\, BlockedClient ,\, BlockedThread ,\, OpCount ,\,
+ Pt ,\, Cp ,\,}%
+ \@x{\@s{89.98} State ,\, CalState ,\, SnapshotTable ,\, History ,\,
+ SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ AdvanceCp \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
  \@x{\@s{16.4} \.{\land} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ Primary ]
  \.{=} CalState [ Cardinality ( Server ) \.{\div} 2 \.{+} 1 ] ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\, ServerMsg ,\,
- BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\, CalState ,\, State
- ,\, SnapshotTable ,\, History ,\, CurrentTerm ,\, ReadyToServe ,\,
- SyncSource {\rangle}}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
- heartbeat
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{0}%
- Only \ensuremath{Primary} node sends heartbeat once advance pt
-}%
-\@xx{}%
-\@x{ BroadcastHeartbeat ( s ) \.{\defeq}}%
- \@x{\@s{16.4} \.{\LET} msg \.{\defeq} [ type \.{\mapsto}\@w{heartbeat} ,\, s
- \.{\mapsto} s ,\, aot \.{\mapsto} Ot [ s ] ,\, ct \.{\mapsto} Ct [ s ] ,\,
- cp \.{\mapsto} Cp [ s ] ,\, term \.{\mapsto} CurrentTerm [ s ] ]}%
- \@x{\@s{16.4} \.{\IN} ServerMsg \.{'} \.{=} [ x \.{\in} Server \.{\mapsto}
- {\IF} x \.{=} s \.{\THEN} ServerMsg [ x ]}%
-\@x{\@s{202.01} \.{\ELSE} Append ( ServerMsg [ x ] ,\, msg ) ]}%
-\@pvspace{8.0pt}%
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
+ \@x{\@s{89.98} ServerMsg ,\, BlockedClient ,\, BlockedThread ,\, OpCount ,\,
+ Pt ,\, CalState ,\,}%
+ \@x{\@s{89.98} State ,\, SnapshotTable ,\, History ,\, CurrentTerm ,\,
+ ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{16.0pt}%
 \@x{ ServerTakeHeartbeat \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
 \@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
@@ -1468,9 +1575,11 @@
  {\bang} [ s ] \.{=} Max ( CurrentTerm [ s ] ,\, ServerMsg [ s ] [ 1 ] . term
  ) ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
- \@x{\@s{35.71} BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\,
- SnapshotTable ,\, History ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+ Oplog ,\, Store ,\, Ot ,\, InMsgc ,\,}%
+ \@x{\@s{89.98} InMsgs ,\, BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt
+ ,\,}%
+ \@x{\@s{89.98} SnapshotTable ,\, History ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ServerTakeUpdatePosition \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -1527,9 +1636,10 @@
  \@x{\@s{27.51} \.{\land} ServerMsg \.{'} \.{=} \.{\LET} newServerMsg
  \.{\defeq} [ ServerMsg {\EXCEPT} {\bang} [ s ] \.{=} Tail ( @ ) ]}%
  \@x{\@s{121.55} appendMsg \.{\defeq} [ type \.{\mapsto}\@w{update\_position}
- ,\, s \.{\mapsto} s ,\, aot \.{\mapsto} ServerMsg [ s ] [ 1 ] . aot ,\, ct
- \.{\mapsto} ServerMsg [ s ] [ 1 ] . ct ,\, cp \.{\mapsto} ServerMsg [ s ] [
- 1 ] . cp ,\, term \.{\mapsto} ServerMsg [ s ] [ 1 ] . term ]}%
+ ,\, s \.{\mapsto} s ,\, aot \.{\mapsto} ServerMsg [ s ] [ 1 ] . aot ,\,}%
+ \@x{\@s{191.91} ct \.{\mapsto} ServerMsg [ s ] [ 1 ] . ct ,\, cp\@s{0.73}
+ \.{\mapsto} ServerMsg [ s ] [ 1 ] . cp ,\, term \.{\mapsto} ServerMsg [ s ]
+ [ 1 ] . term ]}%
 \@x{\@s{121.55} newMsg \.{\defeq} {\IF} s \.{\in} Primary}%
 \@x{\@s{175.85} \.{\THEN} newServerMsg}%
 \@y{\@s{0}%
@@ -1545,25 +1655,9 @@
  ) ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
  Oplog ,\, Store ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
- \@x{\@s{35.71} BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\,
- SnapshotTable ,\, History ,\, ReadyToServe ,\, SyncSource {\rangle}}%
-\@pvspace{16.0pt}%
-\@x{}%
-\@y{\@s{0}%
- clock
-}%
-\@xx{}%
-\@pvspace{8.0pt}%
- \@x{ UnchangedExPt\@s{0.37} \.{\defeq} {\langle} Primary ,\, Secondary ,\,
- InMsgc ,\, InMsgs ,\, ServerMsg ,\, Oplog ,\, Store ,\,}%
-\@x{\@s{92.92} Ct ,\, Ot ,\, BlockedClient ,\, OpCount {\rangle}}%
- \@x{ UnchangedExCt \.{\defeq} {\langle} Primary ,\, Secondary ,\, InMsgc ,\,
- InMsgs ,\, ServerMsg ,\, Oplog ,\, Store ,\,}%
-\@x{\@s{92.92} Pt ,\, Ot ,\, BlockedClient ,\, OpCount {\rangle}}%
-\@pvspace{8.0pt}%
- \@x{ MaxPt \.{\defeq} \.{\LET} x \.{\defeq} {\CHOOSE} s \.{\in} Server \.{:}
- \A\, s1 \.{\in} Server \.{\,\backslash\,} \{ s \} \.{:}}%
-\@x{\@s{141.48} Pt [ s ] \.{\geq} Pt [ s1 ] \.{\IN} Pt [ x ]}%
+ \@x{\@s{89.98} BlockedClient ,\, BlockedThread ,\, OpCount ,\, Pt ,\,
+ SnapshotTable ,\,}%
+\@x{\@s{89.98} History ,\, ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{%
@@ -1611,12 +1705,6 @@
  CalState ,\, SnapshotTable ,\, History ,\, CurrentTerm ,\,}%
 \@x{\@s{27.51} ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
- \@x{ Tick ( s ) \.{\defeq} Ct \.{'} \.{=} {\IF} Ct [ s ] . p \.{\geq} Pt [ s
- ] \.{\THEN} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto} @ . p ,\, l
- \.{\mapsto} @ . l \.{+} 1 ] ]}%
- \@x{\@s{157.05} \.{\ELSE} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto}
- Pt [ s ] ,\, l \.{\mapsto} 0 ] ]}%
-\@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
  Replication
@@ -1624,7 +1712,7 @@
 \@xx{}%
 \@x{}%
 \@y{\@s{0}%
- Idea: 进行replicate的时候，首先进行\ensuremath{canSyncFrom}的判断，拥有更多\ensuremath{log}且大于等于term的才能作为同步源
+ Idea: 进行replicate的时候，首先进行\ensuremath{canSyncFrom}的判断，拥有更多log且大于等于term的才能作为同步源
 }%
 \@xx{}%
 \@x{}%
@@ -1637,30 +1725,6 @@
  最后，关于\ensuremath{UpdatePosition}的转发，需要加入一个额外的action，如果自己的信道里有type为\ensuremath{updatePosition}的消息，则向上层节点转发
 }%
 \@xx{}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
- Can node \ensuremath{i} sync from node \ensuremath{j}\.{?}
-}%
-\@xx{}%
-\@x{ CanSyncFrom ( i ,\, j ) \.{\defeq}}%
-\@x{\@s{16.4} \.{\land} Len ( Oplog [ i ] ) \.{<} Len ( Oplog [ j ] )}%
- \@x{\@s{16.4} \.{\land} LastTerm ( i ) \.{=} LogTerm ( j ,\, Len ( Oplog [ i
- ] ) )}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
- \ensuremath{Oplog} entries needed to replicate from \ensuremath{j} to
- \ensuremath{i
-}}%
-\@xx{}%
-\@x{ ReplicateOplog ( i ,\, j ) \.{\defeq}}%
-\@x{\@s{16.4} \.{\LET} len\_i\@s{0.42} \.{\defeq} Len ( Oplog [ i ] )}%
-\@x{\@s{36.79} len\_j \.{\defeq} Len ( Oplog [ j ] )}%
-\@x{\@s{16.4} \.{\IN} {\IF} i \.{\neq} Primary \.{\land} len\_i \.{<} len\_j}%
- \@x{\@s{107.78} \.{\THEN} SubSeq ( Oplog [ j ] ,\, len\_i \.{+} 1 ,\, len\_j
- )}%
-\@x{\@s{107.78} \.{\ELSE} {\langle} {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1725,9 +1789,32 @@
  SnapshotTable ,\,}%
 \@x{\@s{94.08} History ,\, ReadyToServe {\rangle}}%
 \@pvspace{8.0pt}%
+\@x{ RollbackOplog ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} i \.{\in} Secondary}%
+\@x{\@s{16.4} \.{\land} CanRollback ( i ,\, j )}%
+ \@x{\@s{16.4} \.{\land} \.{\LET} cmp \.{\defeq} RollbackCommonPoint ( i ,\, j
+ ) \.{\IN}}%
+ \@x{\@s{31.61} \.{\land}\@s{5.18} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang}
+ [ i ] \.{=} SubSeq ( Oplog [ i ] ,\, 1 ,\, cmp ) ]}%
+ \@x{\@s{31.61} \.{\land}\@s{5.18} CurrentTerm \.{'} \.{=} [ CurrentTerm
+ {\EXCEPT} {\bang} [ i ] \.{=} LogTerm ( j ,\, cmp ) ]}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
+\@x{\@s{89.98} ServerMsg ,\, BlockedClient ,\, BlockedThread ,\, OpCount ,\,}%
+ \@x{\@s{89.98} Pt ,\, Cp ,\, State ,\, CalState ,\, SnapshotTable ,\, History
+ ,\,}%
+\@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- server get
+ Tunable Protocol: \ensuremath{Server} Actions
+}%
+\@xx{}%
+\@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Server Get
 }%
 \@xx{}%
 \@pvspace{8.0pt}%
@@ -1784,8 +1871,9 @@
  \.{=} Append ( @ ,\, [ op \.{\mapsto}\@w{get} ,\, k \.{\mapsto}
  BlockedThread [ c ] . k ,\, v \.{\mapsto}}%
  \@x{\@s{98.03} Store [ BlockedThread [ c ] . s ] [ BlockedThread [ c ] . k ]
- ,\, ct \.{\mapsto} Ct [ BlockedThread [ c ] . s ] ,\, ot \.{\mapsto} Ot [
- BlockedThread [ c ] . s ] ] ) ]}%
+ ,\,}%
+ \@x{\@s{98.03} ct \.{\mapsto} Ct [ BlockedThread [ c ] . s ] ,\, ot
+ \.{\mapsto} Ot [ BlockedThread [ c ] . s ] ] ) ]}%
 \@x{\@s{46.82}}%
 \@y{\@s{0}%
  send \ensuremath{msg} to client
@@ -1847,9 +1935,9 @@
  \.{=} Append ( @ ,\, [ op \.{\mapsto}\@w{get} ,\, k \.{\mapsto}
  BlockedThread [ c ] . k ,\, v \.{\mapsto}}%
  \@x{\@s{98.03} SelectSnapshot ( SnapshotTable [ BlockedThread [ c ] . s ] ,\,
- Cp [ BlockedThread [ c ] . s ] ) [ BlockedThread [ c ] . k ] ,\, ct}%
- \@x{\@s{98.03} \.{\mapsto} Ct [ BlockedThread [ c ] . s ] ,\, ot \.{\mapsto}
- Cp [ BlockedThread [ c ] . s ] ] ) ]}%
+ Cp [ BlockedThread [ c ] . s ] ) [ BlockedThread [ c ] . k ] ,\,}%
+ \@x{\@s{98.03} ct \.{\mapsto} Ct [ BlockedThread [ c ] . s ] ,\, ot
+ \.{\mapsto} Cp [ BlockedThread [ c ] . s ] ] ) ]}%
 \@x{\@s{46.82}}%
 \@y{\@s{0}%
  send \ensuremath{msg} to client
@@ -1955,7 +2043,7 @@
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- server put
+ Server Put
 }%
 \@xx{}%
 \@x{}%
@@ -2004,7 +2092,9 @@
 \@xx{}%
  \@x{\@s{31.61} \.{\land} Oplog \.{'} \.{=} \.{\LET} entry \.{\defeq} [ k
  \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs [ s ] [ 1 ] . v
- ,\, ot \.{\mapsto} Ot \.{'} [ s ] ,\, term \.{\mapsto} CurrentTerm [ s ] ]}%
+ ,\,}%
+ \@x{\@s{149.84} ot \.{\mapsto} Ot \.{'} [ s ] ,\, term \.{\mapsto}
+ CurrentTerm [ s ] ]}%
 \@x{\@s{104.67} newLog \.{\defeq} Append ( Oplog [ s ] ,\, entry )}%
 \@x{\@s{84.27} \.{\IN} [ Oplog {\EXCEPT} {\bang} [ s ] \.{=} newLog ]}%
 \@x{\@s{31.61} \.{\land} State \.{'}\@s{2.68} \.{=}}%
@@ -2025,7 +2115,7 @@
 \@x{\@s{64.41} BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, SnapshotTable ,\,}%
  \@x{\@s{64.41} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
  {\rangle}}%
-\@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
 \begin{lcom}{0}%
 \begin{cpar}{0}{T}{F}{5.0}{0}{}%
 **************************************************************************
@@ -2071,54 +2161,44 @@
 \@xx{}%
  \@x{\@s{31.61} \.{\land} Store \.{'} \.{=} [ Store {\EXCEPT} {\bang} [ s ] [
  InMsgs [ s ] [ 1 ] . k ] \.{=} InMsgs [ s ] [ 1 ] . v ]}%
-\@x{}%
-\@y{\@s{17.5}%
- \ensuremath{\.{\land} Oplog\.{'} \.{=}} [ \ensuremath{Oplog}
- \ensuremath{{\EXCEPT} {\bang}[s] \.{=}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{47.5}%
- \ensuremath{Append(@,\, {\langle}InMsgs[s][1].k,\, InMsgs[s][1].v,\,
- Ot\.{'}[s],\, CurrentTerm[s]{\rangle})}]
-}%
-\@xx{}%
- \@x{\@s{32.8} \.{\land} \.{\LET} entry \.{\defeq} [ k \.{\mapsto} InMsgs [ s
- ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs [ s ] [ 1 ] . v ,\, ot \.{\mapsto} Ot
- \.{'} [ s ] ,\, term \.{\mapsto} CurrentTerm [ s ] ]}%
-\@x{\@s{64.31} newLog \.{\defeq} Append ( Oplog [ s ] ,\, entry )}%
- \@x{\@s{43.91} \.{\IN} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang} [ s ]
+ \@x{\@s{31.61} \.{\land} \.{\LET} entry \.{\defeq} [ k \.{\mapsto} InMsgs [ s
+ ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs [ s ] [ 1 ] . v ,\,}%
+ \@x{\@s{108.28} ot \.{\mapsto} Ot \.{'} [ s ] ,\, term \.{\mapsto}
+ CurrentTerm [ s ] ]}%
+\@x{\@s{63.12} newLog \.{\defeq} Append ( Oplog [ s ] ,\, entry )}%
+ \@x{\@s{42.72} \.{\IN} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang} [ s ]
  \.{=} newLog ]}%
-\@x{\@s{32.8} \.{\land} State \.{'} \.{=}}%
-\@x{\@s{48.01} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
- \@x{\@s{68.41} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ s ] \.{=} Ot
+\@x{\@s{31.61} \.{\land} State \.{'} \.{=}}%
+\@x{\@s{46.82} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
+ \@x{\@s{67.22} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ s ] \.{=} Ot
  \.{'} [ s ] ]}%
-\@x{\@s{48.01} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
+\@x{\@s{46.82} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
 \@y{\@s{0}%
  update primary state
 }%
 \@xx{}%
- \@x{\@s{32.8} \.{\land} CalState \.{'} \.{=} AdvanceState ( Ot \.{'} [ s ]
+ \@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} AdvanceState ( Ot \.{'} [ s ]
  ,\, Ot [ s ] ,\, CalState )}%
- \@x{\@s{32.8} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
- {\bang} [ InMsgs [ s ] [ 1 ] . c ] \.{=} [ type}%
- \@x{\@s{48.01} \.{\mapsto}\@w{write\_num} ,\, ot \.{\mapsto} Ot \.{'} [ s ]
- ,\, s \.{\mapsto} s ,\, numnode \.{\mapsto} InMsgs [ s ] [ 1 ] . num ,\,}%
- \@x{\@s{48.01} k \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs
+ \@x{\@s{31.61} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
+ {\bang} [ InMsgs [ s ] [ 1 ] . c ] \.{=} [ type \.{\mapsto}\@w{write\_num}
+ ,\,}%
+ \@x{\@s{125.54} ot \.{\mapsto} Ot \.{'} [ s ] ,\, s \.{\mapsto} s ,\, numnode
+ \.{\mapsto} InMsgs [ s ] [ 1 ] . num ,\,}%
+ \@x{\@s{125.54} k \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs
  [ s ] [ 1 ] . v ] ]}%
-\@x{\@s{89.74}}%
+\@x{\@s{87.82}}%
 \@y{\@s{0}%
  add the user \ensuremath{thHistory} to \ensuremath{BlockedThread[c]
 }}%
 \@xx{}%
- \@x{\@s{32.8} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
  \.{=} Tail ( @ ) ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
  InMsgc ,\, ServerMsg ,\, BlockedClient ,\,}%
 \@x{\@s{89.98} OpCount ,\, Pt ,\, Cp ,\, SnapshotTable ,\,}%
  \@x{\@s{89.98} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
  {\rangle}}%
-\@pvspace{16.0pt}%
+\@pvspace{8.0pt}%
 \@x{ ServerPutReply\_number\_wake \.{\defeq}}%
 \@x{\@s{24.59} \.{\land} ReadyToServe \.{>} 0}%
 \@x{\@s{24.59} \.{\land} \E\, c \.{\in} Client \.{:}}%
@@ -2148,7 +2228,7 @@
 \@x{\@s{98.18} ServerMsg ,\, BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\,}%
 \@x{\@s{98.18} CalState ,\, State ,\, SnapshotTable ,\, History ,\,}%
 \@x{\@s{98.18} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
-\@pvspace{16.0pt}%
+\@pvspace{8.0pt}%
 \begin{lcom}{0}%
 \begin{cpar}{0}{T}{F}{5.0}{0}{}%
 **************************************************************************
@@ -2170,49 +2250,38 @@
 \@x{\@s{31.61} \.{\land} Tick ( s )}%
  \@x{\@s{31.61} \.{\land} Ot \.{'} \.{=} [ Ot {\EXCEPT} {\bang} [ s ]
  \.{=}\@s{4.1} Ct \.{'} [ s ] ]}%
- \@x{\@s{31.61} \.{\land} Store \.{'} \.{=} [ Store {\EXCEPT} {\bang} [ s ] [
- InMsgs [ s ] [ 1 ] . k ] \.{=} InMsgs [ s ] [ 1 ] . v ]}%
-\@x{}%
-\@y{\@s{17.5}%
- \ensuremath{\.{\land} Oplog\.{'} \.{=}} [ \ensuremath{Oplog}
- \ensuremath{{\EXCEPT} {\bang}[Primary] \.{=}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{47.5}%
- \ensuremath{Append(@,\, {\langle}InMsgs[s][1].k,\, InMsgs[s][1].v,\,
- Ot\.{'}[Primary],\, CurrentTerm[Primary]{\rangle})}]
-}%
-\@xx{}%
- \@x{\@s{32.8} \.{\land} \.{\LET} entry \.{\defeq} [ k \.{\mapsto} InMsgs [ s
+ \@x{\@s{31.61} \.{\land} Store \.{'}\@s{2.30} \.{=} [ Store {\EXCEPT} {\bang}
+ [ s ] [ InMsgs [ s ] [ 1 ] . k ] \.{=} InMsgs [ s ] [ 1 ] . v ]}%
+\@x{\@s{31.61} \.{\land} Oplog \.{'} \.{=}}%
+ \@x{\@s{46.82} \.{\LET}\@s{0.91} entry \.{\defeq} [ k \.{\mapsto} InMsgs [ s
  ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs [ s ] [ 1 ] . v ,\, ot \.{\mapsto} Ot
  \.{'} [ s ] ,\, term \.{\mapsto} CurrentTerm [ s ] ]}%
-\@x{\@s{64.31} newLog \.{\defeq} Append ( Oplog [ s ] ,\, entry )}%
- \@x{\@s{43.91} \.{\IN} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang} [ s ]
- \.{=} newLog ]}%
-\@x{\@s{32.8} \.{\land} State \.{'} \.{=}}%
-\@x{\@s{48.01} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
- \@x{\@s{68.41} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ s ] \.{=} Ot
+\@x{\@s{71.32} newLog \.{\defeq} Append ( Oplog [ s ] ,\, entry )}%
+ \@x{\@s{46.82} \.{\IN}\@s{4.09} [ Oplog {\EXCEPT} {\bang} [ s ] \.{=} newLog
+ ]}%
+\@x{\@s{31.61} \.{\land} State \.{'} \.{=}}%
+\@x{\@s{46.82} \.{\LET} SubHbState \.{\defeq} State [ s ]}%
+ \@x{\@s{67.22} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ s ] \.{=} Ot
  \.{'} [ s ] ]}%
-\@x{\@s{48.01} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
+\@x{\@s{46.82} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
 \@y{\@s{0}%
  update primary state
 }%
 \@xx{}%
- \@x{\@s{32.8} \.{\land} CalState \.{'} \.{=} AdvanceState ( Ot \.{'} [ s ]
+ \@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} AdvanceState ( Ot \.{'} [ s ]
  ,\, Ot [ s ] ,\, CalState )}%
- \@x{\@s{32.8} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
+ \@x{\@s{31.61} \.{\land} BlockedThread \.{'} \.{=} [ BlockedThread {\EXCEPT}
  {\bang} [ InMsgs [ s ] [ 1 ] . c ] \.{=} [ type \.{\mapsto}\@w{write\_major}
  ,\, ot}%
- \@x{\@s{84.91} \.{\mapsto} Ot \.{'} [ s ] ,\, s \.{\mapsto} s ,\, k
+ \@x{\@s{83.72} \.{\mapsto} Ot \.{'} [ s ] ,\, s \.{\mapsto} s ,\, k
  \.{\mapsto} InMsgs [ s ] [ 1 ] . k ,\, v \.{\mapsto} InMsgs [ s ] [ 1 ] . v
  ] ]}%
- \@x{\@s{32.8} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
+ \@x{\@s{31.61} \.{\land} InMsgs \.{'} \.{=} [ InMsgs {\EXCEPT} {\bang} [ s ]
  \.{=} Tail ( @ ) ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- InMsgc ,\, ServerMsg ,\, BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\,
- SnapshotTable ,\, History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
- {\rangle}}%
+ InMsgc ,\, ServerMsg ,\, BlockedClient ,\, OpCount ,\,}%
+ \@x{\@s{89.98} Pt ,\, Cp ,\, SnapshotTable ,\, History ,\, CurrentTerm ,\,
+ ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ServerPutReply\_majority\_wake \.{\defeq}}%
 \@x{\@s{24.59} \.{\land} ReadyToServe \.{>} 0}%
@@ -2224,22 +2293,30 @@
  \@x{\@s{32.8} \.{\land} InMsgc \.{'} \.{=} [ InMsgc {\EXCEPT} {\bang} [ c ]
  \.{=}}%
  \@x{\@s{48.01} Append ( @ ,\, [ op \.{\mapsto}\@w{put} ,\, ct \.{\mapsto} Ct
- [ BlockedThread [ c ] . s ] ,\, ot \.{\mapsto} BlockedThread [ c ] . ot ,\,
- k \.{\mapsto} BlockedThread [ c ] . k ,\, v \.{\mapsto} BlockedThread [ c ]
- . v ] ) ]}%
+ [ BlockedThread [ c ] . s ] ,\, ot \.{\mapsto} BlockedThread [ c ] . ot ,\,}%
+ \@x{\@s{102.07} k \.{\mapsto} BlockedThread [ c ] . k ,\, v \.{\mapsto}
+ BlockedThread [ c ] . v ] ) ]}%
  \@x{\@s{32.8} \.{\land} BlockedThread \.{'} \.{=}\@s{4.1} [ BlockedThread
  {\EXCEPT} {\bang} [ c ] \.{=} Nil ]}%
  \@x{\@s{24.59} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgs ,\, ServerMsg ,\, BlockedClient ,\,
- OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\, History
- ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
-\@pvspace{8.0pt}%
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgs ,\, ServerMsg ,\,}%
+ \@x{\@s{98.18} BlockedClient ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State
+ ,\, SnapshotTable ,\,}%
+ \@x{\@s{98.18} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
+\@pvspace{16.0pt}%
 \@x{}%
 \@y{\@s{0}%
- client get
+ Tunable Protocol: \ensuremath{Client} Actions
 }%
 \@xx{}%
 \@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Client Get
+}%
+\@xx{}%
 \@pvspace{8.0pt}%
 \@x{ ClientGetRequest\_local\_primary \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -2270,9 +2347,11 @@
  \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
  c \}}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\, BlockedThread ,\,
- OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\, History
- ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
+ \@x{\@s{89.98} BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State
+ ,\, SnapshotTable ,\,}%
+ \@x{\@s{89.98} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ClientGetRequest\_majority\_primary \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -2286,9 +2365,11 @@
  \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
  c \}}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED}\@s{4.1} {\langle} Primary ,\, Secondary
- ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\, BlockedThread
- ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\,
- History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+ ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
+ \@x{\@s{94.08} BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State
+ ,\, SnapshotTable ,\,}%
+ \@x{\@s{94.08} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ClientGetRequest\_majority\_secondary \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -2302,9 +2383,11 @@
  \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
  c \}}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED}\@s{4.1} {\langle} Primary ,\, Secondary
- ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\, BlockedThread
- ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\,
- History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+ ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
+ \@x{\@s{94.08} BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State
+ ,\, SnapshotTable ,\,}%
+ \@x{\@s{94.08} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ClientGetRequest\_linearizable \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -2318,13 +2401,15 @@
  \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
  c \}}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED}\@s{4.1} {\langle} Primary ,\, Secondary
- ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\, BlockedThread
- ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\,
- History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+ ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
+ \@x{\@s{94.08} BlockedThread ,\, OpCount ,\, Pt ,\, Cp ,\, CalState ,\, State
+ ,\, SnapshotTable ,\,}%
+ \@x{\@s{94.08} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- client put
+ Client Put
 }%
 \@xx{}%
 \begin{lcom}{0}%
@@ -2356,10 +2441,9 @@
  \.{\mapsto} InMsgc [ c ] [ 1 ] . ot ,\, k \.{\mapsto} k ,\, v \.{\mapsto} v
  ] ) ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\,}%
- \@x{\@s{89.98} ServerMsg ,\, BlockedClient ,\, BlockedThread ,\, Pt ,\, Cp
- ,\,}%
-\@x{\@s{89.98} CalState ,\, State ,\, SnapshotTable ,\,}%
+ Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
+ \@x{\@s{89.98} BlockedClient ,\, BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\,
+ State ,\, SnapshotTable ,\,}%
 \@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ClientPutRequest\_number \.{\defeq}}%
@@ -2375,9 +2459,10 @@
  \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
  c \}}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} OpCount ,\, Primary ,\,
- Secondary ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,}%
- \@x{\@s{89.98} BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\, State ,\,
- SnapshotTable ,\, History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ Secondary ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\,}%
+ \@x{\@s{89.98} ServerMsg ,\, BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\,
+ State ,\, SnapshotTable ,\,}%
+ \@x{\@s{89.98} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
  {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ClientPutRequest\_majority \.{\defeq}}%
@@ -2392,9 +2477,11 @@
  \@x{\@s{31.61} \.{\land} BlockedClient \.{'} \.{=} BlockedClient \.{\cup} \{
  c \}}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} OpCount ,\, Primary ,\,
- Secondary ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\, ServerMsg ,\,
- BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\, State ,\, SnapshotTable ,\,
- History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+ Secondary ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\, InMsgc ,\,}%
+ \@x{\@s{89.98} ServerMsg ,\, BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\,
+ State ,\, SnapshotTable ,\,}%
+ \@x{\@s{89.98} History ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
+ {\rangle}}%
 \@pvspace{16.0pt}%
 \begin{lcom}{0}%
 \begin{cpar}{0}{T}{F}{5.0}{0}{}%
@@ -2434,10 +2521,9 @@
 }%
 \@xx{}%
  \@x{\@s{31.61} \.{\land} History \.{'} \.{=} [ History {\EXCEPT} {\bang} [ c
- ] \.{=} Append ( @ ,\, [ op}%
- \@x{\@s{98.71} \.{\mapsto}\@w{get} ,\, ts \.{\mapsto} InMsgc [ c ] [ 1 ] . ot
- ,\, k \.{\mapsto} InMsgc [ c ] [ 1 ] . k ,\, v \.{\mapsto} InMsgc [ c ] [ 1
- ] . v ] ) ]}%
+ ] \.{=} Append ( @ ,\, [ op \.{\mapsto}\@w{get} ,\,}%
+ \@x{\@s{94.61} ts \.{\mapsto} InMsgc [ c ] [ 1 ] . ot ,\, k \.{\mapsto}
+ InMsgc [ c ] [ 1 ] . k ,\, v \.{\mapsto} InMsgc [ c ] [ 1 ] . v ] ) ]}%
 \@pvspace{8.0pt}%
  \@x{\@s{31.61} \.{\land} InMsgc \.{'} \.{=} [ InMsgc {\EXCEPT} {\bang} [ c ]
  \.{=} Tail ( @ ) ]}%
@@ -2517,7 +2603,14 @@
  \@x{\@s{89.98} BlockedThread ,\, Pt ,\, Cp ,\, CalState ,\, State ,\,
  SnapshotTable ,\,}%
 \@x{\@s{89.98} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
-\@pvspace{32.0pt}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Action Wrapper
+}%
+\@xx{}%
+\@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
  \@x{ ClientGetRequest\_local \.{\defeq} \.{\lor}
  ClientGetRequest\_local\_primary}%
 \@x{\@s{119.11} \.{\lor} ClientGetRequest\_local\_secondary}%
@@ -2565,66 +2658,6 @@
 \@x{\@s{87.00} \.{\lor} ServerPutReply\_majority\_sleep}%
 \@x{\@s{87.00} \.{\lor} ServerPutReply\_number\_wake}%
 \@x{\@s{87.00} \.{\lor} ServerPutReply\_majority\_wake}%
-\@pvspace{24.0pt}%
-\@x{}\midbar\@xx{}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
- Can node \ensuremath{i} rollback its \ensuremath{log} based on
- \ensuremath{j}\mbox{'}s \ensuremath{log
-}}%
-\@xx{}%
- \@x{ CanRollback ( i ,\, j ) \.{\defeq} \.{\land} Len ( Oplog [ i ]
- )\@s{0.42} \.{>} 0}%
-\@x{\@s{96.25} \.{\land} Len ( Oplog [ j ] ) \.{>} 0}%
-\@x{\@s{96.25} \.{\land} LastTerm ( i ) \.{<} LastTerm ( j )}%
-\@x{\@s{96.25} \.{\land}}%
-\@x{\@s{108.55} \.{\lor} Len ( Oplog [ i ] ) \.{>} Len ( Oplog [ j ] )}%
- \@x{\@s{108.55} \.{\lor} \.{\land} Len ( Oplog [ i ] ) \.{\leq} Len ( Oplog [
- j ] )}%
- \@x{\@s{119.66} \.{\land} LastTerm ( i ) \.{\neq} LogTerm ( j ,\, Len ( Oplog
- [ i ] ) )}%
-\@x{\@s{119.66}}%
-\@y{%
- 注意检查：是\ensuremath{Len(Oplog[i])}还是\ensuremath{Len(Oplog[i]\.{+}1\.{?}\.{-}1\.{?})
-}}%
-\@xx{}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
- Returns the highest common index between two divergent logs,
- \mbox{'}li\mbox{'} and \mbox{'}lj\mbox{'}.
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{0}%
- If there is no common index between the logs, returns 0.
-}%
-\@xx{}%
-\@x{ RollbackCommonPoint ( i ,\, j ) \.{\defeq}}%
- \@x{\@s{16.4} \.{\LET} commonIndices \.{\defeq} \{ k \.{\in} {\DOMAIN} Oplog
- [ i ] \.{:}}%
-\@x{\@s{133.90} \.{\land} k \.{\leq} Len ( Oplog [ j ] )}%
- \@x{\@s{133.90} \.{\land} Oplog [ i ] [ k ] \.{=} Oplog [ j ] [ k ] \}
- \.{\IN}}%
- \@x{\@s{36.79} {\IF} commonIndices \.{=} \{ \} \.{\THEN} 0 \.{\ELSE} MaxVal (
- commonIndices )}%
-\@pvspace{8.0pt}%
-\@x{ RollbackOplog ( i ,\, j ) \.{\defeq}}%
-\@x{\@s{16.4} \.{\land} i \.{\in} Secondary}%
-\@x{\@s{16.4} \.{\land} CanRollback ( i ,\, j )}%
- \@x{\@s{16.4} \.{\land} \.{\LET} cmp \.{\defeq} RollbackCommonPoint ( i ,\, j
- ) \.{\IN}}%
- \@x{\@s{31.61} \.{\land}\@s{5.18} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang}
- [ i ] \.{=} SubSeq ( Oplog [ i ] ,\, 1 ,\, cmp ) ]}%
- \@x{\@s{31.61} \.{\land}\@s{5.18} CurrentTerm \.{'} \.{=} [ CurrentTerm
- {\EXCEPT} {\bang} [ i ] \.{=} LogTerm ( j ,\, cmp ) ]}%
- \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
-\@x{\@s{89.98} ServerMsg ,\, BlockedClient ,\, BlockedThread ,\, OpCount ,\,}%
- \@x{\@s{89.98} Pt ,\, Cp ,\, State ,\, CalState ,\, SnapshotTable ,\, History
- ,\,}%
-\@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
  \@x{ RollbackOplogAction \.{\defeq} \E\, i ,\, j \.{\in} Server \.{:}
  RollbackOplog ( i ,\, j )}%
@@ -2640,7 +2673,7 @@
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- next state for all configurations
+ Next state for all configurations
 }%
 \@xx{}%
 \@x{ Next \.{\defeq} \.{\lor} ClientGetRequest \.{\lor} ClientPutRequest}%
@@ -2744,11 +2777,11 @@
 \@x{ Spec10 \.{\defeq} Init \.{\land} {\Box} [ Next10 ]_{ vars}}%
 \@pvspace{8.0pt}%
 \@x{}%
-\@y{%
- Idea:用时钟来表示该操作的先后顺序（似乎需要限制只有\ensuremath{Primary}节点才能推进时钟，需要check）
+\@y{\@s{0}%
+ Causal Specifications
 }%
 \@xx{}%
-\@pvspace{8.0pt}%
+\@x{}\midbar\@xx{}%
  \@x{ MonotonicRead \.{\defeq} \A\, c \.{\in} Client \.{:} \A\, i ,\, j
  \.{\in} {\DOMAIN} History [ c ] \.{:}}%
 \@x{\@s{94.77} \.{\land} i \.{<} j}%
@@ -2781,7 +2814,7 @@
 \@x{\@s{75.57} \.{\land}\@s{7.77} History [ c ] [ j ] . op \.{=}\@w{put}}%
  \@x{\@s{75.57} \.{\implies}\@s{3.33} {\lnot} HLCLt ( History [ c ] [ j ] . ts
  ,\, History [ c ] [ i ] . ts )}%
-\@pvspace{24.0pt}%
+\@pvspace{16.0pt}%
 \@x{}\bottombar\@xx{}%
 \setboolean{shading}{false}
 \begin{lcom}{0}%
@@ -2791,7 +2824,7 @@
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
  \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Thu}
- \ensuremath{Apr} 07 01:04:14 \ensuremath{CST} 2022 by \ensuremath{dh
+ \ensuremath{Apr} 07 10:28:09 \ensuremath{CST} 2022 by \ensuremath{dh
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
