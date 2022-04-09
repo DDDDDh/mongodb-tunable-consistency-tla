@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.12.29)  7 APR 2022 10:28
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.12.29)  9 APR 2022 00:52
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -121,117 +121,92 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 [1
 
 {/usr/local/texlive/2016/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] [2]
-Overfull \hbox (14.74231pt too wide) in paragraph at lines 1223--1224
+Overfull \hbox (14.74231pt too wide) in paragraph at lines 1228--1229
 [][] 
  []
 
 
-Overfull \hbox (16.99213pt too wide) in paragraph at lines 1243--1244
+Overfull \hbox (16.99213pt too wide) in paragraph at lines 1248--1249
 [][] 
  []
 
 
-Overfull \hbox (16.99434pt too wide) in paragraph at lines 1246--1247
+Overfull \hbox (16.99434pt too wide) in paragraph at lines 1251--1252
 [][] 
  []
 
 
-Overfull \hbox (15.5152pt too wide) in paragraph at lines 1254--1256
+Overfull \hbox (15.5152pt too wide) in paragraph at lines 1259--1261
 [][] 
  []
 
-[3]
-Missing character: There is no Ê in font cmr8!
-Missing character: There is no ≥ in font cmr8!
-Missing character: There is no ® in font cmr8!
-Missing character: There is no Ê in font cmr8!
-Missing character: There is no Ñ in font cmr8!
-Missing character: There is no è in font cmr8!
-Missing character: There is no Ê in font cmr8!
-Missing character: There is no £ in font cmr8!
-Missing character: There is no Ä in font cmr8!
-Missing character: There is no Ê in font cmr8!
-Missing character: There is no ü in font cmr8!
-Missing character: There is no • in font cmr8!
-Missing character: There is no Ô in font cmr8!
-Missing character: There is no º in font cmr8!
-Missing character: There is no ö in font cmr8!
-Missing character: There is no Ê in font cmr8!
-Missing character: There is no ò in font cmr8!
-Missing character: There is no Ø in font cmr8!
-Missing character: There is no Ë in font cmr8!
-Missing character: There is no ø in font cmr8!
-Missing character: There is no ò in font cmr8!
-Missing character: There is no Ê in font cmr8!
-Missing character: There is no ò in font cmr8!
-Missing character: There is no Ø in font cmr8!
-[4]
-Overfull \hbox (16.43974pt too wide) in paragraph at lines 1460--1461
-[][] 
- []
-
-
-Overfull \hbox (21.37238pt too wide) in paragraph at lines 1495--1497
+[3] [4]
+Overfull \hbox (16.43974pt too wide) in paragraph at lines 1459--1460
 [][] 
  []
 
 [5]
-Overfull \hbox (24.31041pt too wide) in paragraph at lines 1497--1499
+Overfull \hbox (21.37238pt too wide) in paragraph at lines 1494--1496
 [][] 
  []
 
 
-Overfull \hbox (1.23648pt too wide) in paragraph at lines 1508--1510
+Overfull \hbox (24.31041pt too wide) in paragraph at lines 1496--1498
 [][] 
  []
 
 
-Overfull \hbox (1.07301pt too wide) in paragraph at lines 1510--1512
+Overfull \hbox (1.23648pt too wide) in paragraph at lines 1507--1509
 [][] 
  []
 
 
-Overfull \hbox (25.72633pt too wide) in paragraph at lines 1521--1523
+Overfull \hbox (1.07301pt too wide) in paragraph at lines 1509--1511
 [][] 
  []
 
 
-Overfull \hbox (53.16278pt too wide) in paragraph at lines 1523--1524
+Overfull \hbox (25.72633pt too wide) in paragraph at lines 1520--1522
+[][] 
+ []
+
+
+Overfull \hbox (53.16278pt too wide) in paragraph at lines 1522--1523
 [][] 
  []
 
 [6]
-Overfull \hbox (80.67456pt too wide) in paragraph at lines 1576--1578
+Overfull \hbox (80.67456pt too wide) in paragraph at lines 1575--1577
 [][] 
  []
 
 
-Overfull \hbox (40.03868pt too wide) in paragraph at lines 1595--1600
+Overfull \hbox (40.03868pt too wide) in paragraph at lines 1594--1599
 [][][][] 
  []
 
 
-Overfull \hbox (100.01212pt too wide) in paragraph at lines 1639--1642
+Overfull \hbox (100.01212pt too wide) in paragraph at lines 1638--1641
 [][] 
  []
 
 
-Overfull \hbox (185.48189pt too wide) in paragraph at lines 1642--1643
+Overfull \hbox (185.48189pt too wide) in paragraph at lines 1641--1642
 [][] 
  []
 
 
-Overfull \hbox (155.84152pt too wide) in paragraph at lines 1644--1651
+Overfull \hbox (155.84152pt too wide) in paragraph at lines 1643--1650
 [][][][] 
  []
 
 
-Overfull \hbox (267.19307pt too wide) in paragraph at lines 1651--1652
+Overfull \hbox (267.19307pt too wide) in paragraph at lines 1650--1651
 [][] 
  []
 
 
-Overfull \hbox (80.67456pt too wide) in paragraph at lines 1655--1657
+Overfull \hbox (80.67456pt too wide) in paragraph at lines 1654--1656
 [][] 
  []
 
@@ -317,17 +292,17 @@ Missing character: There is no Â in font cmr8!
 Missing character: There is no à in font cmr8!
 Missing character: There is no ∞ in font cmr8!
 [7]
-Overfull \hbox (97.03496pt too wide) in paragraph at lines 1680--1681
+Overfull \hbox (97.03496pt too wide) in paragraph at lines 1679--1680
 [][] 
  []
 
 
-Overfull \hbox (25.97652pt too wide) in paragraph at lines 1703--1705
+Overfull \hbox (25.97652pt too wide) in paragraph at lines 1702--1704
 [][] 
  []
 
 
-Overfull \hbox (85.15105pt too wide) in paragraph at lines 1705--1706
+Overfull \hbox (85.15105pt too wide) in paragraph at lines 1704--1705
 [][] 
  []
 
@@ -650,82 +625,92 @@ Missing character: There is no Â in font cmr8!
 Missing character: There is no è in font cmr8!
 Missing character: There is no ë in font cmr8!
 
-Overfull \hbox (128.86607pt too wide) in paragraph at lines 1764--1769
+Overfull \hbox (128.86607pt too wide) in paragraph at lines 1767--1772
 [][][][] 
  []
 
 
-Overfull \hbox (42.73203pt too wide) in paragraph at lines 1781--1783
+Overfull \hbox (42.73203pt too wide) in paragraph at lines 1784--1786
 [][] 
  []
 
 [8]
-Overfull \hbox (59.8779pt too wide) in paragraph at lines 1841--1847
+Overfull \hbox (128.86607pt too wide) in paragraph at lines 1820--1826
 [][][][] 
  []
 
 
-Overfull \hbox (73.04494pt too wide) in paragraph at lines 1850--1852
+Overfull \hbox (42.73203pt too wide) in paragraph at lines 1857--1859
 [][] 
  []
 
 
-Overfull \hbox (31.78894pt too wide) in paragraph at lines 1865--1872
+Overfull \hbox (59.8779pt too wide) in paragraph at lines 1901--1907
 [][][][] 
  []
 
 
-Overfull \hbox (78.18182pt too wide) in paragraph at lines 1872--1874
-[][] 
- []
-
-
-Overfull \hbox (2.0617pt too wide) in paragraph at lines 1876--1877
-[][] 
- []
-
-
-Overfull \hbox (11.23357pt too wide) in paragraph at lines 1885--1886
+Overfull \hbox (73.04494pt too wide) in paragraph at lines 1910--1912
 [][] 
  []
 
 [9]
-Overfull \hbox (77.29497pt too wide) in paragraph at lines 1914--1916
-[][] 
- []
-
-
-Overfull \hbox (31.78894pt too wide) in paragraph at lines 1929--1936
+Overfull \hbox (31.78894pt too wide) in paragraph at lines 1925--1932
 [][][][] 
  []
 
 
-Overfull \hbox (78.18182pt too wide) in paragraph at lines 1936--1938
+Overfull \hbox (78.18182pt too wide) in paragraph at lines 1932--1934
 [][] 
  []
 
 
-Overfull \hbox (163.2614pt too wide) in paragraph at lines 1938--1940
+Overfull \hbox (2.0617pt too wide) in paragraph at lines 1936--1937
 [][] 
  []
 
 
-Overfull \hbox (3.0221pt too wide) in paragraph at lines 1940--1941
+Overfull \hbox (11.23357pt too wide) in paragraph at lines 1945--1946
 [][] 
  []
 
 
-Overfull \hbox (11.23357pt too wide) in paragraph at lines 1949--1950
+Overfull \hbox (77.29497pt too wide) in paragraph at lines 1974--1976
+[][] 
+ []
+
+
+Overfull \hbox (31.78894pt too wide) in paragraph at lines 1989--1996
+[][][][] 
+ []
+
+
+Overfull \hbox (78.18182pt too wide) in paragraph at lines 1996--1998
+[][] 
+ []
+
+
+Overfull \hbox (163.2614pt too wide) in paragraph at lines 1998--2000
+[][] 
+ []
+
+
+Overfull \hbox (3.0221pt too wide) in paragraph at lines 2000--2001
+[][] 
+ []
+
+
+Overfull \hbox (11.23357pt too wide) in paragraph at lines 2009--2010
 [][] 
  []
 
 [10]
-Overfull \hbox (10.35027pt too wide) in paragraph at lines 2011--2012
+Overfull \hbox (10.35027pt too wide) in paragraph at lines 2071--2072
 [][] 
  []
 
 
-Overfull \hbox (5.52173pt too wide) in paragraph at lines 2033--2039
+Overfull \hbox (5.52173pt too wide) in paragraph at lines 2093--2099
 [][][][] 
  []
 
@@ -777,175 +762,176 @@ Missing character: There is no ï in font cmr8!
 Missing character: There is no Á in font cmr8!
 Missing character: There is no ö in font cmr8!
 Missing character: There is no Ñ in font cmr8!
-[11]
-Overfull \hbox (51.99129pt too wide) in paragraph at lines 2184--2186
-[][] 
- []
-
-[12]
-Overfull \hbox (12.17018pt too wide) in paragraph at lines 2208--2209
+[11] [12]
+Overfull \hbox (51.99129pt too wide) in paragraph at lines 2244--2246
 [][] 
  []
 
 
-Overfull \hbox (153.11021pt too wide) in paragraph at lines 2218--2220
+Overfull \hbox (12.17018pt too wide) in paragraph at lines 2268--2269
 [][] 
  []
 
 
-Overfull \hbox (95.29636pt too wide) in paragraph at lines 2258--2259
+Overfull \hbox (153.11021pt too wide) in paragraph at lines 2278--2280
 [][] 
  []
 
 
-Overfull \hbox (66.65099pt too wide) in paragraph at lines 2275--2278
-[][] 
- []
-
-
-Overfull \hbox (27.54187pt too wide) in paragraph at lines 2282--2284
-[][] 
- []
-
-
-Overfull \hbox (60.49672pt too wide) in paragraph at lines 2284--2285
+Overfull \hbox (95.29636pt too wide) in paragraph at lines 2318--2319
 [][] 
  []
 
 [13]
-Overfull \hbox (46.21826pt too wide) in paragraph at lines 2296--2298
+Overfull \hbox (66.65099pt too wide) in paragraph at lines 2335--2338
 [][] 
  []
 
 
-Overfull \hbox (19.42357pt too wide) in paragraph at lines 2302--2304
+Overfull \hbox (27.54187pt too wide) in paragraph at lines 2342--2344
 [][] 
  []
 
 
-Overfull \hbox (28.46461pt too wide) in paragraph at lines 2304--2306
+Overfull \hbox (60.49672pt too wide) in paragraph at lines 2344--2345
 [][] 
  []
 
 
-Overfull \hbox (11.48912pt too wide) in paragraph at lines 2333--2334
+Overfull \hbox (46.21826pt too wide) in paragraph at lines 2356--2358
 [][] 
  []
 
 
-Overfull \hbox (11.48912pt too wide) in paragraph at lines 2350--2352
+Overfull \hbox (19.42357pt too wide) in paragraph at lines 2362--2364
 [][] 
  []
 
 
-Overfull \hbox (24.31041pt too wide) in paragraph at lines 2352--2354
+Overfull \hbox (28.46461pt too wide) in paragraph at lines 2364--2366
 [][] 
  []
 
 
-Overfull \hbox (15.58913pt too wide) in paragraph at lines 2368--2370
+Overfull \hbox (11.48912pt too wide) in paragraph at lines 2393--2394
 [][] 
  []
 
 
-Overfull \hbox (28.41042pt too wide) in paragraph at lines 2370--2372
+Overfull \hbox (11.48912pt too wide) in paragraph at lines 2410--2412
+[][] 
+ []
+
+
+Overfull \hbox (24.31041pt too wide) in paragraph at lines 2412--2414
 [][] 
  []
 
 [14]
-Overfull \hbox (15.58913pt too wide) in paragraph at lines 2386--2388
+Overfull \hbox (15.58913pt too wide) in paragraph at lines 2428--2430
 [][] 
  []
 
 
-Overfull \hbox (28.41042pt too wide) in paragraph at lines 2388--2390
+Overfull \hbox (28.41042pt too wide) in paragraph at lines 2430--2432
 [][] 
  []
 
 
-Overfull \hbox (15.58913pt too wide) in paragraph at lines 2404--2406
+Overfull \hbox (15.58913pt too wide) in paragraph at lines 2446--2448
 [][] 
  []
 
 
-Overfull \hbox (28.41042pt too wide) in paragraph at lines 2406--2408
+Overfull \hbox (28.41042pt too wide) in paragraph at lines 2448--2450
 [][] 
  []
 
 
-Overfull \hbox (121.09619pt too wide) in paragraph at lines 2442--2444
+Overfull \hbox (15.58913pt too wide) in paragraph at lines 2464--2466
 [][] 
  []
 
 
-Overfull \hbox (11.48912pt too wide) in paragraph at lines 2444--2446
+Overfull \hbox (28.41042pt too wide) in paragraph at lines 2466--2468
 [][] 
  []
 
 
-Overfull \hbox (43.87132pt too wide) in paragraph at lines 2446--2447
+Overfull \hbox (121.09619pt too wide) in paragraph at lines 2502--2504
 [][] 
  []
 
 
-Overfull \hbox (26.3587pt too wide) in paragraph at lines 2453--2455
-[][] 
- []
-
-
-Overfull \hbox (74.69162pt too wide) in paragraph at lines 2458--2460
-[][] 
- []
-
-
-Overfull \hbox (5.39755pt too wide) in paragraph at lines 2462--2464
-[][] 
- []
-
-
-Overfull \hbox (30.40198pt too wide) in paragraph at lines 2464--2466
+Overfull \hbox (11.48912pt too wide) in paragraph at lines 2504--2506
 [][] 
  []
 
 [15]
-Overfull \hbox (18.43556pt too wide) in paragraph at lines 2476--2478
+Overfull \hbox (43.87132pt too wide) in paragraph at lines 2506--2507
 [][] 
  []
 
 
-Overfull \hbox (5.39755pt too wide) in paragraph at lines 2480--2482
+Overfull \hbox (26.3587pt too wide) in paragraph at lines 2513--2515
 [][] 
  []
 
 
-Overfull \hbox (30.40198pt too wide) in paragraph at lines 2482--2484
+Overfull \hbox (74.69162pt too wide) in paragraph at lines 2518--2520
 [][] 
  []
 
 
-Overfull \hbox (12.31969pt too wide) in paragraph at lines 2526--2527
+Overfull \hbox (5.39755pt too wide) in paragraph at lines 2522--2524
 [][] 
  []
 
-Missing character: There is no Ô in font cmr8!
-Missing character: There is no º in font cmr8!
-Missing character: There is no å in font cmr8!
 
-Overfull \hbox (64.64375pt too wide) in paragraph at lines 2579--2585
-[][][][] 
+Overfull \hbox (30.40198pt too wide) in paragraph at lines 2524--2526
+[][] 
  []
 
 
-Overfull \hbox (62.03065pt too wide) in paragraph at lines 2588--2590
+Overfull \hbox (18.43556pt too wide) in paragraph at lines 2536--2538
+[][] 
+ []
+
+
+Overfull \hbox (5.39755pt too wide) in paragraph at lines 2540--2542
+[][] 
+ []
+
+
+Overfull \hbox (30.40198pt too wide) in paragraph at lines 2542--2544
+[][] 
+ []
+
+
+Overfull \hbox (12.31969pt too wide) in paragraph at lines 2586--2587
 [][] 
  []
 
 [16]
-Overfull \hbox (1.57027pt too wide) in paragraph at lines 2670--2671
+Missing character: There is no Ô in font cmr8!
+Missing character: There is no º in font cmr8!
+Missing character: There is no å in font cmr8!
+
+Overfull \hbox (64.64375pt too wide) in paragraph at lines 2639--2645
+[][][][] 
+ []
+
+
+Overfull \hbox (62.03065pt too wide) in paragraph at lines 2648--2650
 [][] 
  []
 
-[17] [18] [19] [20] (./TunableMongoDB_RBK.aux) ) 
+[17]
+Overfull \hbox (1.57027pt too wide) in paragraph at lines 2730--2731
+[][] 
+ []
+
+[18] [19] [20] [21] (./TunableMongoDB_RBK.aux) ) 
 Here is how much of TeX's memory you used:
  1290 strings out of 493014
  15992 string characters out of 6133350
@@ -953,26 +939,27 @@ Here is how much of TeX's memory you used:
  4865 multiletter control sequences out of 15000+600000
  8810 words of font info for 34 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 23i,10n,25p,243b,311s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 23i,11n,25p,243b,311s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/local/texlive/2016/texmf-
 dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2016/texmf-
 dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2016/texmf-d
-ist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2016/texmf-dis
-t/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2016/texmf-dist/f
-onts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2016/texmf-dist/font
-s/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2016/texmf-dist/fonts/t
-ype1/public/amsfonts/cm/cmss10.pfb></usr/local/texlive/2016/texmf-dist/fonts/ty
-pe1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2016/texmf-dist/fonts/typ
-e1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1
-/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/p
-ublic/amsfonts/cm/cmti10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/pu
-blic/amsfonts/cm/cmti7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/publ
-ic/amsfonts/cm/cmti8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public
-/amsfonts/latxfont/lasy10.pfb>
-Output written on TunableMongoDB_RBK.pdf (20 pages, 201628 bytes).
+ist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2016/texmf-dis
+t/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2016/texmf-dist/
+fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2016/texmf-dist/fon
+ts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2016/texmf-dist/fonts/
+type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2016/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmss10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type
+1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1
+/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/p
+ublic/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmti10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/publ
+ic/amsfonts/cm/cmti7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public
+/amsfonts/cm/cmti8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/a
+msfonts/latxfont/lasy10.pfb>
+Output written on TunableMongoDB_RBK.pdf (21 pages, 210493 bytes).
 PDF statistics:
- 125 PDF objects out of 1000 (max. 8388607)
- 88 compressed objects within 1 object stream
+ 132 PDF objects out of 1000 (max. 8388607)
+ 93 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 

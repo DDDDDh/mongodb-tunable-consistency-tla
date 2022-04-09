@@ -73,8 +73,9 @@ SelectSnapshot_rec(stable, cp, index) ==
     
 SelectSnapshot(stable, cp) == SelectSnapshot_rec(stable, cp, 1)
 
-LogTerm(i, index) == IF index = 0 THEN 0 ELSE Oplog[i][index].term             
-LastTerm(i) == LogTerm(i, Len(Oplog[i]))                               
+LogTerm(i, index) == IF index = 0 THEN 0 ELSE Oplog[i][index].term   
+LastTerm(i) == CurrentTerm[i]          
+\*LastTerm(i) == LogTerm(i, Len(Oplog[i]))                               
                             
 \* Is node i ahead of node j
 NotBehind(i, j) == \/ LastTerm(i) > LastTerm(j)
@@ -138,17 +139,19 @@ ReplicateOplog(i, j) ==
                         THEN SubSeq(Oplog[j], len_i + 1, len_j)
                         ELSE <<>>
              
+             
+             
+             
 \* Can node i rollback its log based on j's log
 CanRollback(i, j) == /\ Len(Oplog[i]) > 0       
                      /\ Len(Oplog[j]) > 0
-                     /\ LastTerm(i) < LastTerm(j)
+                     /\ CurrentTerm[i] < CurrentTerm[j]
                      /\ 
                         \/ Len(Oplog[i]) > Len(Oplog[j])
                         \/ /\ Len(Oplog[i]) <= Len(Oplog[j])
-                           /\ LastTerm(i) /= LogTerm(j, Len(Oplog[i]))
-                           \*注意检查：是Len(Oplog[i])还是Len(Oplog[i]+1?-1?)
+                           /\ CurrentTerm[i] /= LogTerm(j, Len(Oplog[i]))
                            
-\* Returns the highest common index between two divergent logs, 'li' and 'lj'. 
+\* Returns the highest common index between two divergent logs. 
 \* If there is no common index between the logs, returns 0.
 RollbackCommonPoint(i, j) == 
     LET commonIndices == {k \in DOMAIN Oplog[i] : 
@@ -348,7 +351,7 @@ AdvancePt ==
 \* Replicate oplog from node j to node i, and update related structures accordingly
  Replicate(i, j) == 
     /\ ReadyToServe > 0
-    /\ CanSyncFrom(i, j)
+    /\ CanSyncFrom(i, j) \* i can sync from j only need not to rollback
     /\ i \in Secondary
     /\ ReplicateOplog(i, j) /= <<>>
     /\ Oplog' = [Oplog EXCEPT ![i] = @ \o ReplicateOplog(i, j)]
@@ -367,18 +370,33 @@ AdvancePt ==
     /\ UNCHANGED <<Primary, Secondary, InMsgc, InMsgs, BlockedClient, 
                     BlockedThread, OpCount, Pt, CalState, SnapshotTable, 
                     History, ReadyToServe>>
-
-RollbackOplog(i, j) == 
+                   
+\* Rollback i's oplog and recover it to j's state   
+\* Recover to j's state immediately to prevent internal client request  
+RollbackAndRecover(i, j) ==
+    /\ ReadyToServe > 0
     /\ i \in Secondary
-    /\CanRollback(i, j)
-    /\ LET cmp == RollbackCommonPoint(i, j) IN
-        /\ Oplog' = [Oplog EXCEPT ![i] = SubSeq(Oplog[i], 1, cmp)]
-        /\ CurrentTerm' = [CurrentTerm EXCEPT![i] = LogTerm(j, cmp)]    
-    /\ UNCHANGED <<Primary, Secondary, Store, Ct, Ot, InMsgc, InMsgs, 
-                   ServerMsg, BlockedClient, BlockedThread, OpCount, 
-                   Pt, Cp, State, CalState, SnapshotTable, History,
-                   ReadyToServe, SyncSource>>                      
-
+    /\ CanRollback(i, j)
+    /\ LET cmp == RollbackCommonPoint(i, j)  IN
+        LET commonLog == SubSeq(Oplog[i], 1, cmp)
+            appendLog == SubSeq(Oplog[j], cmp+1, Len(Oplog[j]))
+        IN Oplog' = [Oplog EXCEPT ![i] = commonLog \o appendLog]
+    /\ CurrentTerm' = [CurrentTerm EXCEPT ![i] = Max(CurrentTerm[i], CurrentTerm[j])] \* update CurrentTerm                                
+    /\ Store' = [Store EXCEPT ![i] =  Store[j]]
+    /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
+    /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i] 
+    /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
+    /\ State' = 
+            LET SubHbState == State[i]
+                hb == [ SubHbState EXCEPT ![j] = Ot[j] ]
+            IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
+    /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i] ]
+       IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
+    /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
+    /\ UNCHANGED <<Primary, Secondary, InMsgc, InMsgs, BlockedClient, 
+                    BlockedThread, OpCount, Pt, CalState, SnapshotTable, 
+                    History, ReadyToServe>> 
+    
 \* Tunable Protocol: Server Actions
 -----------------------------------------------------------------------------
                            
@@ -779,7 +797,7 @@ ServerPutReply == \/ ServerPutReply_zero
                   \/ ServerPutReply_number_wake  
                   \/ ServerPutReply_majority_wake
                                                      
-RollbackOplogAction == \E i, j \in Server: RollbackOplog(i, j)   
+RollbackOplogAction == \E i, j \in Server: RollbackAndRecover(i, j)   
 
 ReplicateAction == \E i, j \in Server: Replicate(i, j)   
 
@@ -918,5 +936,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Apr 07 10:28:09 CST 2022 by dh
+\* Last modified Sat Apr 09 00:52:42 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh

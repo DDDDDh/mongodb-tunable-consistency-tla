@@ -1179,7 +1179,12 @@
 \@pvspace{8.0pt}%
  \@x{ LogTerm ( i ,\, index ) \.{\defeq} {\IF} index \.{=} 0 \.{\THEN} 0
  \.{\ELSE} Oplog [ i ] [ index ] . term}%
-\@x{ LastTerm ( i ) \.{\defeq} LogTerm ( i ,\, Len ( Oplog [ i ] ) )}%
+\@x{ LastTerm ( i ) \.{\defeq} CurrentTerm [ i ]}%
+\@x{}%
+\@y{%
+ \ensuremath{LastTerm(i) \.{\defeq} LogTerm(i,\, Len(Oplog[i]))
+}}%
+\@xx{}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1297,7 +1302,7 @@
  \@x{\@s{107.78} \.{\THEN} SubSeq ( Oplog [ j ] ,\, len\_i \.{+} 1 ,\, len\_j
  )}%
 \@x{\@s{107.78} \.{\ELSE} {\langle} {\rangle}}%
-\@pvspace{8.0pt}%
+\@pvspace{32.0pt}%
 \@x{}%
 \@y{\@s{0}%
  Can node \ensuremath{i} rollback its log based on \ensuremath{j}\mbox{'}s log
@@ -1306,23 +1311,17 @@
  \@x{ CanRollback ( i ,\, j ) \.{\defeq} \.{\land} Len ( Oplog [ i ]
  )\@s{0.42} \.{>} 0}%
 \@x{\@s{96.25} \.{\land} Len ( Oplog [ j ] ) \.{>} 0}%
-\@x{\@s{96.25} \.{\land} LastTerm ( i ) \.{<} LastTerm ( j )}%
+\@x{\@s{96.25} \.{\land} CurrentTerm [ i ] \.{<} CurrentTerm [ j ]}%
 \@x{\@s{96.25} \.{\land}}%
 \@x{\@s{108.55} \.{\lor} Len ( Oplog [ i ] ) \.{>} Len ( Oplog [ j ] )}%
  \@x{\@s{108.55} \.{\lor} \.{\land} Len ( Oplog [ i ] ) \.{\leq} Len ( Oplog [
  j ] )}%
- \@x{\@s{119.66} \.{\land} LastTerm ( i ) \.{\neq} LogTerm ( j ,\, Len ( Oplog
- [ i ] ) )}%
-\@x{\@s{119.66}}%
-\@y{%
- 注意检查：是\ensuremath{Len(Oplog[i])}还是\ensuremath{Len(Oplog[i]\.{+}1\.{?}\.{-}1\.{?})
-}}%
-\@xx{}%
+ \@x{\@s{119.66} \.{\land} CurrentTerm [ i ] \.{\neq} LogTerm ( j ,\, Len (
+ Oplog [ i ] ) )}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- Returns the highest common index between two divergent logs,
- \mbox{'}li\mbox{'} and \mbox{'}lj\mbox{'}.
+ Returns the highest common index between two divergent logs.
 }%
 \@xx{}%
 \@x{}%
@@ -1735,6 +1734,10 @@
 \@x{\@s{4.1} Replicate ( i ,\, j ) \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
 \@x{\@s{16.4} \.{\land} CanSyncFrom ( i ,\, j )}%
+\@y{\@s{0}%
+ \ensuremath{i} can sync from \ensuremath{j} only need not to rollback
+}%
+\@xx{}%
 \@x{\@s{16.4} \.{\land} i \.{\in} Secondary}%
  \@x{\@s{16.4} \.{\land} ReplicateOplog ( i ,\, j ) \.{\neq} {\langle}
  {\rangle}}%
@@ -1789,21 +1792,78 @@
  SnapshotTable ,\,}%
 \@x{\@s{94.08} History ,\, ReadyToServe {\rangle}}%
 \@pvspace{8.0pt}%
-\@x{ RollbackOplog ( i ,\, j ) \.{\defeq}}%
+\@x{}%
+\@y{\@s{0}%
+ Rollback \ensuremath{i}\mbox{'}s oplog and recover it to
+ \ensuremath{j}\mbox{'}s state
+}%
+\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ Recover to \ensuremath{j}\mbox{'}s state immediately to prevent internal
+ client request
+}%
+\@xx{}%
+\@x{ RollbackAndRecover ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
 \@x{\@s{16.4} \.{\land} i \.{\in} Secondary}%
 \@x{\@s{16.4} \.{\land} CanRollback ( i ,\, j )}%
  \@x{\@s{16.4} \.{\land} \.{\LET} cmp \.{\defeq} RollbackCommonPoint ( i ,\, j
- ) \.{\IN}}%
- \@x{\@s{31.61} \.{\land}\@s{5.18} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang}
- [ i ] \.{=} SubSeq ( Oplog [ i ] ,\, 1 ,\, cmp ) ]}%
- \@x{\@s{31.61} \.{\land}\@s{5.18} CurrentTerm \.{'} \.{=} [ CurrentTerm
- {\EXCEPT} {\bang} [ i ] \.{=} LogTerm ( j ,\, cmp ) ]}%
+ )\@s{4.1} \.{\IN}}%
+ \@x{\@s{31.61} \.{\LET} commonLog \.{\defeq} SubSeq ( Oplog [ i ] ,\, 1 ,\,
+ cmp )}%
+ \@x{\@s{52.01} appendLog\@s{6.13} \.{\defeq} SubSeq ( Oplog [ j ] ,\, cmp
+ \.{+} 1 ,\, Len ( Oplog [ j ] ) )}%
+ \@x{\@s{31.61} \.{\IN} Oplog \.{'} \.{=} [ Oplog {\EXCEPT} {\bang} [ i ]
+ \.{=} commonLog \.{\circ} appendLog ]}%
+ \@x{\@s{16.4} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
+ {\bang} [ i ] \.{=} Max ( CurrentTerm [ i ] ,\, CurrentTerm [ j ] ) ]}%
+\@y{\@s{0}%
+ update \ensuremath{CurrentTerm
+}}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} Store \.{'} \.{=} [ Store {\EXCEPT} {\bang} [ i ]
+ \.{=}\@s{4.1} Store [ j ] ]}%
+ \@x{\@s{16.4} \.{\land} Ct \.{'}\@s{1.47} \.{=} [ Ct {\EXCEPT} {\bang} [ i
+ ]\@s{1.47} \.{=} HLCMax ( Ct [ i ] ,\, Ct [ j ] ) ]\@s{2.94}}%
+\@y{\@s{0}%
+ update \ensuremath{Ct[i]
+}}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} Ot \.{'}\@s{0.96} \.{=} [ Ot {\EXCEPT} {\bang} [ i
+ ]\@s{0.96} \.{=} HLCMax ( Ot [ i ] ,\, Ot [ j ] ) ]\@s{1.92}}%
+\@y{\@s{0}%
+ update \ensuremath{Ot[i]
+}}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ i ] \.{=}
+ HLCMax ( Cp [ i ] ,\, Cp [ j ] ) ]}%
+\@y{\@s{0}%
+ update \ensuremath{Cp[i]
+}}%
+\@xx{}%
+\@x{\@s{16.4} \.{\land} State \.{'} \.{=}}%
+\@x{\@s{50.24} \.{\LET} SubHbState \.{\defeq} State [ i ]}%
+ \@x{\@s{70.63} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ j ] \.{=} Ot [
+ j ] ]}%
+\@x{\@s{50.24} \.{\IN} [ State {\EXCEPT} {\bang} [ i ] \.{=} hb ]}%
+\@y{\@s{0}%
+ update \ensuremath{j}\mbox{'}s state \ensuremath{i} knows
+}%
+\@xx{}%
+ \@x{\@s{16.4} \.{\land} \.{\LET} msg \.{\defeq} [ type
+ \.{\mapsto}\@w{update\_position} ,\, s \.{\mapsto} i ,\, aot \.{\mapsto} Ot
+ \.{'} [ i ] ,\, ct \.{\mapsto} Ct \.{'} [ i ] ,\, cp \.{\mapsto} Cp \.{'} [
+ i ] ]}%
+ \@x{\@s{27.51} \.{\IN} ServerMsg \.{'} \.{=} [ ServerMsg {\EXCEPT} {\bang} [
+ j ] \.{=} Append ( ServerMsg [ j ] ,\, msg ) ]}%
+ \@x{\@s{16.4} \.{\land} SyncSource \.{'} \.{=} [ SyncSource {\EXCEPT} {\bang}
+ [ i ] \.{=} j ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Store ,\, Ct ,\, Ot ,\, InMsgc ,\, InMsgs ,\,}%
-\@x{\@s{89.98} ServerMsg ,\, BlockedClient ,\, BlockedThread ,\, OpCount ,\,}%
- \@x{\@s{89.98} Pt ,\, Cp ,\, State ,\, CalState ,\, SnapshotTable ,\, History
- ,\,}%
-\@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
+ InMsgc ,\, InMsgs ,\, BlockedClient ,\,}%
+ \@x{\@s{94.08} BlockedThread ,\, OpCount ,\, Pt ,\, CalState ,\,
+ SnapshotTable ,\,}%
+\@x{\@s{94.08} History ,\, ReadyToServe {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -2660,7 +2720,7 @@
 \@x{\@s{87.00} \.{\lor} ServerPutReply\_majority\_wake}%
 \@pvspace{8.0pt}%
  \@x{ RollbackOplogAction \.{\defeq} \E\, i ,\, j \.{\in} Server \.{:}
- RollbackOplog ( i ,\, j )}%
+ RollbackAndRecover ( i ,\, j )}%
 \@pvspace{8.0pt}%
  \@x{ ReplicateAction \.{\defeq} \E\, i ,\, j \.{\in} Server \.{:} Replicate (
  i ,\, j )}%
@@ -2823,8 +2883,8 @@
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
- \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Thu}
- \ensuremath{Apr} 07 10:28:09 \ensuremath{CST} 2022 by \ensuremath{dh
+ \ensuremath{\.{\,\backslash\,}\.{*}} Last modified Sat \ensuremath{Apr} 09
+ 00:52:42 \ensuremath{CST} 2022 by \ensuremath{dh
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
