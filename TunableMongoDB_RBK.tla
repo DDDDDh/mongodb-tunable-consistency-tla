@@ -135,7 +135,7 @@ CanSyncFrom(i, j) ==
 ReplicateOplog(i, j) ==     
     LET len_i == Len(Oplog[i])
         len_j == Len(Oplog[j])
-    IN IF i /= Primary /\ len_i < len_j
+    IN IF i \in Secondary /\ len_i < len_j
                         THEN SubSeq(Oplog[j], len_i + 1, len_j)
                         ELSE <<>>
              
@@ -235,9 +235,11 @@ ElectPrimary(i, majorNodes) ==
     /\ CurrentTerm' = [index \in Server |-> IF index \in (majorNodes \cup {i})
                                             THEN CurrentTerm[i] + 1
                                             ELSE CurrentTerm[index]]
+    \* A primary node do not have any sync source                                        
+    /\ SyncSource' = [SyncSource EXCEPT ![i] = Nil ]                                        
     /\ UNCHANGED <<Oplog, Store, Ct, Ot, InMsgc, InMsgs, ServerMsg, BlockedClient, 
                    BlockedThread, OpCount, Pt, Cp, State, CalState, SnapshotTable, 
-                   History, CurrentTerm, ReadyToServe, SyncSource>> 
+                   History, ReadyToServe>> 
 
 TurnOnReadyToServe ==
     /\ ReadyToServe = 0
@@ -260,7 +262,7 @@ ServerTakeHeartbeat ==
     /\ ReadyToServe > 0
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
-        /\ ServerMsg[s].type = "heartbeat"
+        /\ ServerMsg[s][1].type = "heartbeat"
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ]
         /\ State' = 
             LET SubHbState == State[s]
@@ -291,7 +293,7 @@ ServerTakeUpdatePosition ==
     /\ ReadyToServe > 0
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
-        /\ ServerMsg[s].type = "update_position"
+        /\ ServerMsg[s][1].type = "update_position"
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ] \* update ct accordingly
         /\ State' = 
             LET SubHbState == State[s]
@@ -313,7 +315,7 @@ ServerTakeUpdatePosition ==
                  ELSE Cp[s]
                  IN [ Cp EXCEPT ![s] = newcp ]      
        /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
-                           appendMsg == [ type |-> "update_position", s |-> s, aot |-> ServerMsg[s][1].aot, 
+                           appendMsg == [ type |-> "update_position", s |-> ServerMsg[s][1].s, aot |-> ServerMsg[s][1].aot, 
                                           ct |-> ServerMsg[s][1].ct, cp |-> ServerMsg[s][1].cp, term |-> ServerMsg[s][1].term ]
                            newMsg == IF s \in Primary 
                                      THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
@@ -324,7 +326,6 @@ ServerTakeUpdatePosition ==
                    BlockedClient, BlockedThread, OpCount, Pt, SnapshotTable, 
                    History, ReadyToServe, SyncSource>>
 
-\*建模了NTP协议，但是并没有使用，因为物理时钟只有在Primary节点用到
 NTPSync == \* simplify NTP protocal
     /\ ReadyToServe > 0
     /\ Pt' = [ s \in Server |-> MaxPt ] 
@@ -335,7 +336,7 @@ NTPSync == \* simplify NTP protocal
 AdvancePt == 
     /\ ReadyToServe > 0
     /\ \E s \in Server:  
-           /\ s = Primary                    \* for simplicity
+           /\ s \in Primary                    \* for simplicity
            /\ Pt[s] <= PtStop 
            /\ Pt' = [ Pt EXCEPT ![s] = @+1 ] \* advance physical time
            /\ BroadcastHeartbeat(s)          \* broadcast heartbeat periodly
@@ -364,7 +365,7 @@ AdvancePt ==
             LET SubHbState == State[i]
                 hb == [ SubHbState EXCEPT ![j] = Ot[j] ]
             IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
-    /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i] ]
+    /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
        IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
     /\ SyncSource' = [SyncSource EXCEPT ![i] = j]   
     /\ UNCHANGED <<Primary, Secondary, InMsgc, InMsgs, BlockedClient, 
@@ -936,5 +937,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Sat Apr 09 00:52:42 CST 2022 by dh
+\* Last modified Wed Apr 20 21:35:12 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh

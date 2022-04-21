@@ -958,19 +958,14 @@
  the set of keys and values
 }%
 \@xx{}%
-\@x{\@s{54.75} Nil ,\,\@s{45.1}}%
+\@x{\@s{54.75} Nil ,\,\@s{52.61}}%
 \@y{\@s{0}%
  model value, place holder
 }%
 \@xx{}%
-\@x{\@s{54.75} PtStop ,\,\@s{39.78}}%
+\@x{\@s{54.75} PtStop\@s{42.91}}%
 \@y{\@s{0}%
  max physical time
-}%
-\@xx{}%
-\@x{\@s{54.75} Number\@s{41.66}}%
-\@y{\@s{0}%
- \ensuremath{writeConcern} number
 }%
 \@xx{}%
 \@pvspace{8.0pt}%
@@ -1049,7 +1044,7 @@
 \@xx{}%
 \@x{\@s{51.42} SyncSource\@s{26.20}}%
 \@y{\@s{0}%
- sync source of server node \ensuremath{s
+ \ensuremath{SyncSource[s]}: sync source of server node \ensuremath{s
 }}%
 \@xx{}%
 \@pvspace{8.0pt}%
@@ -1325,6 +1320,18 @@
 }%
 \@xx{}%
 \@x{}\midbar\@xx{}%
+\@pvspace{8.0pt}%
+\@x{ TurnOnReadyToServe \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{=} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Primary \.{:}}%
+ \@x{\@s{31.61} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
+ {\bang} [ s ] \.{=} CurrentTerm [ s ] \.{+} 1 ]}%
+\@x{\@s{31.61} \.{\land} ReadyToServe \.{'} \.{=} ReadyToServe \.{+} 1}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\,\@s{4.1} Secondary
+ ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\,}%
+\@x{\@s{89.98} ServerMsg ,\, Pt ,\, Cp ,\,}%
+\@x{\@s{89.98} State ,\, CalState ,\, SyncSource {\rangle}}%
+\@pvspace{8.0pt}%
 \@x{ Stepdown \.{\defeq}}%
 \@x{\@s{53.70} \.{\land} ReadyToServe \.{>} 0}%
 \@x{\@s{53.70} \.{\land} \E\, s \.{\in} Primary \.{:}}%
@@ -1333,8 +1340,7 @@
 \@x{\@s{68.91} \.{\land} Secondary \.{'} \.{=} Secondary \.{\cup} \{ s \}}%
  \@x{\@s{53.70} \.{\land} {\UNCHANGED} {\langle} Oplog ,\, Store ,\, Ct ,\, Ot
  ,\, ServerMsg ,\,}%
-\@x{\@s{127.28} Pt ,\, Cp ,\,}%
-\@x{\@s{131.38} State ,\, CalState ,\, CurrentTerm ,\,}%
+\@x{\@s{127.28} Pt ,\, Cp ,\, State ,\, CalState ,\, CurrentTerm ,\,}%
 \@x{\@s{131.38} ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
@@ -1374,17 +1380,6 @@
  ,\, ServerMsg ,\, Pt ,\, Cp ,\, State ,\, CalState ,\,}%
 \@x{\@s{105.19} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
-\@x{ TurnOnReadyToServe \.{\defeq}}%
-\@x{\@s{16.4} \.{\land} ReadyToServe \.{=} 0}%
-\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Primary \.{:}}%
- \@x{\@s{31.61} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
- {\bang} [ s ] \.{=} CurrentTerm [ s ] \.{+} 1 ]}%
-\@x{\@s{31.61} \.{\land} ReadyToServe \.{'} \.{=} ReadyToServe \.{+} 1}%
- \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\,\@s{4.1} Secondary
- ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\,}%
-\@x{\@s{89.98} ServerMsg ,\, Pt ,\, Cp ,\,}%
-\@x{\@s{89.98} State ,\, CalState ,\, SyncSource {\rangle}}%
-\@pvspace{8.0pt}%
 \@x{ AdvanceCp \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
  \@x{\@s{16.4} \.{\land} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ Primary ]
@@ -1395,6 +1390,11 @@
  \@x{\@s{89.98} State ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource
  {\rangle}}%
 \@pvspace{8.0pt}%
+\@x{}%
+\@y{%
+ 注意：heartbeat没有更新oplog，没有更新\ensuremath{Ot}，也没有更新store状态
+}%
+\@xx{}%
 \@x{ ServerTakeHeartbeat \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
 \@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
@@ -1413,34 +1413,35 @@
 \@x{\@s{99.23} ServerMsg [ s ] [ 1 ] . aot ]}%
 \@x{\@s{46.82} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
 \@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} \.{\LET} newcal \.{\defeq}}%
-\@x{\@s{96.41} {\IF} s \.{\in} Primary}%
+\@x{\@s{116.81} {\IF} s \.{\in} Primary}%
 \@y{\@s{0}%
  primary node: update \ensuremath{CalState
 }}%
 \@xx{}%
- \@x{\@s{96.41} \.{\THEN}\@s{4.1} AdvanceState ( ServerMsg [ s ] [ 1 ] . aot
+ \@x{\@s{133.87} \.{\THEN}\@s{4.1} AdvanceState ( ServerMsg [ s ] [ 1 ] . aot
  ,\,}%
-\@x{\@s{172.82} State [ s ] [ ServerMsg [ s ] [ 1 ] . s ] ,\, CalState )}%
-\@x{\@s{96.41} \.{\ELSE} CalState \.{\IN} newcal}%
+\@x{\@s{231.96} State [ s ] [ ServerMsg [ s ] [ 1 ] . s ] ,\, CalState )}%
+\@x{\@s{116.81} \.{\ELSE} CalState}%
+\@x{\@s{96.41} \.{\IN} newcal}%
 \@x{\@s{31.61} \.{\land} Cp \.{'} \.{=} \.{\LET} newcp \.{\defeq}}%
 \@x{\@s{71.75}}%
 \@y{\@s{0}%
  primary node: compute new mcp
 }%
 \@xx{}%
- \@x{\@s{71.75} {\IF} s \.{\in} Primary \.{\THEN} CalState \.{'} [ Cardinality
+ \@x{\@s{84.05} {\IF} s \.{\in} Primary \.{\THEN} CalState \.{'} [ Cardinality
  ( Server ) \.{\div} 2 \.{+} 1 ]}%
 \@x{\@s{71.75}}%
 \@y{\@s{0}%
  secondary node: update mcp
 }%
 \@xx{}%
- \@x{\@s{71.75} \.{\ELSE} {\IF} {\lnot} HLCLt ( ServerMsg [ s ] [ 1 ] . cp ,\,
+ \@x{\@s{84.05} \.{\ELSE} {\IF} {\lnot} HLCLt ( ServerMsg [ s ] [ 1 ] . cp ,\,
  Cp [ s ] )}%
- \@x{\@s{103.06} \.{\land}\@s{1.04} {\lnot} HLCLt ( Ot [ s ] ,\, ServerMsg [ s
- ] [ 1 ] . cp )}%
-\@x{\@s{71.75} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
-\@x{\@s{71.75} \.{\ELSE} Cp [ s ]}%
+ \@x{\@s{127.52} \.{\land} {\lnot} HLCLt ( Ot [ s ] ,\, ServerMsg [ s ] [ 1 ]
+ . cp )}%
+\@x{\@s{100.45} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
+\@x{\@s{92.15} \.{\ELSE} Cp [ s ]}%
 \@x{\@s{71.75} \.{\IN} [ Cp {\EXCEPT} {\bang} [ s ] \.{=} newcp ]}%
  \@x{\@s{27.51} \.{\land} ServerMsg \.{'} \.{=} [ ServerMsg {\EXCEPT} {\bang}
  [ s ] \.{=} Tail ( @ ) ]}%
@@ -1506,7 +1507,8 @@
  \@x{\@s{27.51} \.{\land} ServerMsg \.{'} \.{=} \.{\LET} newServerMsg
  \.{\defeq} [ ServerMsg {\EXCEPT} {\bang} [ s ] \.{=} Tail ( @ ) ]}%
  \@x{\@s{121.55} appendMsg \.{\defeq} [ type \.{\mapsto}\@w{update\_position}
- ,\, s \.{\mapsto} s ,\, aot \.{\mapsto} ServerMsg [ s ] [ 1 ] . aot ,\,}%
+ ,\, s \.{\mapsto} ServerMsg [ s ] [ 1 ] . s ,\, aot \.{\mapsto} ServerMsg [
+ s ] [ 1 ] . aot ,\,}%
  \@x{\@s{191.91} ct \.{\mapsto} ServerMsg [ s ] [ 1 ] . ct ,\, cp\@s{0.73}
  \.{\mapsto} ServerMsg [ s ] [ 1 ] . cp ,\, term \.{\mapsto} ServerMsg [ s ]
  [ 1 ] . term ]}%
@@ -1525,14 +1527,8 @@
  ) ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
  Oplog ,\, Store ,\, Ot ,\,}%
-\@x{\@s{89.98} Pt ,\,}%
-\@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
+\@x{\@s{89.98} Pt ,\, ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
-\@x{}%
-\@y{%
- 建模了\ensuremath{NTP}协议，但是并没有使用，因为物理时钟只有在\ensuremath{Primary}节点用到
-}%
-\@xx{}%
 \@x{ NTPSync \.{\defeq}}%
 \@y{\@s{0}%
  simplify \ensuremath{NTP} protocal
@@ -1550,7 +1546,7 @@
 \@x{ AdvancePt \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
 \@x{\@s{16.4} \.{\land} \E\, s \.{\in} Server \.{:}}%
-\@x{\@s{38.83} \.{\land} s \.{=} Primary\@s{83.63}}%
+\@x{\@s{38.83} \.{\land} s \.{\in} Primary\@s{77.9}}%
 \@y{\@s{0}%
  for simplicity
 }%
@@ -1569,29 +1565,8 @@
 \@xx{}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
  Oplog ,\, Store ,\, Ct ,\, Ot ,\, State ,\,}%
-\@x{\@s{89.98} Cp ,\, CalState ,\, CurrentTerm ,\,}%
-\@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
- Replication
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{0}%
- Idea: 进行replicate的时候，首先进行\ensuremath{canSyncFrom}的判断，拥有更多\ensuremath{log}且大于等于term的才能作为同步源
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{0}%
- 其次，开始同步之后，把当前节点的同步源设置为\ensuremath{SyncSource[s]}，随后向\ensuremath{SyncSource}的信道里加入\ensuremath{UpdatePosition}消息
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{0}%
- 最后，关于\ensuremath{UpdatePosition}的转发，需要加入一个额外的action，如果自己的信道里有type为\ensuremath{updatePosition}的消息，则向上层节点转发
-}%
-\@xx{}%
+ \@x{\@s{89.98} Cp ,\, CalState ,\, CurrentTerm ,\, ReadyToServe ,\,
+ SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1650,7 +1625,7 @@
  \@x{\@s{31.61} \.{\land} \.{\LET} msg \.{\defeq} [ type
  \.{\mapsto}\@w{update\_position} ,\, s \.{\mapsto} i ,\, aot \.{\mapsto} Ot
  \.{'} [ i ] ,\, ct \.{\mapsto} Ct \.{'} [ i ] ,\, cp \.{\mapsto} Cp \.{'} [
- i ] ]}%
+ i ] ,\, term \.{\mapsto} CurrentTerm \.{'} [ i ] ]}%
  \@x{\@s{42.72} \.{\IN} ServerMsg \.{'} \.{=} [ ServerMsg {\EXCEPT} {\bang} [
  j ] \.{=} Append ( ServerMsg [ j ] ,\, msg ) ]}%
  \@x{\@s{31.61} \.{\land} SyncSource \.{'} \.{=} [ SyncSource {\EXCEPT}
@@ -1758,15 +1733,6 @@
  ,\, ServerMsg ,\,}%
 \@x{\@s{105.19} Pt ,\, Cp ,\,}%
 \@x{\@s{105.19} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
-\@pvspace{16.0pt}%
-\@x{}%
-\@y{\@s{0}%
- Action Wrapper
-}%
-\@xx{}%
-\@x{}\midbar\@xx{}%
-\@pvspace{8.0pt}%
-\@x{}\midbar\@xx{}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1782,9 +1748,38 @@
 \@x{\@s{39.83} \.{\lor} TurnOnReadyToServe}%
 \@x{\@s{39.83} \.{\lor} ElectPrimary}%
 \@x{\@s{39.83} \.{\lor} ClientRequest}%
+\@x{\@s{39.83} \.{\lor} NTPSync}%
 \@pvspace{8.0pt}%
 \@x{ Spec\@s{1.46} \.{\defeq} Init \.{\land} {\Box} [ Next ]_{ vars}}%
-\@pvspace{16.0pt}%
+\@pvspace{8.0pt}%
+\@x{}\midbar\@xx{}%
+\@x{}%
+\@y{%
+ Properties to check\.{?}
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{ IsLogPrefix ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \.{\land} Len ( Oplog [ i ] ) \.{\leq} Len ( Oplog [ j ] )}%
+ \@x{\@s{16.4} \.{\land} Oplog [ i ] \.{=} SubSeq ( Oplog [ j ] ,\, 1 ,\, Len
+ ( Oplog [ i ] ) )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ If two logs have the same last \ensuremath{log} entry term, then one is a
+ prefix of the other (from Will)
+}%
+\@xx{}%
+\@x{ LastTermsEquivalentImplyPrefixes \.{\defeq}}%
+\@x{\@s{16.4} \A\, i ,\, j \.{\in} Server \.{:}}%
+ \@x{\@s{27.70} LogTerm ( i ,\, Len ( Oplog [ i ] ) ) \.{=} LogTerm ( j ,\,
+ Len ( Oplog [ j ] ) ) \.{\implies}}%
+\@x{\@s{27.70} IsLogPrefix ( i ,\, j ) \.{\lor} IsLogPrefix ( j ,\, i )}%
+\@pvspace{8.0pt}%
+\@x{\@s{4.1} TermsMonotonic \.{\defeq}}%
+ \@x{\@s{16.4} {\Box} [ \A\, s \.{\in} Server \.{:} CurrentTerm \.{'} [ s ]
+ \.{\geq} CurrentTerm [ s ] ]_{ vars}}%
+\@pvspace{8.0pt}%
 \@x{}\bottombar\@xx{}%
 \setboolean{shading}{false}
 \begin{lcom}{0}%
@@ -1793,8 +1788,8 @@
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
- \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Mon}
- \ensuremath{Apr} 18 22:16:19 \ensuremath{CST} 2022 by \ensuremath{dh
+ \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Tue}
+ \ensuremath{Apr} 19 22:17:02 \ensuremath{CST} 2022 by \ensuremath{dh
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
