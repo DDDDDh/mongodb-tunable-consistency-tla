@@ -395,7 +395,8 @@ RollbackAndRecover(i, j) ==
     /\ State' = 
             LET SubHbState == State[i]
                 hb == [ SubHbState EXCEPT ![j] = Ot[j] ]
-            IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
+                hb1 == [ hb EXCEPT ![i] = Ot[j] ] \* update i's self state (used in mcp computation
+            IN [ State EXCEPT ![i] = hb1] \* update j's state i knows 
     /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i] ]
        IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
     /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
@@ -942,5 +943,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Apr 25 09:35:25 CST 2022 by dh
+\* Last modified Wed Apr 27 15:57:56 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh

@@ -18,8 +18,7 @@ VARIABLES Primary,        \* Primary node
           ServerMsg,      \* ServerMsg[s]: the channel of heartbeat msgs at server s
           Pt,             \* Pt[s]: physical time at server s
           Cp,             \* Cp[s]: majority commit point at server s
-          State,          \* State[s]: the latest Ot of all servers that server s knows
-          CalState,       \* CalState: sorted State[Primary]         
+          State,          \* State[s]: the latest Ot of all servers that server s knows   
           CurrentTerm,    \* CurrentTerm[s]: current election term at server s 
                           \* -> updated in update_position, heartbeat and replicate
           ReadyToServe,   \* equal to 0 before any primary is elected
@@ -33,6 +32,7 @@ ASSUME Cardinality(Value) >= 2  \* at least two values to update
 
 \* Helpers
 -----------------------------------------------------------------------------
+
 HLCLt(x, y) == IF x.p < y.p
                 THEN TRUE
                ELSE IF x.p = y.p
@@ -48,7 +48,7 @@ Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
 
 vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, ServerMsg, 
-          Pt, Cp, CalState, State, 
+          Pt, Cp, State, 
           CurrentTerm, ReadyToServe, SyncSource>>
 
 RECURSIVE CreateState(_,_) \* init state
@@ -67,26 +67,27 @@ NotBehind(i, j) == \/ LastTerm(i) > LastTerm(j)
 IsMajority(servers) == Cardinality(servers) * 2 > Cardinality(Server)
                                       
 \* Return the maximum value from a set, or undefined if the set is empty.
-MaxVal(s) == CHOOSE x \in s : \A y \in s : x >= y                            
+MaxVal(s) == CHOOSE x \in s : \A y \in s : x >= y        
+HLCMinSet(s) == CHOOSE x \in s: \A y \in s: HLCLt(x, y)                    
 
 \* commit point
-RECURSIVE AddState(_,_,_)
-AddState(new, state, index) == 
-    IF index = 1 /\ HLCLt(new, state[1]) 
-        THEN  <<new>> \o state\* less than the first 
-    ELSE IF index = Len(state) + 1 
-        THEN state \o <<new>>
-    ELSE IF HLCLt(new, state[index]) 
-        THEN SubSeq(state, 1, index - 1) \o <<new>> \o SubSeq(state, index, Len(state))
-    ELSE AddState(new, state, index + 1)
-    
-RECURSIVE RemoveState(_,_,_) 
-RemoveState(old, state, index) == 
-    IF state[index] = old 
-        THEN SubSeq(state, 1, index - 1) \o SubSeq(state, index + 1, Len(state))
-    ELSE RemoveState(old, state, index + 1)
-
-AdvanceState(new, old, state) == AddState(new, RemoveState(old, state, 1), 1)  
+\*RECURSIVE AddState(_,_,_)
+\*AddState(new, state, index) == 
+\*    IF index = 1 /\ HLCLt(new, state[1]) 
+\*        THEN  <<new>> \o state\* less than the first 
+\*    ELSE IF index = Len(state) + 1 
+\*        THEN state \o <<new>>
+\*    ELSE IF HLCLt(new, state[index]) 
+\*        THEN SubSeq(state, 1, index - 1) \o <<new>> \o SubSeq(state, index, Len(state))
+\*    ELSE AddState(new, state, index + 1)
+\*    
+\*RECURSIVE RemoveState(_,_,_) 
+\*RemoveState(old, state, index) == 
+\*    IF state[index] = old 
+\*        THEN SubSeq(state, 1, index - 1) \o SubSeq(state, index + 1, Len(state))
+\*    ELSE RemoveState(old, state, index + 1)
+\*
+\*AdvanceState(new, old, state) == AddState(new, RemoveState(old, state, 1), 1)  
 
 \* clock
 
@@ -134,6 +135,19 @@ RollbackCommonPoint(i, j) ==
                             /\ k <= Len(Oplog[j])
                             /\ Oplog[i][k] = Oplog[j][k]} IN
         IF commonIndices = {} THEN 0 ELSE MaxVal(commonIndices)    
+        
+\* The set of all quorums. This just calculates simple majorities, but the only
+\* important property is that every quorum overlaps with every other.
+Quorum == {i \in SUBSET(Server) : Cardinality(i) * 2 > Cardinality(Server)}
+        
+QuorumAgreeInSameTerm(matchEntryVal) == 
+    LET quorums == {Q \in Quorum :
+                    \* Make sure all nodes in quorum have actually applied some entries.
+                    /\ \A s \in Q : matchEntryVal[s][1] > 0
+                    \* Make sure every applied entry in quorum has the same term.
+                    /\ \A s, t \in Q : 
+                       s # t => CurrentTerm[s] = CurrentTerm[t]} IN
+        IF quorums = {} THEN Nil ELSE CHOOSE x \in quorums : TRUE            
                                  
 \* Init Part                       
 -----------------------------------------------------------------------------
@@ -146,17 +160,17 @@ InitOt == Ot = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitServerMsg == ServerMsg = [ s \in Server |-> <<>> ]
 InitPt == Pt = [ s \in Server |-> 1 ]
 InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
-InitCalState == CalState = [s \in Server |-> CreateState(Cardinality(Server), <<>>)]
+\*InitCalState == CalState = [s \in Server |-> CreateState(Cardinality(Server), <<>>)]
                              \* create initial state(for calculate)
 InitState == State = [ s \in Server |-> [ s0 \in Server |-> 
-                                              [ p |-> 0, l |-> 0 ] ] ] 
+                                              [ p |-> 0, l |-> 0, term |-> 0] ] ] 
 InitCurrentTerm == CurrentTerm = [s \in Server |-> 0] 
 InitReadyToServe == ReadyToServe = 0
 InitSyncSource == SyncSource = [ s \in Server |-> Nil]                                                                              
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
-    /\ InitOt /\ InitPt /\ InitCp /\ InitCalState
+    /\ InitOt /\ InitPt /\ InitCp 
     /\ InitServerMsg 
     /\ InitState /\ InitCurrentTerm /\ InitReadyToServe
     /\ InitSyncSource
@@ -171,8 +185,7 @@ TurnOnReadyToServe ==
         /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = CurrentTerm[s] + 1]
         /\ ReadyToServe' = ReadyToServe + 1
     /\ UNCHANGED<<Primary,  Secondary, Oplog, Store, Ct, Ot, 
-                  ServerMsg, Pt, Cp, 
-                  State, CalState, SyncSource>> 
+                  ServerMsg, Pt, Cp, State, SyncSource>> 
 
 Stepdown == 
             /\ ReadyToServe > 0
@@ -180,7 +193,7 @@ Stepdown ==
                 /\ Primary' = Primary \ {s}
                 /\ Secondary' = Secondary \cup {s}
             /\ UNCHANGED <<Oplog, Store, Ct, Ot, ServerMsg, 
-                           Pt, Cp, State, CalState, CurrentTerm, 
+                           Pt, Cp, State, CurrentTerm, 
                             ReadyToServe, SyncSource>>
                             
 \* Todo: Stepdown when receiving a higher term heartbeat                            
@@ -203,16 +216,28 @@ ElectPrimary ==
                                                 ELSE CurrentTerm[index]]
         \* A primary node do not have any sync source                                        
         /\ SyncSource' = [SyncSource EXCEPT ![i] = Nil ]
-        /\ UNCHANGED <<Oplog, Store, Ct, Ot, ServerMsg, Pt, Cp, State, CalState,
-                       ReadyToServe>> 
+        /\ UNCHANGED <<Oplog, Store, Ct, Ot, ServerMsg, Pt, Cp, State, ReadyToServe>> 
 
-AdvanceCp == 
+\*AdvanceCp == 
+\*    /\ ReadyToServe > 0
+\*    /\ \E s \in Primary:
+\*        Cp' = [Cp EXCEPT ![s] = CalState[s][Cardinality(Server) \div 2 + 1] ] 
+\*    /\ UNCHANGED<<Primary, Secondary, Oplog, Store, Ct, Ot, 
+\*                  ServerMsg,  Pt, State, CurrentTerm, ReadyToServe, SyncSource>> 
+\*                  
+AdvanceCp ==
     /\ ReadyToServe > 0
-    /\ \E s \in Primary:
-        Cp' = [Cp EXCEPT ![s] = CalState[s][Cardinality(Server) \div 2 + 1] ] 
-    /\ UNCHANGED<<Primary, Secondary, Oplog, Store, Ct, Ot, 
-                  ServerMsg,  Pt, CalState, 
-                  State, CurrentTerm, ReadyToServe, SyncSource>> 
+    /\ \E i \in Primary:
+        LET quorumAgree == QuorumAgreeInSameTerm(State[i]) IN
+            /\ quorumAgree /= Nil
+            /\ LET serverInQuorum == CHOOSE s \in quorumAgree: TRUE
+                   termOfQuorum == State[i][serverInQuorum][3]   
+                   newCommitPoint == HLCMinSet({[p |-> State[i][s][1], l |-> State[i][s][2]]: s \in quorumAgree})
+               IN /\ termOfQuorum = CurrentTerm[i]
+                  /\ LET newCP == [ p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum ] IN
+                         Cp' = [ Cp EXCEPT ![i] = newCP]
+    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, 
+                  ServerMsg,  Pt, State, CurrentTerm, ReadyToServe, SyncSource>>                              
            
 \*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
 ServerTakeHeartbeat ==
@@ -222,22 +247,29 @@ ServerTakeHeartbeat ==
         /\ ServerMsg[s][1].type = "heartbeat"
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ]
         /\ State' = 
-            LET SubHbState == State[s]
-                hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = 
-                        ServerMsg[s][1].aot ]
-            IN [ State EXCEPT ![s] = hb]
-        /\ CalState' = LET newcal ==   
-                           IF s \in Primary \* primary node: update CalState
-                                THEN  [CalState EXCEPT ![s] = 
-                                       AdvanceState(ServerMsg[s][1].aot, State[s][ServerMsg[s][1].s], CalState[s])]
-                           ELSE CalState 
-                       IN newcal
+            LET newState == [
+                    p |-> ServerMsg[s][1].aot.p,
+                    l |-> ServerMsg[s][1].aot.l,
+                    term |-> ServerMsg[s][1].term
+                ]
+            IN LET SubHbState == State[s]
+                   hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = newState ]
+               IN [ State EXCEPT ![s] = hb]
         /\ Cp' = LET newcp ==
                  \* primary node: compute new mcp
-                    IF s \in Primary THEN CalState'[s][Cardinality(Server) \div 2 + 1]
+                    IF s \in Primary THEN 
+                        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
+                            /\ quorumAgree /= Nil
+                            /\ LET serverInQuorum == CHOOSE i \in quorumAgree: TRUE
+                                   termOfQuorum == State[s][serverInQuorum][3]   
+                                   newCommitPoint == HLCMinSet({[p |-> State[s][i][1], l |-> State[s][i][2]]: i \in quorumAgree})
+                               IN IF termOfQuorum = CurrentTerm[s]
+                                    THEN [ p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum ]
+                                  ELSE Cp[s]
                  \* secondary node: update mcp   
-                    ELSE IF ~ HLCLt(ServerMsg[s][1].cp, Cp[s])
-                            /\ ~ HLCLt(Ot[s], ServerMsg[s][1].cp)
+                    ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
+                            /\ ~ HLCLt(msgCP, Cp[s])
+                            /\ ~ HLCLt(Ot[s], msgCP)
                         THEN ServerMsg[s][1].cp
                     ELSE Cp[s]
                  IN [ Cp EXCEPT ![s] = newcp ]
@@ -253,25 +285,32 @@ ServerTakeUpdatePosition ==
         /\ ServerMsg[s][1].type = "update_position"
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ] \* update ct accordingly
         /\ State' = 
-            LET SubHbState == State[s]
-                hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = 
-                        ServerMsg[s][1].aot ]
-            IN [ State EXCEPT ![s] = hb]
-        /\ CalState' = LET newcal ==   
-                           IF s \in Primary \* primary node: update CalState
-                                THEN [CalState EXCEPT ![s] = 
-                                       AdvanceState(ServerMsg[s][1].aot, State[s][ServerMsg[s][1].s], CalState[s])]
-                           ELSE CalState 
-                       IN newcal
+            LET newState == [
+                    p |-> ServerMsg[s][1].aot.p,
+                    l |-> ServerMsg[s][1].aot.l,
+                    term |-> ServerMsg[s][1].term
+                ]
+            IN LET SubHbState == State[s]
+                   hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = newState ]
+               IN [ State EXCEPT ![s] = hb]
         /\ Cp' = LET newcp ==
                  \* primary node: compute new mcp
-                 IF s \in Primary THEN CalState'[s][Cardinality(Server) \div 2 + 1]
+                    IF s \in Primary THEN 
+                        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
+                            /\ quorumAgree /= Nil
+                            /\ LET serverInQuorum == CHOOSE i \in quorumAgree: TRUE
+                                   termOfQuorum == State[s][serverInQuorum][3]   
+                                   newCommitPoint == HLCMinSet({[p |-> State[s][i][1], l |-> State[s][i][2]]: i \in quorumAgree})
+                               IN IF termOfQuorum = CurrentTerm[s]
+                                    THEN [ p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum ]
+                                  ELSE Cp[s]
                  \* secondary node: update mcp   
-                 ELSE IF ~ HLCLt(ServerMsg[s][1].cp, Cp[s])
-                      /\ ~ HLCLt(Ot[s], ServerMsg[s][1].cp)
-                 THEN ServerMsg[s][1].cp
-                 ELSE Cp[s]
-                 IN [ Cp EXCEPT ![s] = newcp ]      
+                    ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
+                            /\ ~ HLCLt(msgCP, Cp[s])
+                            /\ ~ HLCLt(Ot[s], msgCP)
+                        THEN ServerMsg[s][1].cp
+                    ELSE Cp[s]
+                 IN [ Cp EXCEPT ![s] = newcp ]    
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]             
        /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
                        IN  ( LET  appendMsg == [ type |-> "update_position", s |-> ServerMsg[s][1].s, aot |-> ServerMsg[s][1].aot, 
@@ -287,8 +326,7 @@ NTPSync == \* simplify NTP protocal
     /\ ReadyToServe > 0
     /\ Pt' = [ s \in Server |-> MaxPt ] 
     /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot,
-                  ServerMsg, Cp,
-                  CalState, State, CurrentTerm, ReadyToServe, SyncSource>>
+                  ServerMsg, Cp, State, CurrentTerm, ReadyToServe, SyncSource>>
 
 AdvancePt == 
     /\ ReadyToServe > 0
@@ -298,7 +336,7 @@ AdvancePt ==
            /\ Pt' = [ Pt EXCEPT ![s] = @+1 ] \* advance physical time
            /\ BroadcastHeartbeat(s)          \* broadcast heartbeat periodly
     /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, State, 
-                   Cp, CalState, CurrentTerm, ReadyToServe, SyncSource>>
+                   Cp, CurrentTerm, ReadyToServe, SyncSource>>
                
 \* Replicate oplog from node j to node i, and update related structures accordingly
  Replicate == 
@@ -314,13 +352,18 @@ AdvancePt ==
         /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
         /\ CurrentTerm' = [CurrentTerm EXCEPT ![i] = Max(CurrentTerm[i], CurrentTerm[j])] \* update CurrentTerm
         /\ State' = 
-                LET SubHbState == State[i]
-                    hb == [ SubHbState EXCEPT ![j] = Ot[j] ]
-                IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
+            LET newState == [
+                    p |-> Ot[j].p,
+                    l |-> Ot[j].l,
+                    term |-> CurrentTerm[j]
+                ]
+            IN LET SubHbState == State[i]
+                   hb == [ SubHbState EXCEPT ![j] = newState ]
+               IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
-        /\ CalState' = [CalState EXCEPT ![i] = CalState[j]]  
+\*        /\ CalState' = [CalState EXCEPT ![i] = CalState[j]]  
         /\ UNCHANGED <<Primary, Secondary, Pt, ReadyToServe>>
                    
 \* Rollback i's oplog and recover it to j's state   
@@ -339,14 +382,25 @@ RollbackAndRecover ==
         /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
         /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i] 
         /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
-        /\ State' = LET SubHbState == State[i]
-                        hb == [ SubHbState EXCEPT ![j] = Ot[j] ]
-                    IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
+        /\ State' = 
+            LET newStatei == [
+                    p |-> Ot'[i].p,
+                    l |-> Ot'[j].l,
+                    term |-> CurrentTerm'[i]
+                ]
+                newStatej == [
+                    p |-> Ot[j].p,
+                    l |-> Ot[j].l,
+                    term |-> CurrentTerm[j]
+                ]
+            IN LET SubHbState == State[i]
+                   hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
+                   hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
+               IN [ State EXCEPT ![i] = hb1]
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
-        /\ UNCHANGED <<Primary, Secondary, Pt, CalState,
-                   ReadyToServe>> 
+        /\ UNCHANGED <<Primary, Secondary, Pt, ReadyToServe>> 
                     
 ClientRequest ==
     /\ ReadyToServe > 0
@@ -358,11 +412,15 @@ ClientRequest ==
         /\ Oplog' = LET entry == [ k|-> k, v |-> v, ot |-> Ot'[s], term |-> CurrentTerm[s]]
                         newLog == Append(Oplog[s], entry)
                     IN  [ Oplog EXCEPT ![s] = newLog ]
-        /\ State' = LET SubHbState == State[s]
-                        hb == [SubHbState EXCEPT ![s] = Ot'[s]]
-                    IN [State EXCEPT ![s] = hb]
-        /\ CalState' = [CalState EXCEPT ![s] = 
-                                       AdvanceState(Ot'[s], Ot[s], CalState[s])]
+        /\ State' =
+            LET newState == [
+                    p |-> Ot'[s].p,
+                    l |-> Ot'[s].l,
+                    term |-> CurrentTerm[s]
+                ]
+            IN LET SubHbState == State[s]
+                   hb == [ SubHbState EXCEPT ![s] = newState ]
+               IN [ State EXCEPT ![s] = hb] \* update i's state            
         /\ UNCHANGED <<Primary,  Secondary, ServerMsg, 
                        Pt, Cp,
                        CurrentTerm, ReadyToServe, SyncSource>>       
@@ -450,5 +508,5 @@ NoNonTrivialSyncCycle == ~NonTrivialSyncCycle
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Apr 26 16:06:47 CST 2022 by dh
+\* Last modified Thu Apr 28 00:39:43 CST 2022 by dh
 \* Created Mon Apr 18 11:38:53 CST 2022 by dh
