@@ -1,3 +1,5 @@
+\* To fix: 消息存在延迟，比如说新的主当选之后收到旧主的heartbeat之类
+
 ------------------------ MODULE TunableMongoDB_Repl ------------------------
 EXTENDS Naturals, FiniteSets, Sequences, TLC
 
@@ -144,7 +146,7 @@ InitOt == Ot = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitServerMsg == ServerMsg = [ s \in Server |-> <<>> ]
 InitPt == Pt = [ s \in Server |-> 1 ]
 InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
-InitCalState == CalState = CreateState(Cardinality(Server), <<>>)
+InitCalState == CalState = [s \in Server |-> CreateState(Cardinality(Server), <<>>)]
                              \* create initial state(for calculate)
 InitState == State = [ s \in Server |-> [ s0 \in Server |-> 
                                               [ p |-> 0, l |-> 0 ] ] ] 
@@ -180,6 +182,8 @@ Stepdown ==
             /\ UNCHANGED <<Oplog, Store, Ct, Ot, ServerMsg, 
                            Pt, Cp, State, CalState, CurrentTerm, 
                             ReadyToServe, SyncSource>>
+                            
+\* Todo: Stepdown when receiving a higher term heartbeat                            
 
 \* There are majority nodes agree to elect node i to become primary                            
 ElectPrimary ==
@@ -205,7 +209,7 @@ ElectPrimary ==
 AdvanceCp == 
     /\ ReadyToServe > 0
     /\ \E s \in Primary:
-        Cp' = [Cp EXCEPT ![s] = CalState[Cardinality(Server) \div 2 + 1] ] 
+        Cp' = [Cp EXCEPT ![s] = CalState[s][Cardinality(Server) \div 2 + 1] ] 
     /\ UNCHANGED<<Primary, Secondary, Oplog, Store, Ct, Ot, 
                   ServerMsg,  Pt, CalState, 
                   State, CurrentTerm, ReadyToServe, SyncSource>> 
@@ -224,13 +228,13 @@ ServerTakeHeartbeat ==
             IN [ State EXCEPT ![s] = hb]
         /\ CalState' = LET newcal ==   
                            IF s \in Primary \* primary node: update CalState
-                                THEN  AdvanceState(ServerMsg[s][1].aot, 
-                                                   State[s][ServerMsg[s][1].s], CalState) 
+                                THEN  [CalState EXCEPT ![s] = 
+                                       AdvanceState(ServerMsg[s][1].aot, State[s][ServerMsg[s][1].s], CalState[s])]
                            ELSE CalState 
                        IN newcal
         /\ Cp' = LET newcp ==
                  \* primary node: compute new mcp
-                    IF s \in Primary THEN CalState'[Cardinality(Server) \div 2 + 1]
+                    IF s \in Primary THEN CalState'[s][Cardinality(Server) \div 2 + 1]
                  \* secondary node: update mcp   
                     ELSE IF ~ HLCLt(ServerMsg[s][1].cp, Cp[s])
                             /\ ~ HLCLt(Ot[s], ServerMsg[s][1].cp)
@@ -255,13 +259,13 @@ ServerTakeUpdatePosition ==
             IN [ State EXCEPT ![s] = hb]
         /\ CalState' = LET newcal ==   
                            IF s \in Primary \* primary node: update CalState
-                                THEN  AdvanceState(ServerMsg[s][1].aot, 
-                                       State[s][ServerMsg[s][1].s], CalState) 
+                                THEN [CalState EXCEPT ![s] = 
+                                       AdvanceState(ServerMsg[s][1].aot, State[s][ServerMsg[s][1].s], CalState[s])]
                            ELSE CalState 
                        IN newcal
         /\ Cp' = LET newcp ==
                  \* primary node: compute new mcp
-                 IF s \in Primary THEN CalState'[Cardinality(Server) \div 2 + 1]
+                 IF s \in Primary THEN CalState'[s][Cardinality(Server) \div 2 + 1]
                  \* secondary node: update mcp   
                  ELSE IF ~ HLCLt(ServerMsg[s][1].cp, Cp[s])
                       /\ ~ HLCLt(Ot[s], ServerMsg[s][1].cp)
@@ -315,9 +319,9 @@ AdvancePt ==
                 IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
-        /\ SyncSource' = [SyncSource EXCEPT ![i] = j]   
-        /\ UNCHANGED <<Primary, Secondary, Pt, CalState,
-                   ReadyToServe>>
+        /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
+        /\ CalState' = [CalState EXCEPT ![i] = CalState[j]]  
+        /\ UNCHANGED <<Primary, Secondary, Pt, ReadyToServe>>
                    
 \* Rollback i's oplog and recover it to j's state   
 \* Recover to j's state immediately to prevent internal client request  
@@ -357,7 +361,8 @@ ClientRequest ==
         /\ State' = LET SubHbState == State[s]
                         hb == [SubHbState EXCEPT ![s] = Ot'[s]]
                     IN [State EXCEPT ![s] = hb]
-        /\ CalState' = AdvanceState(Ot'[s], Ot[s], CalState)
+        /\ CalState' = [CalState EXCEPT ![s] = 
+                                       AdvanceState(Ot'[s], Ot[s], CalState[s])]
         /\ UNCHANGED <<Primary,  Secondary, ServerMsg, 
                        Pt, Cp,
                        CurrentTerm, ReadyToServe, SyncSource>>       
@@ -445,5 +450,5 @@ NoNonTrivialSyncCycle == ~NonTrivialSyncCycle
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Apr 20 21:34:50 CST 2022 by dh
+\* Last modified Tue Apr 26 16:06:47 CST 2022 by dh
 \* Created Mon Apr 18 11:38:53 CST 2022 by dh

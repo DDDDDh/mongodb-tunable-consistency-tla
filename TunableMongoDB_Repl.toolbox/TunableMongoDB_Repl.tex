@@ -1175,9 +1175,10 @@
 \@x{\@s{141.48} Pt [ s ] \.{\geq} Pt [ s1 ] \.{\IN} Pt [ x ]}%
 \@pvspace{8.0pt}%
  \@x{ Tick ( s ) \.{\defeq} Ct \.{'} \.{=} {\IF} Ct [ s ] . p \.{\geq} Pt [ s
- ] \.{\THEN} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto} @ . p ,\, l
- \.{\mapsto} @ . l \.{+} 1 ] ]}%
- \@x{\@s{157.05} \.{\ELSE} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto}
+ ]}%
+ \@x{\@s{91.79} \.{\THEN} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto} @
+ . p ,\, l \.{\mapsto} @ . l \.{+} 1 ] ]}%
+ \@x{\@s{79.63} \.{\ELSE} [ Ct {\EXCEPT} {\bang} [ s ] \.{=} [ p \.{\mapsto}
  Pt [ s ] ,\, l \.{\mapsto} 0 ] ]}%
 \@pvspace{8.0pt}%
 \@x{}%
@@ -1218,10 +1219,11 @@
 \@x{ ReplicateOplog ( i ,\, j ) \.{\defeq}}%
 \@x{\@s{16.4} \.{\LET} len\_i\@s{0.42} \.{\defeq} Len ( Oplog [ i ] )}%
 \@x{\@s{36.79} len\_j \.{\defeq} Len ( Oplog [ j ] )}%
-\@x{\@s{16.4} \.{\IN} {\IF} i \.{\neq} Primary \.{\land} len\_i \.{<} len\_j}%
- \@x{\@s{107.78} \.{\THEN} SubSeq ( Oplog [ j ] ,\, len\_i \.{+} 1 ,\, len\_j
+ \@x{\@s{16.4} \.{\IN} {\IF} i \.{\in} Secondary \.{\land} len\_i \.{<}
+ len\_j}%
+ \@x{\@s{99.17} \.{\THEN} SubSeq ( Oplog [ j ] ,\, len\_i \.{+} 1 ,\, len\_j
  )}%
-\@x{\@s{107.78} \.{\ELSE} {\langle} {\rangle}}%
+\@x{\@s{99.17} \.{\ELSE} {\langle} {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1265,10 +1267,10 @@
 }%
 \@xx{}%
 \@x{}\midbar\@xx{}%
- \@x{ InitPrimary \.{\defeq} Primary \.{=} {\CHOOSE} s \.{\in} Server \.{:}
- {\TRUE}}%
- \@x{ InitSecondary \.{\defeq} Secondary \.{=} Server \.{\,\backslash\,} \{
- Primary \}}%
+ \@x{ InitPrimary \.{\defeq} Primary \.{=} \{ {\CHOOSE} s \.{\in} Server \.{:}
+ {\TRUE} \}}%
+ \@x{ InitSecondary \.{\defeq} Secondary \.{=} Server \.{\,\backslash\,}
+ Primary}%
  \@x{ InitOplog \.{\defeq} Oplog \.{=} [ s\@s{1.47} \.{\in} Server \.{\mapsto}
  {\langle} {\rangle} ]}%
  \@x{ InitStore\@s{2.30} \.{\defeq} Store\@s{2.30} \.{=} [ n \.{\in} Server
@@ -1283,9 +1285,9 @@
  \.{\mapsto} 1 ]}%
  \@x{ InitCp \.{\defeq} Cp \.{=} [ n \.{\in} Server \.{\cup} Client
  \.{\mapsto} [ p \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ] ]}%
- \@x{ InitCalState \.{\defeq} CalState \.{=} CreateState ( Cardinality (
- Server ) ,\, {\langle} {\rangle} )}%
-\@x{\@s{131.39}}%
+ \@x{ InitCalState \.{\defeq} CalState \.{=} [ s \.{\in} Server \.{\mapsto}
+ CreateState ( Cardinality ( Server ) ,\, {\langle} {\rangle} ) ]}%
+\@x{\@s{130.06}}%
 \@y{\@s{0}%
  create initial \ensuremath{state(for} \ensuremath{calculate)
 }}%
@@ -1376,14 +1378,22 @@
  \.{\mapsto} {\IF} index \.{\in} ( majorNodes \.{\cup} \{ i \} )}%
 \@x{\@s{201.84} \.{\THEN} CurrentTerm [ i ] \.{+} 1}%
 \@x{\@s{201.84} \.{\ELSE} CurrentTerm [ index ] ]}%
+\@x{\@s{31.61}}%
+\@y{\@s{0}%
+ A primary node do not have any sync source
+}%
+\@xx{}%
+ \@x{\@s{31.61} \.{\land} SyncSource \.{'} \.{=} [ SyncSource {\EXCEPT}
+ {\bang} [ i ] \.{=} Nil ]}%
  \@x{\@s{31.61} \.{\land} {\UNCHANGED} {\langle} Oplog ,\, Store ,\, Ct ,\, Ot
  ,\, ServerMsg ,\, Pt ,\, Cp ,\, State ,\, CalState ,\,}%
-\@x{\@s{105.19} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@x{\@s{105.19} ReadyToServe {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ AdvanceCp \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
- \@x{\@s{16.4} \.{\land} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ Primary ]
- \.{=} CalState [ Cardinality ( Server ) \.{\div} 2 \.{+} 1 ] ]}%
+\@x{\@s{16.4} \.{\land} \E\, s\@s{7.67} \.{\in} Primary \.{:}}%
+ \@x{\@s{31.61} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ s ] \.{=} CalState [ s
+ ] [ Cardinality ( Server ) \.{\div} 2 \.{+} 1 ] ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
  Oplog ,\, Store ,\, Ct ,\, Ot ,\,}%
 \@x{\@s{89.98} ServerMsg ,\,\@s{4.1} Pt ,\, CalState ,\,}%
@@ -1403,7 +1413,7 @@
  message channel is not empty
 }%
 \@xx{}%
-\@x{\@s{31.61} \.{\land} ServerMsg [ s ] . type\@s{3.62} \.{=}\@w{heartbeat}}%
+\@x{\@s{31.61} \.{\land} ServerMsg [ s ] [ 1 ] . type \.{=}\@w{heartbeat}}%
  \@x{\@s{31.61} \.{\land} Ct \.{'} \.{=} [ Ct {\EXCEPT} {\bang} [ s ] \.{=}
  HLCMax ( Ct [ s ] ,\, ServerMsg [ s ] [ 1 ] . ct ) ]}%
 \@x{\@s{31.61} \.{\land} State \.{'} \.{=}}%
@@ -1418,9 +1428,9 @@
  primary node: update \ensuremath{CalState
 }}%
 \@xx{}%
- \@x{\@s{133.87} \.{\THEN}\@s{4.1} AdvanceState ( ServerMsg [ s ] [ 1 ] . aot
- ,\,}%
-\@x{\@s{231.96} State [ s ] [ ServerMsg [ s ] [ 1 ] . s ] ,\, CalState )}%
+\@x{\@s{133.87} \.{\THEN}\@s{4.1} [ CalState {\EXCEPT} {\bang} [ s ] \.{=}}%
+ \@x{\@s{172.06} AdvanceState ( ServerMsg [ s ] [ 1 ] . aot ,\, State [ s ] [
+ ServerMsg [ s ] [ 1 ] . s ] ,\, CalState [ s ] ) ]}%
 \@x{\@s{116.81} \.{\ELSE} CalState}%
 \@x{\@s{96.41} \.{\IN} newcal}%
 \@x{\@s{31.61} \.{\land} Cp \.{'} \.{=} \.{\LET} newcp \.{\defeq}}%
@@ -1429,8 +1439,8 @@
  primary node: compute new mcp
 }%
 \@xx{}%
- \@x{\@s{84.05} {\IF} s \.{\in} Primary \.{\THEN} CalState \.{'} [ Cardinality
- ( Server ) \.{\div} 2 \.{+} 1 ]}%
+ \@x{\@s{84.05} {\IF} s \.{\in} Primary \.{\THEN} CalState \.{'} [ s ] [
+ Cardinality ( Server ) \.{\div} 2 \.{+} 1 ]}%
 \@x{\@s{71.75}}%
 \@y{\@s{0}%
  secondary node: update mcp
@@ -1460,7 +1470,7 @@
  message channel is not empty
 }%
 \@xx{}%
- \@x{\@s{31.61} \.{\land} ServerMsg [ s ] . type\@s{3.62}
+ \@x{\@s{31.61} \.{\land} ServerMsg [ s ] [ 1 ] . type
  \.{=}\@w{update\_position}}%
  \@x{\@s{31.61} \.{\land} Ct \.{'} \.{=} [ Ct {\EXCEPT} {\bang} [ s ] \.{=}
  HLCMax ( Ct [ s ] ,\, ServerMsg [ s ] [ 1 ] . ct ) ]}%
@@ -1475,23 +1485,24 @@
 \@x{\@s{99.23} ServerMsg [ s ] [ 1 ] . aot ]}%
 \@x{\@s{46.82} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
 \@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} \.{\LET} newcal \.{\defeq}}%
-\@x{\@s{96.41} {\IF} s \.{\in} Primary}%
+\@x{\@s{116.81} {\IF} s \.{\in} Primary}%
 \@y{\@s{0}%
  primary node: update \ensuremath{CalState
 }}%
 \@xx{}%
- \@x{\@s{96.41} \.{\THEN}\@s{4.1} AdvanceState ( ServerMsg [ s ] [ 1 ] . aot
- ,\,}%
-\@x{\@s{172.82} State [ s ] [ ServerMsg [ s ] [ 1 ] . s ] ,\, CalState )}%
-\@x{\@s{96.41} \.{\ELSE} CalState \.{\IN} newcal}%
+\@x{\@s{133.87} \.{\THEN} [ CalState {\EXCEPT} {\bang} [ s ] \.{=}}%
+ \@x{\@s{172.06} AdvanceState ( ServerMsg [ s ] [ 1 ] . aot ,\, State [ s ] [
+ ServerMsg [ s ] [ 1 ] . s ] ,\, CalState [ s ] ) ]}%
+\@x{\@s{116.81} \.{\ELSE} CalState}%
+\@x{\@s{96.41} \.{\IN} newcal}%
 \@x{\@s{31.61} \.{\land} Cp \.{'} \.{=} \.{\LET} newcp \.{\defeq}}%
 \@x{\@s{71.75}}%
 \@y{\@s{0}%
  primary node: compute new mcp
 }%
 \@xx{}%
- \@x{\@s{71.75} {\IF} s \.{\in} Primary \.{\THEN} CalState \.{'} [ Cardinality
- ( Server ) \.{\div} 2 \.{+} 1 ]}%
+ \@x{\@s{71.75} {\IF} s \.{\in} Primary \.{\THEN} CalState \.{'} [ s ] [
+ Cardinality ( Server ) \.{\div} 2 \.{+} 1 ]}%
 \@x{\@s{71.75}}%
 \@y{\@s{0}%
  secondary node: update mcp
@@ -1504,27 +1515,28 @@
 \@x{\@s{71.75} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
 \@x{\@s{71.75} \.{\ELSE} Cp [ s ]}%
 \@x{\@s{71.75} \.{\IN} [ Cp {\EXCEPT} {\bang} [ s ] \.{=} newcp ]}%
+ \@x{\@s{27.51} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
+ {\bang} [ s ] \.{=} Max ( CurrentTerm [ s ] ,\, ServerMsg [ s ] [ 1 ] . term
+ ) ]}%
  \@x{\@s{27.51} \.{\land} ServerMsg \.{'} \.{=} \.{\LET} newServerMsg
  \.{\defeq} [ ServerMsg {\EXCEPT} {\bang} [ s ] \.{=} Tail ( @ ) ]}%
- \@x{\@s{121.55} appendMsg \.{\defeq} [ type \.{\mapsto}\@w{update\_position}
- ,\, s \.{\mapsto} ServerMsg [ s ] [ 1 ] . s ,\, aot \.{\mapsto} ServerMsg [
- s ] [ 1 ] . aot ,\,}%
- \@x{\@s{191.91} ct \.{\mapsto} ServerMsg [ s ] [ 1 ] . ct ,\, cp\@s{0.73}
- \.{\mapsto} ServerMsg [ s ] [ 1 ] . cp ,\, term \.{\mapsto} ServerMsg [ s ]
- [ 1 ] . term ]}%
-\@x{\@s{121.55} newMsg \.{\defeq} {\IF} s \.{\in} Primary}%
-\@x{\@s{175.85} \.{\THEN} newServerMsg}%
+ \@x{\@s{101.15} \.{\IN} ( \.{\LET}\@s{4.1} appendMsg \.{\defeq} [ type
+ \.{\mapsto}\@w{update\_position} ,\, s \.{\mapsto} ServerMsg [ s ] [ 1 ] . s
+ ,\, aot \.{\mapsto} ServerMsg [ s ] [ 1 ] . aot ,\,}%
+ \@x{\@s{182.74} ct \.{\mapsto} ServerMsg [ s ] [ 1 ] . ct ,\, cp \.{\mapsto}
+ ServerMsg [ s ] [ 1 ] . cp ,\, term \.{\mapsto} ServerMsg [ s ] [ 1 ] . term
+ ]}%
+ \@x{\@s{125.44} \.{\IN} ( \.{\LET} newMsg \.{\defeq} {\IF} s \.{\in} Primary
+ \.{\lor} SyncSource [ s ] \.{=} Nil}%
+\@x{\@s{240.68} \.{\THEN} newServerMsg}%
 \@y{\@s{0}%
  If \ensuremath{s} is primary, accept the \ensuremath{msg}, else forward it
  to its sync source
 }%
 \@xx{}%
- \@x{\@s{175.85} \.{\ELSE} [ newServerMsg {\EXCEPT} {\bang} [ SyncSource [ s ]
+ \@x{\@s{224.42} \.{\ELSE} [ newServerMsg {\EXCEPT} {\bang} [ SyncSource [ s ]
  ] \.{=} Append ( newServerMsg [ SyncSource [ s ] ] ,\, appendMsg ) ]}%
-\@x{\@s{101.15} \.{\IN} newMsg}%
- \@x{\@s{27.51} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
- {\bang} [ s ] \.{=} Max ( CurrentTerm [ s ] ,\, ServerMsg [ s ] [ 1 ] . term
- ) ]}%
+\@x{\@s{149.73} \.{\IN} newMsg ) )}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
  Oplog ,\, Store ,\, Ot ,\,}%
 \@x{\@s{89.98} Pt ,\, ReadyToServe ,\, SyncSource {\rangle}}%
@@ -1630,9 +1642,10 @@
  j ] \.{=} Append ( ServerMsg [ j ] ,\, msg ) ]}%
  \@x{\@s{31.61} \.{\land} SyncSource \.{'} \.{=} [ SyncSource {\EXCEPT}
  {\bang} [ i ] \.{=} j ]}%
+ \@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} [ CalState {\EXCEPT} {\bang} [
+ i ] \.{=} CalState [ j ] ]}%
  \@x{\@s{31.61} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\, Pt
- ,\, CalState ,\,}%
-\@x{\@s{75.52} ReadyToServe {\rangle}}%
+ ,\, ReadyToServe {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1718,7 +1731,7 @@
  [ s ] [ k ] \.{=} v ]}%
  \@x{\@s{31.61} \.{\land} Oplog \.{'} \.{=} \.{\LET} entry \.{\defeq} [ k
  \.{\mapsto} k ,\, v \.{\mapsto} v ,\, ot \.{\mapsto} Ot \.{'} [ s ] ,\, term
- \.{\mapsto}\@s{4.1} CurrentTerm [ s ] ]}%
+ \.{\mapsto} CurrentTerm [ s ] ]}%
 \@x{\@s{108.77} newLog \.{\defeq} Append ( Oplog [ s ] ,\, entry )}%
  \@x{\@s{84.27} \.{\IN}\@s{4.09} [ Oplog {\EXCEPT} {\bang} [ s ] \.{=} newLog
  ]}%
@@ -1727,8 +1740,10 @@
  \@x{\@s{104.67} hb \.{\defeq} [ SubHbState {\EXCEPT} {\bang} [ s ] \.{=} Ot
  \.{'} [ s ] ]}%
 \@x{\@s{84.27} \.{\IN} [ State {\EXCEPT} {\bang} [ s ] \.{=} hb ]}%
- \@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} AdvanceState ( Ot \.{'} [ s ]
- ,\, Ot [ s ] ,\, CalState )}%
+ \@x{\@s{31.61} \.{\land} CalState \.{'} \.{=} [ CalState {\EXCEPT} {\bang} [
+ s ] \.{=}}%
+ \@x{\@s{161.34} AdvanceState ( Ot \.{'} [ s ] ,\, Ot [ s ] ,\, CalState [ s ]
+ ) ]}%
  \@x{\@s{31.61} \.{\land} {\UNCHANGED} {\langle} Primary ,\,\@s{4.1} Secondary
  ,\, ServerMsg ,\,}%
 \@x{\@s{105.19} Pt ,\, Cp ,\,}%
@@ -1775,11 +1790,97 @@
  \@x{\@s{27.70} LogTerm ( i ,\, Len ( Oplog [ i ] ) ) \.{=} LogTerm ( j ,\,
  Len ( Oplog [ j ] ) ) \.{\implies}}%
 \@x{\@s{27.70} IsLogPrefix ( i ,\, j ) \.{\lor} IsLogPrefix ( j ,\, i )}%
-\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Check whether terms are incremented monotoniclly (from Will
+}%
+\@xx{}%
 \@x{\@s{4.1} TermsMonotonic \.{\defeq}}%
  \@x{\@s{16.4} {\Box} [ \A\, s \.{\in} Server \.{:} CurrentTerm \.{'} [ s ]
  \.{\geq} CurrentTerm [ s ] ]_{ vars}}%
 \@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Check the \ensuremath{log} in \ensuremath{Primary} node is append only (from
+ Will
+}%
+\@xx{}%
+\@x{ PrimaryAppendOnly \.{\defeq}}%
+ \@x{\@s{16.4} {\Box} [ \A\, s \.{\in} Server \.{:} s \.{\in} Primary
+ \.{\implies} Len ( Oplog \.{'} [ s ] ) \.{\geq} Len ( Oplog [ s ] ) ]_{
+ vars}}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Never rollback oplog before common point (from Will \& Raft \ensuremath{Mongo
+}}%
+\@xx{}%
+\@x{ NeverRollbackCommonPoint \.{\defeq}}%
+ \@x{\@s{16.4} \E\, i ,\, j \.{\in} Server \.{:} CanRollback ( i ,\, j )
+ \.{\implies}}%
+ \@x{\@s{27.70} \.{\LET} commonPoint \.{\defeq} RollbackCommonPoint ( i ,\, j
+ )}%
+\@x{\@s{48.10} lastOplog \.{\defeq} Oplog [ i ] [ commonPoint ]}%
+\@x{\@s{27.70} \.{\IN} HLCLt ( Cp [ i ] ,\, lastOplog . ot )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Eventually \ensuremath{log} correctness (from Will
+}%
+\@xx{}%
+ \@x{ EventuallyLogsConverge\@s{6.55} \.{\defeq} {\Diamond} {\Box} [ \A\, s
+ ,\, t \.{\in} Server \.{:} s \.{\neq} t \.{\implies} Oplog [ s ] \.{=} Oplog
+ [ t ] ]_{ vars}}%
+ \@x{ EventuallyLogsNonEmpty \.{\defeq} {\Diamond} ( \E\, s \.{\in} Server
+ \.{:} Len ( Oplog [ s ] ) \.{>} 0 )}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ (from \ensuremath{RaftMongo
+}}%
+\@xx{}%
+\@x{ TwoPrimariesInSameTerm \.{\defeq}}%
+\@x{\@s{16.4} \E\, i ,\, j \.{\in} Server \.{:}}%
+\@x{\@s{27.70} \.{\land} i \.{\neq} j}%
+\@x{\@s{27.70} \.{\land} CurrentTerm [ i ] \.{=} CurrentTerm [ j ]}%
+\@x{\@s{27.70} \.{\land} i\@s{0.42} \.{\in} Primary}%
+\@x{\@s{27.70} \.{\land} j \.{\in} Primary}%
+\@pvspace{8.0pt}%
+\@x{ NoTwoPrimariesInSameTerm \.{\defeq} {\lnot} TwoPrimariesInSameTerm}%
+\@pvspace{8.0pt}%
+\@x{}%
+\@y{\@s{0}%
+ Check if there is any cycle of sync source path (from \ensuremath{RaftMongo}
+ \ensuremath{Sync
+}}%
+\@xx{}%
+\@x{ SyncSourceCycleTwoNode \.{\defeq}}%
+\@x{\@s{16.4} \E\, s ,\, t \.{\in} Server \.{:}}%
+\@x{\@s{28.53} \.{\land} s \.{\neq} t}%
+\@x{\@s{28.53} \.{\land} SyncSource [ s ] \.{=} t}%
+\@x{\@s{28.53} \.{\land} SyncSource [ t ]\@s{0.63} \.{=} s}%
+\@pvspace{8.0pt}%
+\@x{ BoundedSeq ( s ,\, n ) \.{\defeq} [ 1 \.{\dotdot} n \.{\rightarrow} s ]}%
+\@pvspace{8.0pt}%
+\@x{ SyncSourcePaths \.{\defeq}}%
+ \@x{\@s{16.4} \{ p \.{\in} BoundedSeq ( Server ,\, Cardinality ( Server ) )
+ \.{:}}%
+ \@x{\@s{27.14} \A\, i \.{\in} 1 \.{\dotdot} ( Len ( p ) \.{-} 1 ) \.{:}
+ SyncSource [ p [ i ] ] \.{=} p [ i \.{+} 1 ] \}}%
+\@pvspace{8.0pt}%
+\@x{ SyncSourcePath ( i ,\, j ) \.{\defeq}}%
+\@x{\@s{16.4} \E\, p \.{\in} SyncSourcePaths \.{:}}%
+\@x{\@s{27.72} \.{\land} Len ( p ) \.{>} 1}%
+\@x{\@s{27.72} \.{\land} p [ 1 ] \.{=} i}%
+\@x{\@s{27.72} \.{\land} p [ Len ( p ) ] \.{=} j}%
+\@pvspace{8.0pt}%
+\@x{ SyncSourceCycle \.{\defeq}}%
+\@x{\@s{16.4} \E\, s \.{\in} Server \.{:} SyncSourcePath ( s ,\, s )}%
+\@pvspace{8.0pt}%
+ \@x{ NonTrivialSyncCycle \.{\defeq} SyncSourceCycle \.{\land} {\lnot}
+ SyncSourceCycleTwoNode}%
+\@x{ NoNonTrivialSyncCycle \.{\defeq} {\lnot} NonTrivialSyncCycle}%
+\@pvspace{16.0pt}%
 \@x{}\bottombar\@xx{}%
 \setboolean{shading}{false}
 \begin{lcom}{0}%
@@ -1788,8 +1889,8 @@
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
- \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Tue}
- \ensuremath{Apr} 19 22:17:02 \ensuremath{CST} 2022 by \ensuremath{dh
+ \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Fri}
+ \ensuremath{Apr} 22 10:10:51 \ensuremath{CST} 2022 by \ensuremath{dh
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%

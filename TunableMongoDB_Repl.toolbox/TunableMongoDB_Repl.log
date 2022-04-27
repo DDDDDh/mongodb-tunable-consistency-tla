@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.12.29)  19 APR 2022 22:17
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.12.29)  22 APR 2022 15:57
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -125,13 +125,8 @@ Overfull \hbox (14.74231pt too wide) in paragraph at lines 1154--1155
 [][] 
  []
 
-
-Overfull \hbox (15.5152pt too wide) in paragraph at lines 1179--1181
-[][] 
- []
-
 [2] [3] [4]
-Overfull \hbox (2.71938pt too wide) in paragraph at lines 1380--1381
+Overfull \hbox (2.71938pt too wide) in paragraph at lines 1389--1390
 [][] 
  []
 
@@ -196,81 +191,101 @@ Missing character: There is no Ê in font cmr8!
 Missing character: There is no Ä in font cmr8!
 Missing character: There is no Å in font cmr8!
 
-Overfull \hbox (33.36472pt too wide) in paragraph at lines 1423--1424
+Overfull \hbox (140.17906pt too wide) in paragraph at lines 1433--1434
+[][] 
+ []
+
+
+Overfull \hbox (0.17062pt too wide) in paragraph at lines 1443--1444
 [][] 
  []
 
 [5]
-Overfull \hbox (80.67456pt too wide) in paragraph at lines 1450--1452
+Overfull \hbox (80.67456pt too wide) in paragraph at lines 1460--1462
 [][] 
  []
 
 
-Overfull \hbox (40.03868pt too wide) in paragraph at lines 1466--1471
+Overfull \hbox (40.03868pt too wide) in paragraph at lines 1476--1481
 [][][][] 
  []
 
 
-Overfull \hbox (170.20624pt too wide) in paragraph at lines 1511--1514
+Overfull \hbox (140.17906pt too wide) in paragraph at lines 1495--1496
 [][] 
  []
 
 
-Overfull \hbox (185.48189pt too wide) in paragraph at lines 1514--1515
+Overfull \hbox (80.67456pt too wide) in paragraph at lines 1520--1522
 [][] 
  []
 
 
-Overfull \hbox (155.84152pt too wide) in paragraph at lines 1516--1523
+Overfull \hbox (198.59485pt too wide) in paragraph at lines 1525--1528
+[][] 
+ []
+
+
+Overfull \hbox (175.5819pt too wide) in paragraph at lines 1528--1530
+[][] 
+ []
+
+
+Overfull \hbox (31.07841pt too wide) in paragraph at lines 1530--1531
+[][] 
+ []
+
+
+Overfull \hbox (220.67151pt too wide) in paragraph at lines 1531--1538
 [][][][] 
  []
 
 
-Overfull \hbox (267.19307pt too wide) in paragraph at lines 1523--1524
-[][] 
- []
-
-
-Overfull \hbox (80.67456pt too wide) in paragraph at lines 1527--1529
+Overfull \hbox (315.76306pt too wide) in paragraph at lines 1538--1539
 [][] 
  []
 
 [6]
-Overfull \hbox (144.07608pt too wide) in paragraph at lines 1611--1616
+Overfull \hbox (144.07608pt too wide) in paragraph at lines 1623--1628
 [][][][] 
  []
 
 
-Overfull \hbox (171.2778pt too wide) in paragraph at lines 1628--1630
+Overfull \hbox (171.2778pt too wide) in paragraph at lines 1640--1642
 [][] 
  []
 
 
-Overfull \hbox (9.21422pt too wide) in paragraph at lines 1630--1632
+Overfull \hbox (9.21422pt too wide) in paragraph at lines 1642--1644
 [][] 
  []
 
 [7]
-Overfull \hbox (144.07608pt too wide) in paragraph at lines 1663--1669
+Overfull \hbox (144.07608pt too wide) in paragraph at lines 1676--1682
 [][][][] 
  []
 
 
-Overfull \hbox (57.94203pt too wide) in paragraph at lines 1700--1702
+Overfull \hbox (57.94203pt too wide) in paragraph at lines 1713--1715
 [][] 
  []
 
 
-Overfull \hbox (9.21422pt too wide) in paragraph at lines 1702--1704
+Overfull \hbox (9.21422pt too wide) in paragraph at lines 1715--1717
 [][] 
  []
 
 
-Overfull \hbox (24.2611pt too wide) in paragraph at lines 1721--1722
+Overfull \hbox (20.16109pt too wide) in paragraph at lines 1734--1735
 [][] 
  []
 
-[8] [9] (./TunableMongoDB_Repl.aux) ) 
+[8]
+Overfull \hbox (3.68733pt too wide) in paragraph at lines 1833--1835
+[][] 
+ []
+
+[9] [10] (./TunableMongoDB_Repl.aux) ) 
 Here is how much of TeX's memory you used:
  1289 strings out of 493014
  15993 string characters out of 6133350
@@ -279,25 +294,25 @@ Here is how much of TeX's memory you used:
  8810 words of font info for 34 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  23i,10n,25p,244b,239s stack positions out of 5000i,500n,10000p,200000b,80000s
-</usr/local/texlive/2016/texmf-dist/fonts/
-type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2016/texmf-dist/fonts/
-type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2016/texmf-dist/fonts/t
-ype1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2016/texmf-dist/fonts/typ
-e1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/
-public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/pub
-lic/amsfonts/cm/cmr9.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public
-/amsfonts/cm/cmss10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/
-amsfonts/cm/cmsy10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/a
-msfonts/cm/cmsy7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/ams
-fonts/cm/cmsy8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfo
-nts/cm/cmti10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfon
-ts/cm/cmti7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts
-/cm/cmti8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/l
-atxfont/lasy10.pfb>
-Output written on TunableMongoDB_Repl.pdf (9 pages, 168624 bytes).
+</usr/local/texlive/2016/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2016/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2016/texmf-dist/fonts/
+type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2016/texmf-dist/fonts/ty
+pe1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1
+/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/pu
+blic/amsfonts/cm/cmr9.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/publi
+c/amsfonts/cm/cmss10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public
+/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/
+amsfonts/cm/cmsy7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/am
+sfonts/cm/cmsy8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsf
+onts/cm/cmti10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfo
+nts/cm/cmti7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfont
+s/cm/cmti8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/
+latxfont/lasy10.pfb>
+Output written on TunableMongoDB_Repl.pdf (10 pages, 172251 bytes).
 PDF statistics:
- 90 PDF objects out of 1000 (max. 8388607)
- 64 compressed objects within 1 object stream
+ 93 PDF objects out of 1000 (max. 8388607)
+ 66 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 

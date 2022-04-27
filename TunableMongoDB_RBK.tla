@@ -1,3 +1,8 @@
+\* Optimise idea: use readConcern and writeConcern as 'concernVars' to act as constants
+\* And then use 'CASE' to switch between different combinations [ref:cosmos_client]
+
+\* Optimise idea: group variables by their function [ref:RaftMongo]
+
 ------------------------- MODULE TunableMongoDB_RBK -------------------------
 EXTENDS Naturals, FiniteSets, Sequences, TLC
 
@@ -30,7 +35,7 @@ VARIABLES Primary,        \* Primary node
           CurrentTerm,    \* CurrentTerm[s]: current election term at server s 
                           \* -> updated in update_position, heartbeat and replicate
           ReadyToServe,   \* equal to 0 before any primary is elected
-          SyncSource      \* sync source of server node s
+          SyncSource      \* sync source of server node s          
           
 -----------------------------------------------------------------------------
 ASSUME Cardinality(Client) >= 1  \* at least one clinet
@@ -937,5 +942,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Apr 20 21:35:12 CST 2022 by dh
+\* Last modified Mon Apr 25 09:35:25 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh
