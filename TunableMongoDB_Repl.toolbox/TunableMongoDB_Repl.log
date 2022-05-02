@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.12.29)  22 APR 2022 15:57
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.12.29)  29 APR 2022 14:42
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -107,26 +107,109 @@ LaTeX Font Info:    ... okay on input line 939.
 \everyMPtoPDFconversion=\toks17
 )
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <7> on input line 942.
+(Font)              <8> on input line 943.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <5> on input line 942.
-LaTeX Font Info:    Try loading font information for U+lasy on input line 942.
+(Font)              <6> on input line 943.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <5> on input line 943.
+LaTeX Font Info:    Try loading font information for U+lasy on input line 943.
 (/usr/local/texlive/2016/texmf-dist/tex/latex/base/ulasy.fd
 File: ulasy.fd 1998/08/17 v2.2e LaTeX symbol font definitions
 )
+Missing character: There is no Ê in font cmr8!
+Missing character: There is no ∂ in font cmr8!
+Missing character: There is no à in font cmr8!
+Missing character: There is no Ê in font cmr8!
+Missing character: There is no Å in font cmr8!
+Missing character: There is no Ø in font cmr8!
+Missing character: There is no Â in font cmr8!
+Missing character: There is no ≠ in font cmr8!
+Missing character: There is no ò in font cmr8!
+Missing character: There is no Â in font cmr8!
+Missing character: There is no ú in font cmr8!
+Missing character: There is no ® in font cmr8!
+Missing character: There is no Â in font cmr8!
+Missing character: There is no ª in font cmr8!
+Missing character: There is no ∂ in font cmr8!
+Missing character: There is no Ë in font cmr8!
+Missing character: There is no ø in font cmr8!
+Missing character: There is no ü in font cmr8!
+Missing character: There is no Ô in font cmr8!
+Missing character: There is no º in font cmr8!
+Missing character: There is no å in font cmr8!
+Missing character: There is no Ê in font cmr8!
+Missing character: There is no Ø in font cmr8!
+Missing character: There is no î in font cmr8!
+Missing character: There is no Â in font cmr8!
+Missing character: There is no ¶ in font cmr8!
+Missing character: There is no Ç in font cmr8!
+Missing character: There is no Ë in font cmr8!
+Missing character: There is no Ø in font cmr8!
+Missing character: There is no ¥ in font cmr8!
+Missing character: There is no Ê in font cmr8!
+Missing character: There is no ñ in font cmr8!
+Missing character: There is no ∞ in font cmr8!
+Missing character: There is no Á in font cmr8!
+Missing character: There is no ö in font cmr8!
+Missing character: There is no Ñ in font cmr8!
+Missing character: There is no ‰ in font cmr8!
+Missing character: There is no ∏ in font cmr8!
+Missing character: There is no ª in font cmr8!
+Missing character: There is no Â in font cmr8!
+Missing character: There is no Ω in font cmr8!
+Missing character: There is no ì in font cmr8!
+Missing character: There is no È in font cmr8!
+Missing character: There is no Ä in font cmr8!
+Missing character: There is no â in font cmr8!
+Missing character: There is no ‰ in font cmr8!
+Missing character: There is no π in font cmr8!
+Missing character: There is no ã in font cmr8!
+Missing character: There is no Â in font cmr8!
+Missing character: There is no ê in font cmr8!
+Missing character: There is no é in font cmr8!
+Missing character: There is no Ê in font cmr8!
+Missing character: There is no î in font cmr8!
+Missing character: There is no ∂ in font cmr8!
+Missing character: There is no Â in font cmr8!
+Missing character: There is no à in font cmr8!
+Missing character: There is no ∞ in font cmr8!
+Missing character: There is no Ê in font cmr8!
+Missing character: There is no ó in font cmr8!
+Missing character: There is no ß in font cmr8!
+Missing character: There is no ‰ in font cmr8!
+Missing character: There is no ∏ in font cmr8!
+Missing character: There is no ª in font cmr8!
+Missing character: There is no Á in font cmr8!
+Missing character: There is no ö in font cmr8!
+Missing character: There is no Ñ in font cmr8!
+Missing character: There is no ‰ in font cmr8!
+Missing character: There is no π in font cmr8!
+Missing character: There is no ã in font cmr8!
+Missing character: There is no Á in font cmr8!
+Missing character: There is no ± in font cmr8!
+Missing character: There is no ª in font cmr8!
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <8> on input line 985.
-LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <6> on input line 985.
+(Font)              <7> on input line 947.
 [1
 
-{/usr/local/texlive/2016/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-Overfull \hbox (14.74231pt too wide) in paragraph at lines 1154--1155
+{/usr/local/texlive/2016/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] [2] [3]
+[4]
+Overfull \hbox (24.78592pt too wide) in paragraph at lines 1514--1515
 [][] 
  []
 
-[2] [3] [4]
-Overfull \hbox (2.71938pt too wide) in paragraph at lines 1389--1390
+[5]
+Overfull \hbox (132.90065pt too wide) in paragraph at lines 1564--1565
+[][] 
+ []
+
+
+Overfull \hbox (157.08122pt too wide) in paragraph at lines 1568--1569
+[][] 
+ []
+
+
+Overfull \hbox (18.83688pt too wide) in paragraph at lines 1573--1574
 [][] 
  []
 
@@ -191,128 +274,190 @@ Missing character: There is no Ê in font cmr8!
 Missing character: There is no Ä in font cmr8!
 Missing character: There is no Å in font cmr8!
 
-Overfull \hbox (140.17906pt too wide) in paragraph at lines 1433--1434
+Overfull \hbox (15.43768pt too wide) in paragraph at lines 1609--1610
 [][] 
  []
 
 
-Overfull \hbox (0.17062pt too wide) in paragraph at lines 1443--1444
-[][] 
- []
-
-[5]
-Overfull \hbox (80.67456pt too wide) in paragraph at lines 1460--1462
-[][] 
- []
-
-
-Overfull \hbox (40.03868pt too wide) in paragraph at lines 1476--1481
+Overfull \hbox (89.99008pt too wide) in paragraph at lines 1622--1628
 [][][][] 
  []
 
 
-Overfull \hbox (140.17906pt too wide) in paragraph at lines 1495--1496
-[][] 
- []
-
-
-Overfull \hbox (80.67456pt too wide) in paragraph at lines 1520--1522
-[][] 
- []
-
-
-Overfull \hbox (198.59485pt too wide) in paragraph at lines 1525--1528
-[][] 
- []
-
-
-Overfull \hbox (175.5819pt too wide) in paragraph at lines 1528--1530
-[][] 
- []
-
-
-Overfull \hbox (31.07841pt too wide) in paragraph at lines 1530--1531
-[][] 
- []
-
-
-Overfull \hbox (220.67151pt too wide) in paragraph at lines 1531--1538
+Overfull \hbox (54.03415pt too wide) in paragraph at lines 1633--1640
 [][][][] 
  []
 
 
-Overfull \hbox (315.76306pt too wide) in paragraph at lines 1538--1539
-[][] 
+Overfull \hbox (91.45142pt too wide) in paragraph at lines 1672--1679
+[][][][] 
  []
 
 [6]
-Overfull \hbox (144.07608pt too wide) in paragraph at lines 1623--1628
+Overfull \hbox (67.31223pt too wide) in paragraph at lines 1701--1708
 [][][][] 
  []
 
 
-Overfull \hbox (171.2778pt too wide) in paragraph at lines 1640--1642
+Overfull \hbox (93.14404pt too wide) in paragraph at lines 1726--1727
 [][] 
  []
 
 
-Overfull \hbox (9.21422pt too wide) in paragraph at lines 1642--1644
+Overfull \hbox (81.86456pt too wide) in paragraph at lines 1736--1738
+[][] 
+ []
+
+
+Overfull \hbox (40.03868pt too wide) in paragraph at lines 1752--1757
+[][][][] 
+ []
+
+
+Overfull \hbox (15.43768pt too wide) in paragraph at lines 1775--1776
+[][] 
+ []
+
+
+Overfull \hbox (46.27425pt too wide) in paragraph at lines 1779--1780
+[][] 
+ []
+
+
+Overfull \hbox (0.88286pt too wide) in paragraph at lines 1780--1786
+[][][][] 
+ []
+
+
+Overfull \hbox (197.25964pt too wide) in paragraph at lines 1792--1793
+[][] 
+ []
+
+
+Overfull \hbox (174.33171pt too wide) in paragraph at lines 1795--1796
 [][] 
  []
 
 [7]
-Overfull \hbox (144.07608pt too wide) in paragraph at lines 1676--1682
+Overfull \hbox (93.14404pt too wide) in paragraph at lines 1805--1806
+[][] 
+ []
+
+
+Overfull \hbox (81.86456pt too wide) in paragraph at lines 1813--1815
+[][] 
+ []
+
+
+Overfull \hbox (0.94781pt too wide) in paragraph at lines 1815--1818
+[][] 
+ []
+
+
+Overfull \hbox (199.78485pt too wide) in paragraph at lines 1818--1821
+[][] 
+ []
+
+
+Overfull \hbox (176.77188pt too wide) in paragraph at lines 1821--1823
+[][] 
+ []
+
+
+Overfull \hbox (32.26842pt too wide) in paragraph at lines 1823--1824
+[][] 
+ []
+
+
+Overfull \hbox (221.86151pt too wide) in paragraph at lines 1824--1831
 [][][][] 
  []
 
 
-Overfull \hbox (57.94203pt too wide) in paragraph at lines 1713--1715
+Overfull \hbox (316.95306pt too wide) in paragraph at lines 1831--1832
 [][] 
  []
 
 
-Overfull \hbox (9.21422pt too wide) in paragraph at lines 1715--1717
-[][] 
- []
-
-
-Overfull \hbox (20.16109pt too wide) in paragraph at lines 1734--1735
+Overfull \hbox (16.5806pt too wide) in paragraph at lines 1848--1849
 [][] 
  []
 
 [8]
-Overfull \hbox (3.68733pt too wide) in paragraph at lines 1833--1835
+Overfull \hbox (144.07608pt too wide) in paragraph at lines 1914--1919
+[][][][] 
+ []
+
+
+Overfull \hbox (171.2778pt too wide) in paragraph at lines 1936--1938
 [][] 
  []
 
-[9] [10] (./TunableMongoDB_Repl.aux) ) 
+
+Overfull \hbox (9.21422pt too wide) in paragraph at lines 1938--1940
+[][] 
+ []
+
+
+Overfull \hbox (144.07608pt too wide) in paragraph at lines 1976--1982
+[][][][] 
+ []
+
+[9]
+Overfull \hbox (104.84407pt too wide) in paragraph at lines 2014--2019
+[][][][] 
+ []
+
+
+Overfull \hbox (171.2778pt too wide) in paragraph at lines 2028--2030
+[][] 
+ []
+
+
+Overfull \hbox (9.21422pt too wide) in paragraph at lines 2030--2032
+[][] 
+ []
+
+
+Overfull \hbox (20.16109pt too wide) in paragraph at lines 2048--2049
+[][] 
+ []
+
+[10]
+Overfull \hbox (3.68733pt too wide) in paragraph at lines 2152--2154
+[][] 
+ []
+
+[11] [12] (./TunableMongoDB_Repl.aux) ) 
 Here is how much of TeX's memory you used:
- 1289 strings out of 493014
- 15993 string characters out of 6133350
- 87257 words of memory out of 5000000
- 4864 multiletter control sequences out of 15000+600000
- 8810 words of font info for 34 fonts, out of 8000000 for 9000
+ 1290 strings out of 493014
+ 16007 string characters out of 6133350
+ 88257 words of memory out of 5000000
+ 4865 multiletter control sequences out of 15000+600000
+ 9111 words of font info for 35 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 23i,10n,25p,244b,239s stack positions out of 5000i,500n,10000p,200000b,80000s
-</usr/local/texlive/2016/texmf-dist/fonts
-/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2016/texmf-dist/fonts
-/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2016/texmf-dist/fonts/
-type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2016/texmf-dist/fonts/ty
-pe1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1
-/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/pu
-blic/amsfonts/cm/cmr9.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/publi
-c/amsfonts/cm/cmss10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public
-/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/
-amsfonts/cm/cmsy7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/am
-sfonts/cm/cmsy8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsf
-onts/cm/cmti10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfo
-nts/cm/cmti7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfont
-s/cm/cmti8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/
-latxfont/lasy10.pfb>
-Output written on TunableMongoDB_Repl.pdf (10 pages, 172251 bytes).
+ 23i,11n,25p,290b,263s stack positions out of 5000i,500n,10000p,200000b,80000s
+</usr/local/texlive/2016/texmf-dist/font
+s/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2016/texmf-dist/font
+s/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2016/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2016/texmf-dist/fonts/t
+ype1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2016/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/
+public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmr9.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public
+/amsfonts/cm/cmss10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/
+amsfonts/cm/cmsy10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/a
+msfonts/cm/cmsy6.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/ams
+fonts/cm/cmsy7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfo
+nts/cm/cmsy8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfont
+s/cm/cmti10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts
+/cm/cmti7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/c
+m/cmti8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/lat
+xfont/lasy10.pfb>
+Output written on TunableMongoDB_Repl.pdf (12 pages, 196729 bytes).
 PDF statistics:
- 93 PDF objects out of 1000 (max. 8388607)
- 66 compressed objects within 1 object stream
+ 107 PDF objects out of 1000 (max. 8388607)
+ 76 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 

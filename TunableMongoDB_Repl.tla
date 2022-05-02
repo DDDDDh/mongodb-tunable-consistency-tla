@@ -48,8 +48,7 @@ Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
 
 vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, ServerMsg, 
-          Pt, Cp, State, 
-          CurrentTerm, ReadyToServe, SyncSource>>
+          Pt, Cp, State, CurrentTerm, ReadyToServe, SyncSource>>
 
 RECURSIVE CreateState(_,_) \* init state
 CreateState(len, seq) == 
@@ -68,31 +67,13 @@ IsMajority(servers) == Cardinality(servers) * 2 > Cardinality(Server)
                                       
 \* Return the maximum value from a set, or undefined if the set is empty.
 MaxVal(s) == CHOOSE x \in s : \A y \in s : x >= y        
-HLCMinSet(s) == CHOOSE x \in s: \A y \in s: HLCLt(x, y)                    
-
-\* commit point
-\*RECURSIVE AddState(_,_,_)
-\*AddState(new, state, index) == 
-\*    IF index = 1 /\ HLCLt(new, state[1]) 
-\*        THEN  <<new>> \o state\* less than the first 
-\*    ELSE IF index = Len(state) + 1 
-\*        THEN state \o <<new>>
-\*    ELSE IF HLCLt(new, state[index]) 
-\*        THEN SubSeq(state, 1, index - 1) \o <<new>> \o SubSeq(state, index, Len(state))
-\*    ELSE AddState(new, state, index + 1)
-\*    
-\*RECURSIVE RemoveState(_,_,_) 
-\*RemoveState(old, state, index) == 
-\*    IF state[index] = old 
-\*        THEN SubSeq(state, 1, index - 1) \o SubSeq(state, index + 1, Len(state))
-\*    ELSE RemoveState(old, state, index + 1)
-\*
-\*AdvanceState(new, old, state) == AddState(new, RemoveState(old, state, 1), 1)  
+HLCMinSet(s) == CHOOSE x \in s: \A y \in s: ~HLCLt(y, x)                    
 
 \* clock
 
 MaxPt == LET x == CHOOSE s \in Server: \A s1 \in Server \ {s}:
-                            Pt[s] >= Pt[s1] IN Pt[x]      
+                            Pt[s] >= Pt[s1] 
+         IN Pt[x]      
                             
 Tick(s) == Ct' = IF Ct[s].p >= Pt[s] 
                     THEN [ Ct EXCEPT ![s] = [ p |-> @.p, l |-> @.l+1] ]
@@ -140,14 +121,20 @@ RollbackCommonPoint(i, j) ==
 \* important property is that every quorum overlaps with every other.
 Quorum == {i \in SUBSET(Server) : Cardinality(i) * 2 > Cardinality(Server)}
         
-QuorumAgreeInSameTerm(matchEntryVal) == 
+QuorumAgreeInSameTerm(states) == 
     LET quorums == {Q \in Quorum :
                     \* Make sure all nodes in quorum have actually applied some entries.
-                    /\ \A s \in Q : matchEntryVal[s][1] > 0
+                    /\ \/ \A s \in Q : states[s].p > 0
+                       \/ /\ \A s \in Q : states[s].p = 0
+                          /\ \A s \in Q : states[s].l > 0
                     \* Make sure every applied entry in quorum has the same term.
                     /\ \A s, t \in Q : 
-                       s # t => CurrentTerm[s] = CurrentTerm[t]} IN
-        IF quorums = {} THEN Nil ELSE CHOOSE x \in quorums : TRUE            
+                       s # t => states[s].term = states[s].term} 
+\*    IN IF quorums = {} THEN Nil 
+\*       ELSE CHOOSE x \in quorums : TRUE 
+\*       ELSE quorums  
+      IN quorums         
+           
                                  
 \* Init Part                       
 -----------------------------------------------------------------------------
@@ -217,27 +204,25 @@ ElectPrimary ==
         \* A primary node do not have any sync source                                        
         /\ SyncSource' = [SyncSource EXCEPT ![i] = Nil ]
         /\ UNCHANGED <<Oplog, Store, Ct, Ot, ServerMsg, Pt, Cp, State, ReadyToServe>> 
-
-\*AdvanceCp == 
-\*    /\ ReadyToServe > 0
-\*    /\ \E s \in Primary:
-\*        Cp' = [Cp EXCEPT ![s] = CalState[s][Cardinality(Server) \div 2 + 1] ] 
-\*    /\ UNCHANGED<<Primary, Secondary, Oplog, Store, Ct, Ot, 
-\*                  ServerMsg,  Pt, State, CurrentTerm, ReadyToServe, SyncSource>> 
-\*                  
+            
 AdvanceCp ==
     /\ ReadyToServe > 0
-    /\ \E i \in Primary:
-        LET quorumAgree == QuorumAgreeInSameTerm(State[i]) IN
-            /\ quorumAgree /= Nil
-            /\ LET serverInQuorum == CHOOSE s \in quorumAgree: TRUE
-                   termOfQuorum == State[i][serverInQuorum][3]   
-                   newCommitPoint == HLCMinSet({[p |-> State[i][s][1], l |-> State[i][s][2]]: s \in quorumAgree})
-               IN /\ termOfQuorum = CurrentTerm[i]
-                  /\ LET newCP == [ p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum ] IN
-                         Cp' = [ Cp EXCEPT ![i] = newCP]
+    /\ \E s \in Primary:
+        LET newCp == 
+            LET quorumAgree == QuorumAgreeInSameTerm(State[s]) 
+            IN  IF Cardinality(quorumAgree) > 0 
+                    THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
+                             serverInQuorum == CHOOSE j \in QuorumSet: TRUE
+                             termOfQuorum == State[s][serverInQuorum].term 
+                             StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
+                             newCommitPoint == HLCMinSet(StateSet)
+                         IN IF termOfQuorum = CurrentTerm[s]
+                                THEN [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
+                            ELSE Cp[s]
+                ELSE Cp[s]
+        IN Cp' = [ Cp EXCEPT ![s] = newCp]
     /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, 
-                  ServerMsg,  Pt, State, CurrentTerm, ReadyToServe, SyncSource>>                              
+                  ServerMsg,  Pt, State, CurrentTerm, ReadyToServe, SyncSource>>                                
            
 \*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
 ServerTakeHeartbeat ==
@@ -259,19 +244,23 @@ ServerTakeHeartbeat ==
                  \* primary node: compute new mcp
                     IF s \in Primary THEN 
                         LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
-                            /\ quorumAgree /= Nil
-                            /\ LET serverInQuorum == CHOOSE i \in quorumAgree: TRUE
-                                   termOfQuorum == State[s][serverInQuorum][3]   
-                                   newCommitPoint == HLCMinSet({[p |-> State[s][i][1], l |-> State[s][i][2]]: i \in quorumAgree})
-                               IN IF termOfQuorum = CurrentTerm[s]
-                                    THEN [ p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum ]
-                                  ELSE Cp[s]
+                            IF Cardinality(quorumAgree) > 0 
+                                THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
+                                         serverInQuorum == CHOOSE j \in QuorumSet: TRUE
+                                         termOfQuorum == State[s][serverInQuorum].term 
+                                         StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
+                                         newCommitPoint == HLCMinSet(StateSet)
+                                     IN IF termOfQuorum = CurrentTerm[s]
+                                            THEN  
+                                                 [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
+                                         ELSE Cp[s]
+                            ELSE Cp[s]
                  \* secondary node: update mcp   
                     ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
                             /\ ~ HLCLt(msgCP, Cp[s])
                             /\ ~ HLCLt(Ot[s], msgCP)
                         THEN ServerMsg[s][1].cp
-                    ELSE Cp[s]
+                        ELSE Cp[s]
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
@@ -297,19 +286,23 @@ ServerTakeUpdatePosition ==
                  \* primary node: compute new mcp
                     IF s \in Primary THEN 
                         LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
-                            /\ quorumAgree /= Nil
-                            /\ LET serverInQuorum == CHOOSE i \in quorumAgree: TRUE
-                                   termOfQuorum == State[s][serverInQuorum][3]   
-                                   newCommitPoint == HLCMinSet({[p |-> State[s][i][1], l |-> State[s][i][2]]: i \in quorumAgree})
-                               IN IF termOfQuorum = CurrentTerm[s]
-                                    THEN [ p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum ]
-                                  ELSE Cp[s]
+                            IF Cardinality(quorumAgree) > 0 
+                                THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
+                                         serverInQuorum == CHOOSE j \in QuorumSet: TRUE
+                                         termOfQuorum == State[s][serverInQuorum].term 
+                                         StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
+                                         newCommitPoint == HLCMinSet(StateSet)
+                                     IN IF termOfQuorum = CurrentTerm[s]
+                                            THEN  
+                                                 [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
+                                         ELSE Cp[s]
+                            ELSE Cp[s]
                  \* secondary node: update mcp   
                     ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
                             /\ ~ HLCLt(msgCP, Cp[s])
                             /\ ~ HLCLt(Ot[s], msgCP)
-                        THEN ServerMsg[s][1].cp
-                    ELSE Cp[s]
+                         THEN ServerMsg[s][1].cp
+                         ELSE Cp[s]
                  IN [ Cp EXCEPT ![s] = newcp ]    
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]             
        /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
@@ -397,7 +390,7 @@ RollbackAndRecover ==
                    hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
                    hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
                IN [ State EXCEPT ![i] = hb1]
-        /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i] ]
+        /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
         /\ UNCHANGED <<Primary, Secondary, Pt, ReadyToServe>> 
@@ -428,6 +421,7 @@ ClientRequest ==
 \* Next state for all configurations
 Next == \/ Replicate
         \/ AdvancePt
+        \/ AdvanceCp
         \/ ServerTakeHeartbeat
         \/ ServerTakeUpdatePosition
         \/ Stepdown
@@ -508,5 +502,5 @@ NoNonTrivialSyncCycle == ~NonTrivialSyncCycle
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Apr 28 00:39:43 CST 2022 by dh
+\* Last modified Mon May 02 16:23:09 CST 2022 by dh
 \* Created Mon Apr 18 11:38:53 CST 2022 by dh
