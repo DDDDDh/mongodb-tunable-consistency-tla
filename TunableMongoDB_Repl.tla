@@ -130,10 +130,7 @@ QuorumAgreeInSameTerm(states) ==
                     \* Make sure every applied entry in quorum has the same term.
                     /\ \A s, t \in Q : 
                        s # t => states[s].term = states[s].term} 
-\*    IN IF quorums = {} THEN Nil 
-\*       ELSE CHOOSE x \in quorums : TRUE 
-\*       ELSE quorums  
-      IN quorums         
+    IN quorums         
            
                                  
 \* Init Part                       
@@ -147,8 +144,6 @@ InitOt == Ot = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitServerMsg == ServerMsg = [ s \in Server |-> <<>> ]
 InitPt == Pt = [ s \in Server |-> 1 ]
 InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
-\*InitCalState == CalState = [s \in Server |-> CreateState(Cardinality(Server), <<>>)]
-                             \* create initial state(for calculate)
 InitState == State = [ s \in Server |-> [ s0 \in Server |-> 
                                               [ p |-> 0, l |-> 0, term |-> 0] ] ] 
 InitCurrentTerm == CurrentTerm = [s \in Server |-> 0] 
@@ -216,7 +211,9 @@ AdvanceCp ==
                              termOfQuorum == State[s][serverInQuorum].term 
                              StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
                              newCommitPoint == HLCMinSet(StateSet)
-                         IN IF termOfQuorum = CurrentTerm[s]
+                             oldCommitPoint == [p |-> Cp[s].p, l |-> Cp[s].l]
+                             \* newCp must be greater than current Cp for primary to advance it
+                         IN IF termOfQuorum = CurrentTerm[s] /\ HLCLt(oldCommitPoint, newCommitPoint)
                                 THEN [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
                             ELSE Cp[s]
                 ELSE Cp[s]
@@ -230,6 +227,7 @@ ServerTakeHeartbeat ==
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "heartbeat"
+        /\ CurrentTerm[s] = ServerMsg[s][1].term
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ]
         /\ State' = 
             LET newState == [
@@ -259,6 +257,8 @@ ServerTakeHeartbeat ==
                     ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
                             /\ ~ HLCLt(msgCP, Cp[s])
                             /\ ~ HLCLt(Ot[s], msgCP)
+                            \* The term of cp must equal to the CurrentTerm of that node to advance it
+                            /\ ServerMsg[s][1].term = CurrentTerm[s] 
                         THEN ServerMsg[s][1].cp
                         ELSE Cp[s]
                  IN [ Cp EXCEPT ![s] = newcp ]
@@ -432,7 +432,6 @@ Next == \/ Replicate
         \/ NTPSync
         
 Spec == Init /\ [][Next]_vars      
-
 -----------------------------------------------------------------------------
 \*Properties to check?
 
@@ -440,7 +439,7 @@ IsLogPrefix(i, j) ==
     /\ Len(Oplog[i]) <= Len(Oplog[j])
     /\ Oplog[i] = SubSeq(Oplog[j], 1, Len(Oplog[i]))
 
-\* If two logs have the same last log entry term, then one is a prefix of the other (from Will)    
+\* If two logs have the same last log entry term, then one is a prefix of the other (from Will 
 LastTermsEquivalentImplyPrefixes == 
     \A i, j \in Server:
         LogTerm(i, Len(Oplog[i])) = LogTerm(j, Len(Oplog[j])) =>
@@ -499,8 +498,7 @@ SyncSourceCycle ==
 NonTrivialSyncCycle == SyncSourceCycle /\ ~SyncSourceCycleTwoNode
 NoNonTrivialSyncCycle == ~NonTrivialSyncCycle    
    
-
 =============================================================================
 \* Modification History
-\* Last modified Mon May 02 16:23:09 CST 2022 by dh
+\* Last modified Sat May 07 10:13:28 CST 2022 by dh
 \* Created Mon Apr 18 11:38:53 CST 2022 by dh
