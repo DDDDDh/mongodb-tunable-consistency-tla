@@ -24,11 +24,21 @@ VARIABLES Primary,        \* Primary node
           ReadyToServe,   \* equal to 0 before any primary is elected
           SyncSource      \* SyncSource[s]: sync source of server node s
           
+-----------------------------------------------------------------------------          
+\* group related vars to optimize code
+electionVars == <<Primary, Secondary>>              \* vars that are related to election  
+storageVars == <<Oplog, Store>>                     \* vars that are related to storage
+messageVar == <<ServerMsg>>                         \* var that is related to message
+serverVars == <<Ot, SyncSource>>                    \* vars that each server node holds for itself
+learnableVars == <<Ct, State, Cp, CurrentTerm>>     \* vars that must learn from msgs
+timeVar == <<Pt>>                                   \* var that is used for timing
+functionalVar == <<ReadyToServe>>                   \* var that is used for some extra function
+
 -----------------------------------------------------------------------------
 ASSUME Cardinality(Client) >= 1  \* at least one clinet
 ASSUME Cardinality(Server) >= 2  \* at least one primary and one secondary
-ASSUME Cardinality(Key) >= 1  \* at least one object
-ASSUME Cardinality(Value) >= 2  \* at least two values to update
+ASSUME Cardinality(Key) >= 1     \* at least one object
+ASSUME Cardinality(Value) >= 2   \* at least two values to update
 
 \* Helpers
 -----------------------------------------------------------------------------
@@ -47,7 +57,7 @@ HLCType == [ p : Nat, l : Nat ]
 Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
 
-vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, ServerMsg, 
+vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, messageVar, 
           Pt, Cp, State, CurrentTerm, ReadyToServe, SyncSource>>
 
 RECURSIVE CreateState(_,_) \* init state
@@ -132,7 +142,6 @@ QuorumAgreeInSameTerm(states) ==
                        s # t => states[s].term = states[s].term} 
     IN quorums         
            
-                                 
 \* Init Part                       
 -----------------------------------------------------------------------------
 InitPrimary == Primary = {CHOOSE s \in Server: TRUE}
@@ -160,23 +169,20 @@ Init ==
 \* Next State Actions  
 \* Replication Protocol: possible actions  
 -----------------------------------------------------------------------------                                           
-
 TurnOnReadyToServe ==
     /\ ReadyToServe = 0
     /\ \E s \in Primary:
         /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = CurrentTerm[s] + 1]
+\*        /\ CurrentTerm' = [s \in Server |-> 1]
         /\ ReadyToServe' = ReadyToServe + 1
-    /\ UNCHANGED<<Primary,  Secondary, Oplog, Store, Ct, Ot, 
-                  ServerMsg, Pt, Cp, State, SyncSource>> 
+    /\ UNCHANGED<<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, Cp, State>> 
 
 Stepdown == 
-            /\ ReadyToServe > 0
-            /\ \E s \in Primary:
-                /\ Primary' = Primary \ {s}
-                /\ Secondary' = Secondary \cup {s}
-            /\ UNCHANGED <<Oplog, Store, Ct, Ot, ServerMsg, 
-                           Pt, Cp, State, CurrentTerm, 
-                            ReadyToServe, SyncSource>>
+    /\ ReadyToServe > 0
+    /\ \E s \in Primary:
+        /\ Primary' = Primary \ {s}
+        /\ Secondary' = Secondary \cup {s}
+    /\ UNCHANGED <<storageVars, serverVars, Ct, messageVar, timeVar, Cp, State, CurrentTerm, functionalVar>>
                             
 \* Todo: Stepdown when receiving a higher term heartbeat                            
 
@@ -198,7 +204,7 @@ ElectPrimary ==
                                                 ELSE CurrentTerm[index]]
         \* A primary node do not have any sync source                                        
         /\ SyncSource' = [SyncSource EXCEPT ![i] = Nil ]
-        /\ UNCHANGED <<Oplog, Store, Ct, Ot, ServerMsg, Pt, Cp, State, ReadyToServe>> 
+    /\ UNCHANGED <<storageVars, Ct, Ot, messageVar, timeVar, Cp, State, functionalVar>> 
             
 AdvanceCp ==
     /\ ReadyToServe > 0
@@ -218,8 +224,7 @@ AdvanceCp ==
                             ELSE Cp[s]
                 ELSE Cp[s]
         IN Cp' = [ Cp EXCEPT ![s] = newCp]
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, 
-                  ServerMsg,  Pt, State, CurrentTerm, ReadyToServe, SyncSource>>                                
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, State, CurrentTerm, functionalVar>>                                
            
 \*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
 ServerTakeHeartbeat ==
@@ -264,8 +269,7 @@ ServerTakeHeartbeat ==
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ot, Pt, 
-                   ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar, functionalVar>>
 
 ServerTakeUpdatePosition == 
     /\ ReadyToServe > 0
@@ -312,14 +316,12 @@ ServerTakeUpdatePosition ==
                                                     THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
                                                 ELSE [newServerMsg EXCEPT ![SyncSource[s]] = Append(newServerMsg[SyncSource[s]], appendMsg)]
                                   IN newMsg))
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ot, 
-                   Pt, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar, functionalVar>>
 
 NTPSync == \* simplify NTP protocal
     /\ ReadyToServe > 0
     /\ Pt' = [ s \in Server |-> MaxPt ] 
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot,
-                  ServerMsg, Cp, State, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars, messageVar, functionalVar>>
 
 AdvancePt == 
     /\ ReadyToServe > 0
@@ -328,8 +330,7 @@ AdvancePt ==
            /\ Pt[s] <= PtStop 
            /\ Pt' = [ Pt EXCEPT ![s] = @+1 ] \* advance physical time
            /\ BroadcastHeartbeat(s)          \* broadcast heartbeat periodly
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, State, 
-                   Cp, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars, functionalVar>>
                
 \* Replicate oplog from node j to node i, and update related structures accordingly
  Replicate == 
@@ -356,8 +357,7 @@ AdvancePt ==
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
-\*        /\ CalState' = [CalState EXCEPT ![i] = CalState[j]]  
-        /\ UNCHANGED <<Primary, Secondary, Pt, ReadyToServe>>
+    /\ UNCHANGED <<electionVars, timeVar, functionalVar>>
                    
 \* Rollback i's oplog and recover it to j's state   
 \* Recover to j's state immediately to prevent internal client request  
@@ -393,7 +393,7 @@ RollbackAndRecover ==
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
-        /\ UNCHANGED <<Primary, Secondary, Pt, ReadyToServe>> 
+    /\ UNCHANGED <<electionVars, timeVar, functionalVar>> 
                     
 ClientRequest ==
     /\ ReadyToServe > 0
@@ -414,9 +414,7 @@ ClientRequest ==
             IN LET SubHbState == State[s]
                    hb == [ SubHbState EXCEPT ![s] = newState ]
                IN [ State EXCEPT ![s] = hb] \* update i's state            
-        /\ UNCHANGED <<Primary,  Secondary, ServerMsg, 
-                       Pt, Cp,
-                       CurrentTerm, ReadyToServe, SyncSource>>       
+    /\ UNCHANGED <<electionVars, messageVar, timeVar, Cp, CurrentTerm, functionalVar, SyncSource>>       
                   
 \* Next state for all configurations
 Next == \/ Replicate
@@ -497,8 +495,7 @@ SyncSourceCycle ==
     
 NonTrivialSyncCycle == SyncSourceCycle /\ ~SyncSourceCycleTwoNode
 NoNonTrivialSyncCycle == ~NonTrivialSyncCycle    
-   
 =============================================================================
 \* Modification History
-\* Last modified Sat May 07 10:13:28 CST 2022 by dh
+\* Last modified Wed May 11 22:55:31 CST 2022 by dh
 \* Created Mon Apr 18 11:38:53 CST 2022 by dh

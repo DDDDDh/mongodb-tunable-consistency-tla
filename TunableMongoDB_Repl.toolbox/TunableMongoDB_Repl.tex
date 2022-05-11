@@ -1138,97 +1138,6 @@
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- commit point
-}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{{\RECURSIVE}} \ensuremath{AddState(\_,\,\_,\,\_)
-}}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{AddState(new,\, state,\, index) \.{\defeq}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{{\IF}} \ensuremath{index \.{=} 1 \.{\land} HLCLt(new,\, state[1])
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{17.5}%
- \ensuremath{\.{\THEN} {\langle}new{\rangle} \.{\circ}
- state\.{\,\backslash\,}\.{*}} less than the first
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{\.{\ELSE} {\IF}} \ensuremath{index \.{=} Len(state) \.{+} 1
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{17.5}%
- \ensuremath{\.{\THEN} state \.{\circ} {\langle}new{\rangle}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{\.{\ELSE} {\IF}} \ensuremath{HLCLt(new,\, state[index])
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{17.5}%
- \ensuremath{\.{\THEN} SubSeq(state,\, 1,\, index \.{-} 1) \.{\circ}
- {\langle}new{\rangle} \.{\circ} SubSeq(state,\, index,\, Len(state))
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{\.{\ELSE} AddState(new,\, state,\, index \.{+} 1)
-}}%
-\@xx{}%
-\@x{}%
-\@y{}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{{\RECURSIVE}} \ensuremath{RemoveState(\_,\,\_,\,\_)
-}}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{RemoveState(old,\, state,\, index) \.{\defeq}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{{\IF}} \ensuremath{state[index] \.{=} old
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{17.5}%
- \ensuremath{\.{\THEN} SubSeq(state,\, 1,\, index \.{-} 1) \.{\circ}
- SubSeq(state,\, index \.{+} 1,\, Len(state))
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{\.{\ELSE} RemoveState(old,\, state,\, index \.{+} 1)
-}}%
-\@xx{}%
-\@x{}%
-\@y{}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{AdvanceState(new,\, old,\, state) \.{\defeq} AddState(new,\,
- RemoveState(old,\, state,\, 1),\, 1)
-}}%
-\@xx{}%
-\@pvspace{8.0pt}%
-\@x{}%
-\@y{\@s{0}%
  clock
 }%
 \@xx{}%
@@ -1360,22 +1269,7 @@
 \@x{\@s{98.43} \.{\land} \A\, s ,\, t \.{\in} Q \.{:}}%
  \@x{\@s{109.54} s \.{\neq} t \.{\implies} states [ s ] . term \.{=} states [
  s ] . term \}}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{\.{\IN} {\IF}} \ensuremath{quorums \.{=} \{\} \.{\THEN} Nil
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{15.0}%
- \ensuremath{\.{\ELSE} {\CHOOSE} x \.{\in} quorums} : \ensuremath{{\TRUE}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{15.0}%
- \ensuremath{\.{\ELSE} quorums
-}}%
-\@xx{}%
-\@x{\@s{24.59} \.{\IN} quorums}%
+\@x{\@s{16.4} \.{\IN} quorums}%
 \@pvspace{16.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1401,20 +1295,9 @@
  \.{\mapsto} 1 ]}%
  \@x{ InitCp \.{\defeq} Cp \.{=} [ n \.{\in} Server \.{\cup} Client
  \.{\mapsto} [ p \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ] ]}%
-\@x{}%
-\@y{%
- \ensuremath{InitCalState \.{\defeq} CalState \.{=}} [\ensuremath{s \.{\in}
- Server \.{\mapsto} CreateState(Cardinality(Server),\, {\langle}{\rangle})}]
-}%
-\@xx{}%
-\@x{\@s{118.9}}%
-\@y{\@s{0}%
- create initial \ensuremath{state(for} \ensuremath{calculate)
-}}%
-\@xx{}%
- \@x{ InitState \.{\defeq} State \.{=} [ s \.{\in} Server \.{\mapsto} [ s0
- \.{\in} Server \.{\mapsto}}%
- \@x{\@s{175.84} [ p \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ,\, term \.{\mapsto} 0
+ \@x{ InitState \.{\defeq} State\@s{2.83} \.{=} [ s \.{\in} Server \.{\mapsto}
+ [ s0 \.{\in} Server \.{\mapsto}}%
+ \@x{\@s{178.67} [ p \.{\mapsto} 0 ,\, l \.{\mapsto} 0 ,\, term \.{\mapsto} 0
  ] ] ]}%
  \@x{ InitCurrentTerm \.{\defeq} CurrentTerm \.{=} [ s \.{\in} Server
  \.{\mapsto} 0 ]}%
@@ -1513,60 +1396,38 @@
  \@x{\@s{31.61} \.{\land} {\UNCHANGED} {\langle} Oplog ,\, Store ,\, Ct ,\, Ot
  ,\, ServerMsg ,\, Pt ,\, Cp ,\, State ,\, ReadyToServe {\rangle}}%
 \@pvspace{8.0pt}%
-\@x{}%
-\@y{%
- \ensuremath{AdvanceCp \.{\defeq}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{\.{\land} ReadyToServe \.{>} 0
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{\.{\land} \E\, s \.{\in} Primary}:
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{17.5}%
- \ensuremath{Cp\.{'} \.{=}} [\ensuremath{Cp} \ensuremath{{\EXCEPT} {\bang}[s]
- \.{=} CalState[s][Cardinality(Server) \.{\div} 2 \.{+} 1]} ]
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{7.5}%
- \ensuremath{\.{\land} {\UNCHANGED}{\langle}Primary,\, Secondary,\, Oplog,\,
- Store,\, Ct,\, Ot,\,
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{42.5}%
- \ensuremath{ServerMsg}, \ensuremath{Pt}, \ensuremath{State},
- \ensuremath{CurrentTerm}, \ensuremath{ReadyToServe},
- \ensuremath{SyncSource{\rangle}
-}}%
-\@xx{}%
-\@x{}%
-\@y{}%
-\@xx{}%
 \@x{ AdvanceCp \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
-\@x{\@s{16.4} \.{\land} \E\, i \.{\in} Primary \.{:}}%
- \@x{\@s{31.61} \.{\LET} quorumAgree \.{\defeq} QuorumAgreeInSameTerm ( State
- [ i ] ) \.{\IN}}%
-\@x{\@s{52.01} \.{\land} quorumAgree \.{\neq} Nil}%
- \@x{\@s{52.01} \.{\land} \.{\LET} serverInQuorum \.{\defeq} {\CHOOSE} s
- \.{\in} quorumAgree \.{:} {\TRUE}}%
-\@x{\@s{83.52} termOfQuorum \.{\defeq} State [ i ] [ serverInQuorum ] [ 3 ]}%
- \@x{\@s{83.52} newCommitPoint \.{\defeq} HLCMinSet ( \{ [ p \.{\mapsto} State
- [ i ] [ s ] [ 1 ] ,\, l \.{\mapsto} State [ i ] [ s ] [ 2 ] ] \.{:} s
- \.{\in} quorumAgree \} )}%
-\@x{\@s{63.12} \.{\IN} \.{\land} termOfQuorum \.{=} CurrentTerm [ i ]}%
- \@x{\@s{83.52} \.{\land} \.{\LET} newCP \.{\defeq} [ p \.{\mapsto}
- newCommitPoint . p ,\, l \.{\mapsto} newCommitPoint . l ,\, term \.{\mapsto}
- termOfQuorum ] \.{\IN}}%
-\@x{\@s{115.03} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ i ] \.{=} newCP ]}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Primary \.{:}}%
+\@x{\@s{31.61} \.{\LET} newCp \.{\defeq}}%
+ \@x{\@s{52.01} \.{\LET} quorumAgree \.{\defeq} QuorumAgreeInSameTerm ( State
+ [ s ] )}%
+\@x{\@s{52.01} \.{\IN} {\IF} Cardinality ( quorumAgree ) \.{>} 0}%
+ \@x{\@s{88.66} \.{\THEN} \.{\LET} QuorumSet \.{\defeq} {\CHOOSE} i \.{\in}
+ quorumAgree \.{:} {\TRUE}}%
+ \@x{\@s{140.37} serverInQuorum \.{\defeq} {\CHOOSE} j \.{\in} QuorumSet \.{:}
+ {\TRUE}}%
+ \@x{\@s{140.37} termOfQuorum \.{\defeq} State [ s ] [ serverInQuorum ] .
+ term}%
+ \@x{\@s{140.37} StateSet \.{\defeq} \{ [ p \.{\mapsto} State [ s ] [ j ] . p
+ ,\, l \.{\mapsto} State [ s ] [ j ] . l ] \.{:} j \.{\in} QuorumSet \}}%
+\@x{\@s{140.37} newCommitPoint \.{\defeq} HLCMinSet ( StateSet )}%
+ \@x{\@s{140.37} oldCommitPoint\@s{4.08} \.{\defeq} [ p \.{\mapsto} Cp [ s ] .
+ p ,\, l \.{\mapsto} Cp [ s ] . l ]}%
+\@x{\@s{140.37}}%
+\@y{\@s{0}%
+ \ensuremath{newCp} must be greater than current \ensuremath{Cp} for primary
+ to advance it
+}%
+\@xx{}%
+ \@x{\@s{119.97} \.{\IN} {\IF} termOfQuorum \.{=} CurrentTerm [ s ] \.{\land}
+ HLCLt ( oldCommitPoint ,\, newCommitPoint )}%
+ \@x{\@s{156.63} \.{\THEN} [ p \.{\mapsto} newCommitPoint . p ,\, l
+ \.{\mapsto} newCommitPoint . l ,\, term \.{\mapsto} termOfQuorum ]}%
+\@x{\@s{140.37} \.{\ELSE} Cp [ s ]}%
+\@x{\@s{72.41} \.{\ELSE} Cp [ s ]}%
+ \@x{\@s{31.61} \.{\IN} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ s ] \.{=}
+ newCp ]}%
  \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
  Oplog ,\, Store ,\, Ct ,\, Ot ,\,}%
  \@x{\@s{90.19} ServerMsg ,\,\@s{4.1} Pt ,\, State ,\, CurrentTerm ,\,
@@ -1586,6 +1447,8 @@
 }%
 \@xx{}%
 \@x{\@s{31.61} \.{\land} ServerMsg [ s ] [ 1 ] . type \.{=}\@w{heartbeat}}%
+ \@x{\@s{31.61} \.{\land} CurrentTerm [ s ] \.{=} ServerMsg [ s ] [ 1 ] .
+ term}%
  \@x{\@s{31.61} \.{\land} Ct \.{'} \.{=} [ Ct {\EXCEPT} {\bang} [ s ] \.{=}
  HLCMax ( Ct [ s ] ,\, ServerMsg [ s ] [ 1 ] . ct ) ]}%
 \@x{\@s{31.61} \.{\land} State \.{'} \.{=}}%
@@ -1608,135 +1471,50 @@
  \@x{\@s{100.31} \.{\LET} quorumAgree \.{\defeq} QuorumAgreeInSameTerm ( State
  [ s ] ) \.{\IN}}%
 \@x{\@s{120.71} {\IF} Cardinality ( quorumAgree ) \.{>} 0}%
-\@x{}%
-\@y{\@s{77.5}%
- \ensuremath{\.{\THEN} \.{\LET} serverInQuorum \.{\defeq} {\CHOOSE} i \.{\in}
- quorumAgree} : \ensuremath{{\TRUE}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{100.0}%
- \ensuremath{termOfQuorum \.{\defeq} State[s][serverInQuorum].term
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{100.0}%
- \ensuremath{newCommitPoint \.{\defeq} HLCMinSet(\{[p \.{\mapsto}
- State[s][j].p,\, l \.{\mapsto} State[s][j].l]\.{:} j \.{\in} quorumAgree\})
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{90.0}%
- \ensuremath{\.{\IN} {\IF}} \ensuremath{termOfQuorum \.{=} CurrentTerm[s]
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{97.5}%
- \ensuremath{\.{\THEN}} [\ensuremath{p \.{\mapsto} newCommitPoint.p},
- \ensuremath{l \.{\mapsto} newCommitPoint.l}, \ensuremath{term \.{\mapsto}
- termOfQuorum}]
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{97.5}%
- \ensuremath{\.{\ELSE} Cp[s]
-}}%
-\@xx{}%
- \@x{\@s{114.8} \.{\THEN} [ p \.{\mapsto} 2 ,\, l \.{\mapsto} 2 ,\, term
- \.{\mapsto} 2 ]}%
-\@x{\@s{114.8} \.{\ELSE} Cp [ s ]}%
-\@x{}%
-\@y{%
- \ensuremath{\.{\,\backslash\,}\.{*}\@s{70.0}\.{\land} quorumAgree \.{\neq}
- Nil
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{67.5}%
- \ensuremath{\.{\land} Cardinality(quorumAgree) \.{>} 0
-}}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{\.{\,\backslash\,}\.{*}\@s{70.0}\.{\land} \.{\LET}
- serverInQuorum \.{\defeq} {\CHOOSE} i \.{\in} quorumAgree}:
- \ensuremath{{\TRUE}
-}}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{\.{\,\backslash\,}\.{*}\@s{87.5}termOfQuorum \.{\defeq}
- State[s][serverInQuorum].term
-}}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{\.{\,\backslash\,}\.{*}\@s{87.5}newCommitPoint \.{\defeq}
- HLCMinSet(\{[p \.{\mapsto} State[s][i].p,\, l \.{\mapsto}
- State[s][i].l]\.{:} i \.{\in} quorumAgree\})
-}}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{\.{\,\backslash\,}\.{*}\@s{77.5}\.{\IN} {\IF}}
- \ensuremath{termOfQuorum \.{=} CurrentTerm[s]
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{67.5}%
- \ensuremath{\.{\land} \.{\LET} serverInQuorum \.{\defeq} {\CHOOSE} i \.{\in}
- quorumAgree}: \ensuremath{{\TRUE}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{87.5}%
- \ensuremath{termOfQuorum \.{\defeq} State[s][serverInQuorum].term
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{77.5}%
- \ensuremath{\.{\IN} {\IF}} \ensuremath{termOfQuorum \.{=} CurrentTerm[s]
-}}%
-\@xx{}%
-\@x{}%
-\@y{%
- \ensuremath{\.{\,\backslash\,}\.{*}\@s{90.0}\.{\THEN}} [ \ensuremath{p
- \.{\mapsto} newCommitPoint.p}, \ensuremath{l \.{\mapsto} newCommitPoint.l},
- \ensuremath{term \.{\mapsto} termOfQuorum} ]
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{87.5}%
- \ensuremath{\.{\THEN}} [\ensuremath{p \.{\mapsto} 5}, \ensuremath{l
- \.{\mapsto} 5}, \ensuremath{term \.{\mapsto} termOfQuorum}]
-}%
-\@xx{}%
-\@x{}%
-\@y{\@s{82.5}%
- \ensuremath{\.{\ELSE} Cp[s]
-}}%
-\@xx{}%
-\@x{\@s{69.7}}%
+ \@x{\@s{136.96} \.{\THEN} \.{\LET} QuorumSet \.{\defeq} {\CHOOSE} i \.{\in}
+ quorumAgree \.{:} {\TRUE}}%
+ \@x{\@s{188.68} serverInQuorum \.{\defeq} {\CHOOSE} j \.{\in} QuorumSet \.{:}
+ {\TRUE}}%
+ \@x{\@s{188.68} termOfQuorum \.{\defeq} State [ s ] [ serverInQuorum ] .
+ term}%
+ \@x{\@s{188.68} StateSet \.{\defeq} \{ [ p \.{\mapsto} State [ s ] [ j ] . p
+ ,\, l \.{\mapsto} State [ s ] [ j ] . l ] \.{:} j \.{\in} QuorumSet \}}%
+\@x{\@s{188.68} newCommitPoint \.{\defeq} HLCMinSet ( StateSet )}%
+\@x{\@s{168.28} \.{\IN} {\IF} termOfQuorum \.{=} CurrentTerm [ s ]}%
+\@x{\@s{204.93} \.{\THEN}}%
+ \@x{\@s{225.43} [ p \.{\mapsto} newCommitPoint . p ,\, l \.{\mapsto}
+ newCommitPoint . l ,\, term \.{\mapsto} termOfQuorum ]}%
+\@x{\@s{192.78} \.{\ELSE} Cp [ s ]}%
+\@x{\@s{120.71} \.{\ELSE} Cp [ s ]}%
+\@x{\@s{71.75}}%
 \@y{\@s{0}%
  secondary node: update mcp
 }%
 \@xx{}%
- \@x{\@s{90.09} \.{\ELSE} {\IF} \.{\LET} msgCP \.{\defeq} [ p \.{\mapsto}
+ \@x{\@s{92.15} \.{\ELSE} {\IF} \.{\LET} msgCP \.{\defeq} [ p \.{\mapsto}
  ServerMsg [ s ] [ 1 ] . cp . p ,\, l \.{\mapsto} ServerMsg [ s ] [ 1 ] . cp
  . l ] \.{\IN}}%
-\@x{\@s{133.56} \.{\land} {\lnot} HLCLt ( msgCP ,\, Cp [ s ] )}%
-\@x{\@s{133.56} \.{\land} {\lnot} HLCLt ( Ot [ s ] ,\, msgCP )}%
-\@x{\@s{106.49} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
-\@x{\@s{106.49} \.{\ELSE} Cp [ s ]}%
-\@x{\@s{69.7} \.{\IN} [ Cp {\EXCEPT} {\bang} [ s ] \.{=} newcp ]}%
- \@x{\@s{28.7} \.{\land} ServerMsg \.{'} \.{=} [ ServerMsg {\EXCEPT} {\bang} [
- s ] \.{=} Tail ( @ ) ]}%
- \@x{\@s{28.7} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
+\@x{\@s{135.62} \.{\land} {\lnot} HLCLt ( msgCP ,\, Cp [ s ] )}%
+\@x{\@s{135.62} \.{\land} {\lnot} HLCLt ( Ot [ s ] ,\, msgCP )}%
+\@x{\@s{135.62}}%
+\@y{\@s{0}%
+ The term of \ensuremath{cp} must equal to the \ensuremath{CurrentTerm} of
+ that node to advance it
+}%
+\@xx{}%
+ \@x{\@s{135.62} \.{\land} ServerMsg [ s ] . cp . term \.{=} CurrentTerm [ s
+ ]}%
+\@x{\@s{108.55} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
+\@x{\@s{108.55} \.{\ELSE} Cp [ s ]}%
+\@x{\@s{71.75} \.{\IN} [ Cp {\EXCEPT} {\bang} [ s ] \.{=} newcp ]}%
+ \@x{\@s{27.51} \.{\land} ServerMsg \.{'} \.{=} [ ServerMsg {\EXCEPT} {\bang}
+ [ s ] \.{=} Tail ( @ ) ]}%
+ \@x{\@s{27.51} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
  {\bang} [ s ] \.{=} Max ( CurrentTerm [ s ] ,\, ServerMsg [ s ] [ 1 ] . term
  ) ]}%
- \@x{\@s{16.4} \.{\land}\@s{1.18} {\UNCHANGED} {\langle} Primary ,\, Secondary
- ,\, Oplog ,\, Store ,\, Ot ,\, Pt ,\,}%
-\@x{\@s{91.17} ReadyToServe ,\, SyncSource {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ot ,\, Pt ,\,}%
+\@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ServerTakeUpdatePosition \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -1774,65 +1552,59 @@
  \@x{\@s{100.31} \.{\LET} quorumAgree \.{\defeq} QuorumAgreeInSameTerm ( State
  [ s ] ) \.{\IN}}%
 \@x{\@s{120.71} {\IF} Cardinality ( quorumAgree ) \.{>} 0}%
-\@x{\@s{132.86} \.{\THEN} \E\, serverInQuorum \.{\in} quorumAgree \.{:}}%
- \@x{\@s{164.18} \.{\LET} termOfQuorum \.{\defeq} State [ s ] [ serverInQuorum
- ] . term}%
-\@x{}%
-\@y{\@s{97.5}%
- \ensuremath{StateSet \.{\defeq} \{[p \.{\mapsto} State[s][j].p,\, l
- \.{\mapsto} State[s][j].l]\.{:} j \.{\in} quorumAgree\}
-}}%
-\@xx{}%
-\@x{}%
-\@y{\@s{97.5}%
- \ensuremath{newCommitPoint \.{\defeq} HLCMinSet(StateSet)
-}}%
-\@xx{}%
- \@x{\@s{172.2} newCommitPoint \.{\defeq} [ p \.{\mapsto} State [ s ] [
- serverInQuorum ] . p ,\, l \.{\mapsto} State [ s ] [ serverInQuorum ] . l ]}%
-\@x{\@s{147.59} \.{\IN} {\IF} termOfQuorum \.{=} CurrentTerm [ s ]}%
- \@x{\@s{172.09} \.{\THEN} [ p \.{\mapsto} newCommitPoint . p ,\, l
- \.{\mapsto} newCommitPoint . l ,\, term \.{\mapsto} termOfQuorum ]}%
-\@x{\@s{167.99} \.{\ELSE} Cp [ s ]}%
-\@x{\@s{114.8} \.{\ELSE} Cp [ s ]}%
-\@x{\@s{69.7}}%
+ \@x{\@s{136.96} \.{\THEN} \.{\LET} QuorumSet \.{\defeq} {\CHOOSE} i \.{\in}
+ quorumAgree \.{:} {\TRUE}}%
+ \@x{\@s{188.68} serverInQuorum \.{\defeq} {\CHOOSE} j \.{\in} QuorumSet \.{:}
+ {\TRUE}}%
+ \@x{\@s{188.68} termOfQuorum \.{\defeq} State [ s ] [ serverInQuorum ] .
+ term}%
+ \@x{\@s{188.68} StateSet \.{\defeq} \{ [ p \.{\mapsto} State [ s ] [ j ] . p
+ ,\, l \.{\mapsto} State [ s ] [ j ] . l ] \.{:} j \.{\in} QuorumSet \}}%
+\@x{\@s{188.68} newCommitPoint \.{\defeq} HLCMinSet ( StateSet )}%
+\@x{\@s{168.28} \.{\IN} {\IF} termOfQuorum \.{=} CurrentTerm [ s ]}%
+\@x{\@s{204.93} \.{\THEN}}%
+ \@x{\@s{225.43} [ p \.{\mapsto} newCommitPoint . p ,\, l \.{\mapsto}
+ newCommitPoint . l ,\, term \.{\mapsto} termOfQuorum ]}%
+\@x{\@s{192.78} \.{\ELSE} Cp [ s ]}%
+\@x{\@s{120.71} \.{\ELSE} Cp [ s ]}%
+\@x{\@s{71.75}}%
 \@y{\@s{0}%
  secondary node: update mcp
 }%
 \@xx{}%
- \@x{\@s{90.09} \.{\ELSE} {\IF} \.{\LET} msgCP \.{\defeq} [ p \.{\mapsto}
+ \@x{\@s{92.15} \.{\ELSE} {\IF} \.{\LET} msgCP \.{\defeq} [ p \.{\mapsto}
  ServerMsg [ s ] [ 1 ] . cp . p ,\, l \.{\mapsto} ServerMsg [ s ] [ 1 ] . cp
  . l ] \.{\IN}}%
-\@x{\@s{133.56} \.{\land} {\lnot} HLCLt ( msgCP ,\, Cp [ s ] )}%
-\@x{\@s{133.56} \.{\land} {\lnot} HLCLt ( Ot [ s ] ,\, msgCP )}%
-\@x{\@s{121.41} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
-\@x{\@s{121.41} \.{\ELSE} Cp [ s ]}%
-\@x{\@s{69.7} \.{\IN} [ Cp {\EXCEPT} {\bang} [ s ] \.{=} newcp ]}%
- \@x{\@s{28.7} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
+\@x{\@s{135.62} \.{\land} {\lnot} HLCLt ( msgCP ,\, Cp [ s ] )}%
+\@x{\@s{135.62} \.{\land} {\lnot} HLCLt ( Ot [ s ] ,\, msgCP )}%
+\@x{\@s{123.46} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
+\@x{\@s{123.46} \.{\ELSE} Cp [ s ]}%
+\@x{\@s{71.75} \.{\IN} [ Cp {\EXCEPT} {\bang} [ s ] \.{=} newcp ]}%
+ \@x{\@s{27.51} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
  {\bang} [ s ] \.{=} Max ( CurrentTerm [ s ] ,\, ServerMsg [ s ] [ 1 ] . term
  ) ]}%
- \@x{\@s{28.7} \.{\land} ServerMsg \.{'} \.{=} \.{\LET} newServerMsg
+ \@x{\@s{27.51} \.{\land} ServerMsg \.{'} \.{=} \.{\LET} newServerMsg
  \.{\defeq} [ ServerMsg {\EXCEPT} {\bang} [ s ] \.{=} Tail ( @ ) ]}%
- \@x{\@s{102.34} \.{\IN} ( \.{\LET}\@s{4.1} appendMsg \.{\defeq} [ type
+ \@x{\@s{101.15} \.{\IN} ( \.{\LET}\@s{4.1} appendMsg \.{\defeq} [ type
  \.{\mapsto}\@w{update\_position} ,\, s \.{\mapsto} ServerMsg [ s ] [ 1 ] . s
  ,\, aot \.{\mapsto} ServerMsg [ s ] [ 1 ] . aot ,\,}%
- \@x{\@s{183.93} ct \.{\mapsto} ServerMsg [ s ] [ 1 ] . ct ,\, cp \.{\mapsto}
+ \@x{\@s{182.74} ct \.{\mapsto} ServerMsg [ s ] [ 1 ] . ct ,\, cp \.{\mapsto}
  ServerMsg [ s ] [ 1 ] . cp ,\, term \.{\mapsto} ServerMsg [ s ] [ 1 ] . term
  ]}%
- \@x{\@s{126.63} \.{\IN} ( \.{\LET} newMsg \.{\defeq} {\IF} s \.{\in} Primary
+ \@x{\@s{125.44} \.{\IN} ( \.{\LET} newMsg \.{\defeq} {\IF} s \.{\in} Primary
  \.{\lor} SyncSource [ s ] \.{=} Nil}%
-\@x{\@s{241.87} \.{\THEN} newServerMsg}%
+\@x{\@s{240.68} \.{\THEN} newServerMsg}%
 \@y{\@s{0}%
  If \ensuremath{s} is primary, accept the \ensuremath{msg}, else forward it
  to its sync source
 }%
 \@xx{}%
- \@x{\@s{225.61} \.{\ELSE} [ newServerMsg {\EXCEPT} {\bang} [ SyncSource [ s ]
+ \@x{\@s{224.42} \.{\ELSE} [ newServerMsg {\EXCEPT} {\bang} [ SyncSource [ s ]
  ] \.{=} Append ( newServerMsg [ SyncSource [ s ] ] ,\, appendMsg ) ]}%
-\@x{\@s{150.92} \.{\IN} newMsg ) )}%
- \@x{\@s{16.4} \.{\land}\@s{1.18} {\UNCHANGED} {\langle} Primary ,\, Secondary
- ,\, Oplog ,\, Store ,\, Ot ,\,}%
-\@x{\@s{91.17} Pt ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+\@x{\@s{149.73} \.{\IN} newMsg ) )}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
+ Oplog ,\, Store ,\, Ot ,\,}%
+\@x{\@s{89.98} Pt ,\, ReadyToServe ,\, SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ NTPSync \.{\defeq}}%
 \@y{\@s{0}%
@@ -2075,6 +1847,7 @@
 \@xx{}%
 \@x{ Next \.{\defeq} \.{\lor} Replicate}%
 \@x{\@s{39.83} \.{\lor} AdvancePt}%
+\@x{\@s{39.83} \.{\lor} AdvanceCp}%
 \@x{\@s{39.83} \.{\lor} ServerTakeHeartbeat}%
 \@x{\@s{39.83} \.{\lor} ServerTakeUpdatePosition}%
 \@x{\@s{39.83} \.{\lor} Stepdown}%
@@ -2085,7 +1858,6 @@
 \@x{\@s{39.83} \.{\lor} NTPSync}%
 \@pvspace{8.0pt}%
 \@x{ Spec\@s{1.46} \.{\defeq} Init \.{\land} {\Box} [ Next ]_{ vars}}%
-\@pvspace{8.0pt}%
 \@x{}\midbar\@xx{}%
 \@x{}%
 \@y{%
@@ -2199,7 +1971,7 @@
  \@x{ NonTrivialSyncCycle \.{\defeq} SyncSourceCycle \.{\land} {\lnot}
  SyncSourceCycleTwoNode}%
 \@x{ NoNonTrivialSyncCycle \.{\defeq} {\lnot} NonTrivialSyncCycle}%
-\@pvspace{16.0pt}%
+\@pvspace{8.0pt}%
 \@x{}\bottombar\@xx{}%
 \setboolean{shading}{false}
 \begin{lcom}{0}%
@@ -2208,8 +1980,8 @@
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
- \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Fri}
- \ensuremath{Apr} 29 14:33:41 \ensuremath{CST} 2022 by \ensuremath{dh
+ \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Wed} May 04
+ 15:41:10 \ensuremath{CST} 2022 by \ensuremath{dh
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.12.29)  29 APR 2022 14:42
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2016.12.29)  5 MAY 2022 16:48
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -194,22 +194,42 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 
 {/usr/local/texlive/2016/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] [2] [3]
 [4]
-Overfull \hbox (24.78592pt too wide) in paragraph at lines 1514--1515
-[][] 
- []
-
-[5]
-Overfull \hbox (132.90065pt too wide) in paragraph at lines 1564--1565
+Overfull \hbox (24.78592pt too wide) in paragraph at lines 1397--1398
 [][] 
  []
 
 
-Overfull \hbox (157.08122pt too wide) in paragraph at lines 1568--1569
+Overfull \hbox (10.41975pt too wide) in paragraph at lines 1409--1411
 [][] 
  []
 
 
-Overfull \hbox (18.83688pt too wide) in paragraph at lines 1573--1574
+Overfull \hbox (2.06439pt too wide) in paragraph at lines 1411--1413
+[][] 
+ []
+
+
+Overfull \hbox (75.82921pt too wide) in paragraph at lines 1413--1414
+[][] 
+ []
+
+
+Overfull \hbox (32.66339pt too wide) in paragraph at lines 1417--1424
+[][][][] 
+ []
+
+
+Overfull \hbox (147.9629pt too wide) in paragraph at lines 1424--1426
+[][] 
+ []
+
+
+Overfull \hbox (158.87172pt too wide) in paragraph at lines 1426--1427
+[][] 
+ []
+
+
+Overfull \hbox (18.83688pt too wide) in paragraph at lines 1434--1435
 [][] 
  []
 
@@ -273,191 +293,210 @@ Missing character: There is no ∂ in font cmr8!
 Missing character: There is no Ê in font cmr8!
 Missing character: There is no Ä in font cmr8!
 Missing character: There is no Å in font cmr8!
-
-Overfull \hbox (15.43768pt too wide) in paragraph at lines 1609--1610
+[5]
+Overfull \hbox (15.43768pt too wide) in paragraph at lines 1472--1473
 [][] 
  []
 
 
-Overfull \hbox (89.99008pt too wide) in paragraph at lines 1622--1628
+Overfull \hbox (43.32706pt too wide) in paragraph at lines 1475--1477
+[][] 
+ []
+
+
+Overfull \hbox (58.72975pt too wide) in paragraph at lines 1477--1479
+[][] 
+ []
+
+
+Overfull \hbox (50.37439pt too wide) in paragraph at lines 1479--1481
+[][] 
+ []
+
+
+Overfull \hbox (124.1392pt too wide) in paragraph at lines 1481--1482
+[][] 
+ []
+
+
+Overfull \hbox (21.55785pt too wide) in paragraph at lines 1482--1483
+[][] 
+ []
+
+
+Overfull \hbox (196.36078pt too wide) in paragraph at lines 1486--1487
+[][] 
+ []
+
+
+Overfull \hbox (95.20404pt too wide) in paragraph at lines 1496--1497
+[][] 
+ []
+
+
+Overfull \hbox (58.59511pt too wide) in paragraph at lines 1499--1506
 [][][][] 
  []
 
 
-Overfull \hbox (54.03415pt too wide) in paragraph at lines 1633--1640
-[][][][] 
+Overfull \hbox (80.67456pt too wide) in paragraph at lines 1514--1516
+[][] 
  []
 
 
-Overfull \hbox (91.45142pt too wide) in paragraph at lines 1672--1679
+Overfull \hbox (40.03868pt too wide) in paragraph at lines 1530--1535
 [][][][] 
  []
 
 [6]
-Overfull \hbox (67.31223pt too wide) in paragraph at lines 1701--1708
+Overfull \hbox (15.43768pt too wide) in paragraph at lines 1553--1554
+[][] 
+ []
+
+
+Overfull \hbox (43.32706pt too wide) in paragraph at lines 1556--1558
+[][] 
+ []
+
+
+Overfull \hbox (58.72975pt too wide) in paragraph at lines 1558--1560
+[][] 
+ []
+
+
+Overfull \hbox (50.37439pt too wide) in paragraph at lines 1560--1562
+[][] 
+ []
+
+
+Overfull \hbox (124.1392pt too wide) in paragraph at lines 1562--1563
+[][] 
+ []
+
+
+Overfull \hbox (21.55785pt too wide) in paragraph at lines 1563--1564
+[][] 
+ []
+
+
+Overfull \hbox (196.36078pt too wide) in paragraph at lines 1567--1568
+[][] 
+ []
+
+
+Overfull \hbox (95.20404pt too wide) in paragraph at lines 1577--1578
+[][] 
+ []
+
+
+Overfull \hbox (80.67456pt too wide) in paragraph at lines 1585--1587
+[][] 
+ []
+
+
+Overfull \hbox (198.59485pt too wide) in paragraph at lines 1590--1593
+[][] 
+ []
+
+
+Overfull \hbox (175.5819pt too wide) in paragraph at lines 1593--1595
+[][] 
+ []
+
+
+Overfull \hbox (31.07841pt too wide) in paragraph at lines 1595--1596
+[][] 
+ []
+
+
+Overfull \hbox (220.67151pt too wide) in paragraph at lines 1596--1603
 [][][][] 
  []
 
 
-Overfull \hbox (93.14404pt too wide) in paragraph at lines 1726--1727
+Overfull \hbox (315.76306pt too wide) in paragraph at lines 1603--1604
 [][] 
  []
 
 
-Overfull \hbox (81.86456pt too wide) in paragraph at lines 1736--1738
-[][] 
- []
-
-
-Overfull \hbox (40.03868pt too wide) in paragraph at lines 1752--1757
-[][][][] 
- []
-
-
-Overfull \hbox (15.43768pt too wide) in paragraph at lines 1775--1776
-[][] 
- []
-
-
-Overfull \hbox (46.27425pt too wide) in paragraph at lines 1779--1780
-[][] 
- []
-
-
-Overfull \hbox (0.88286pt too wide) in paragraph at lines 1780--1786
-[][][][] 
- []
-
-
-Overfull \hbox (197.25964pt too wide) in paragraph at lines 1792--1793
-[][] 
- []
-
-
-Overfull \hbox (174.33171pt too wide) in paragraph at lines 1795--1796
+Overfull \hbox (16.5806pt too wide) in paragraph at lines 1620--1621
 [][] 
  []
 
 [7]
-Overfull \hbox (93.14404pt too wide) in paragraph at lines 1805--1806
-[][] 
- []
-
-
-Overfull \hbox (81.86456pt too wide) in paragraph at lines 1813--1815
-[][] 
- []
-
-
-Overfull \hbox (0.94781pt too wide) in paragraph at lines 1815--1818
-[][] 
- []
-
-
-Overfull \hbox (199.78485pt too wide) in paragraph at lines 1818--1821
-[][] 
- []
-
-
-Overfull \hbox (176.77188pt too wide) in paragraph at lines 1821--1823
-[][] 
- []
-
-
-Overfull \hbox (32.26842pt too wide) in paragraph at lines 1823--1824
-[][] 
- []
-
-
-Overfull \hbox (221.86151pt too wide) in paragraph at lines 1824--1831
+Overfull \hbox (144.07608pt too wide) in paragraph at lines 1686--1691
 [][][][] 
  []
 
 
-Overfull \hbox (316.95306pt too wide) in paragraph at lines 1831--1832
+Overfull \hbox (171.2778pt too wide) in paragraph at lines 1708--1710
 [][] 
  []
 
 
-Overfull \hbox (16.5806pt too wide) in paragraph at lines 1848--1849
+Overfull \hbox (9.21422pt too wide) in paragraph at lines 1710--1712
 [][] 
  []
 
 [8]
-Overfull \hbox (144.07608pt too wide) in paragraph at lines 1914--1919
+Overfull \hbox (144.07608pt too wide) in paragraph at lines 1748--1754
 [][][][] 
  []
 
 
-Overfull \hbox (171.2778pt too wide) in paragraph at lines 1936--1938
-[][] 
- []
-
-
-Overfull \hbox (9.21422pt too wide) in paragraph at lines 1938--1940
-[][] 
- []
-
-
-Overfull \hbox (144.07608pt too wide) in paragraph at lines 1976--1982
+Overfull \hbox (104.84407pt too wide) in paragraph at lines 1786--1791
 [][][][] 
+ []
+
+
+Overfull \hbox (171.2778pt too wide) in paragraph at lines 1800--1802
+[][] 
+ []
+
+
+Overfull \hbox (9.21422pt too wide) in paragraph at lines 1802--1804
+[][] 
+ []
+
+
+Overfull \hbox (20.16109pt too wide) in paragraph at lines 1820--1821
+[][] 
  []
 
 [9]
-Overfull \hbox (104.84407pt too wide) in paragraph at lines 2014--2019
-[][][][] 
- []
-
-
-Overfull \hbox (171.2778pt too wide) in paragraph at lines 2028--2030
+Overfull \hbox (3.68733pt too wide) in paragraph at lines 1924--1926
 [][] 
  []
 
-
-Overfull \hbox (9.21422pt too wide) in paragraph at lines 2030--2032
-[][] 
- []
-
-
-Overfull \hbox (20.16109pt too wide) in paragraph at lines 2048--2049
-[][] 
- []
-
-[10]
-Overfull \hbox (3.68733pt too wide) in paragraph at lines 2152--2154
-[][] 
- []
-
-[11] [12] (./TunableMongoDB_Repl.aux) ) 
+[10] [11] (./TunableMongoDB_Repl.aux) ) 
 Here is how much of TeX's memory you used:
  1290 strings out of 493014
  16007 string characters out of 6133350
- 88257 words of memory out of 5000000
+ 87257 words of memory out of 5000000
  4865 multiletter control sequences out of 15000+600000
  9111 words of font info for 35 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 23i,11n,25p,290b,263s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 23i,10n,25p,290b,263s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/local/texlive/2016/texmf-dist/font
 s/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2016/texmf-dist/font
 s/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2016/texmf-dist/fonts
-/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2016/texmf-dist/fonts/t
-ype1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2016/texmf-dist/fonts/typ
-e1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/
-public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/pub
-lic/amsfonts/cm/cmr9.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public
-/amsfonts/cm/cmss10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/
-amsfonts/cm/cmsy10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/a
-msfonts/cm/cmsy6.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/ams
-fonts/cm/cmsy7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfo
-nts/cm/cmsy8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfont
-s/cm/cmti10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts
-/cm/cmti7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/c
-m/cmti8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/lat
-xfont/lasy10.pfb>
-Output written on TunableMongoDB_Repl.pdf (12 pages, 196729 bytes).
+/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2016/texmf-dist/fonts/t
+ype1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2016/texmf-dist/fonts/type
+1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/p
+ublic/amsfonts/cm/cmr9.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/publ
+ic/amsfonts/cm/cmss10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/publi
+c/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public
+/amsfonts/cm/cmsy6.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/a
+msfonts/cm/cmsy7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/ams
+fonts/cm/cmsy8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfo
+nts/cm/cmti10.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfon
+ts/cm/cmti7.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts
+/cm/cmti8.pfb></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/l
+atxfont/lasy10.pfb>
+Output written on TunableMongoDB_Repl.pdf (11 pages, 183965 bytes).
 PDF statistics:
- 107 PDF objects out of 1000 (max. 8388607)
- 76 compressed objects within 1 object stream
+ 100 PDF objects out of 1000 (max. 8388607)
+ 71 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 
