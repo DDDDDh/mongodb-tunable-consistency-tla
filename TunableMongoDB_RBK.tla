@@ -20,25 +20,43 @@ VARIABLES Primary,        \* Primary node
           Store,          \* store[s]: data stored at server[s]
           Ct,             \* Ct[s]: cluster time at node s
           Ot,             \* Ot[s]: the last applied operation time at server s
-          InMsgc,         \* InMsgc[c]: the channel of messages at client c \in Client
-          InMsgs,         \* InMsgc[s]: the channel of messages at server s \in Server
           ServerMsg,      \* ServerMsg[s]: the channel of heartbeat msgs at server s
-          BlockedClient,  \* BlockedClient: Client operations in progress
-          BlockedThread,  \* BlockedThread: blocked user thread and content
-          OpCount,        \* OpCount[c]: op count for client c
           Pt,             \* Pt[s]: physical time at server s
           Cp,             \* Cp[s]: majority commit point at server s
           State,          \* State[s]: the latest Ot of all servers that server s knows
-          CalState,       \* CalState: sorted State[Primary]         
-          SnapshotTable,  \* SnapshotTable[s] : snapshot mapping table at server s
-          History,        \* History[c]: History sequence at client c
           CurrentTerm,    \* CurrentTerm[s]: current election term at server s 
                           \* -> updated in update_position, heartbeat and replicate
           ReadyToServe,   \* equal to 0 before any primary is elected
-          SyncSource      \* sync source of server node s          
+          SyncSource,     \* sync source of server node s     
+          \* Following are the Tunable related vars
+          BlockedClient,  \* BlockedClient: Client operations in progress
+          BlockedThread,  \* BlockedThread: blocked user thread and content
+          History,        \* History[c]: History sequence at client c
+          InMsgc,         \* InMsgc[c]: the channel of messages at client c \in Client
+          InMsgs,         \* InMsgc[s]: the channel of messages at server s \in Server 
+          OpCount,        \* OpCount[c]: op count for client c  
+          SnapshotTable   \* SnapshotTable[s] : snapshot mapping table at server s  
           
+-----------------------------------------------------------------------------          
+\* group related vars to optimize code
+electionVars == <<Primary, Secondary>>              \* vars that are related to election  
+storageVars == <<Oplog, Store>>                     \* vars that are related to storage
+messageVar == <<ServerMsg>>                         \* var that is related to message
+servernodeVars == <<Ot, SyncSource, SnapshotTable>>                    \* vars that each server node holds for itself
+learnableVars == <<Ct, State, Cp, CurrentTerm>>     \* vars that must learn from msgs
+timeVar == <<Pt>>                                   \* var that is used for timing
+functionalVar == <<ReadyToServe>>                   \* var that is used for some extra function  
+clientnodeVars == <<History, OpCount>>
+
+tmessageVars == <<InMsgc, InMsgs>>
+tfunctionalVars == <<BlockedClient, BlockedThread>>
+
+
+serverVars == <<electionVars, storageVars, messageVar, servernodeVars, learnableVars, timeVar, functionalVar>>
+tunableVars == <<BlockedClient, BlockedThread, History, InMsgc, InMsgs, OpCount, SnapshotTable>>        
+              
 -----------------------------------------------------------------------------
-ASSUME Cardinality(Client) >= 1  \* at least one clinet
+ASSUME Cardinality(Client) >= 1  \* at least one client
 ASSUME Cardinality(Server) >= 2  \* at least one primary and one secondary
 ASSUME Cardinality(Key) >= 1  \* at least one object
 ASSUME Cardinality(Value) >= 2  \* at least two values to update
@@ -56,12 +74,13 @@ HLCLt(x, y) == IF x.p < y.p
 HLCMin(x, y) == IF HLCLt(x, y) THEN x ELSE y
 HLCMax(x, y) == IF HLCLt(x, y) THEN y ELSE x
 HLCType == [ p : Nat, l : Nat ]
+HLCMinSet(s) == CHOOSE x \in s: \A y \in s: ~HLCLt(y, x)   
 Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
 
 vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, 
           InMsgs, ServerMsg, BlockedClient, BlockedThread, 
-          OpCount, Pt, Cp, CalState, State, SnapshotTable, 
+          OpCount, Pt, Cp, State, SnapshotTable, 
           History, CurrentTerm, ReadyToServe, SyncSource>>
 
 RECURSIVE CreateState(_,_) \* init state
@@ -143,10 +162,7 @@ ReplicateOplog(i, j) ==
     IN IF i \in Secondary /\ len_i < len_j
                         THEN SubSeq(Oplog[j], len_i + 1, len_j)
                         ELSE <<>>
-             
-             
-             
-             
+
 \* Can node i rollback its log based on j's log
 CanRollback(i, j) == /\ Len(Oplog[i]) > 0       
                      /\ Len(Oplog[j]) > 0
@@ -163,6 +179,21 @@ RollbackCommonPoint(i, j) ==
                             /\ k <= Len(Oplog[j])
                             /\ Oplog[i][k] = Oplog[j][k]} IN
         IF commonIndices = {} THEN 0 ELSE MaxVal(commonIndices)    
+        
+\* The set of all quorums. This just calculates simple majorities, but the only
+\* important property is that every quorum overlaps with every other.
+Quorum == {i \in SUBSET(Server) : Cardinality(i) * 2 > Cardinality(Server)}
+        
+QuorumAgreeInSameTerm(states) == 
+    LET quorums == {Q \in Quorum :
+                    \* Make sure all nodes in quorum have actually applied some entries.
+                    /\ \/ \A s \in Q : states[s].p > 0
+                       \/ /\ \A s \in Q : states[s].p = 0
+                          /\ \A s \in Q : states[s].l > 0
+                    \* Make sure every applied entry in quorum has the same term.
+                    /\ \A s, t \in Q : 
+                       s # t => states[s].term = states[s].term} 
+    IN quorums            
                                  
 \* Init Part                       
 -----------------------------------------------------------------------------
@@ -180,8 +211,6 @@ InitBlockedThread == BlockedThread = [s \in Client |-> Nil ]
 InitOpCount == OpCount = [ c \in Client |-> OpTimes ]
 InitPt == Pt = [ s \in Server |-> 1 ]
 InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
-InitCalState == CalState = CreateState(Cardinality(Server), <<>>)
-                             \* create initial state(for calculate)
 InitState == State = [ s \in Server |-> [ s0 \in Server |-> 
                                               [ p |-> 0, l |-> 0 ] ] ]
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
@@ -193,7 +222,7 @@ InitSyncSource == SyncSource = [ s \in Server |-> Nil]
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
-    /\ InitOt /\ InitPt /\ InitCp /\ InitCalState /\ InitInMsgc /\ InitInMsgs 
+    /\ InitOt /\ InitPt /\ InitCp /\ InitInMsgc /\ InitInMsgs 
     /\ InitServerMsg /\ InitBlockedClient /\ InitBlockedThread /\ InitOpCount
     /\ InitState /\ InitSnap /\ InitHistory /\ InitCurrentTerm /\ InitReadyToServe
     /\ InitSyncSource
@@ -201,7 +230,6 @@ Init ==
 \* Next State Actions  
 \* Replication Protocol: possible actions  
 -----------------------------------------------------------------------------
-
 \* snapshot periodly
 Snapshot == 
     /\ ReadyToServe > 0
@@ -209,90 +237,107 @@ Snapshot ==
             SnapshotTable' =  [ SnapshotTable EXCEPT ![s] = 
                                 Append(@, [ot |-> Ot[s], store |-> Store[s] ]) ]  
                                \* create a new snapshot
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, 
-                   InMsgs, ServerMsg, BlockedClient, BlockedThread,
-                   OpCount, Pt, Cp, CalState, State, History, CurrentTerm, 
-                   ReadyToServe, SyncSource>>                                             
-
+    /\ UNCHANGED <<serverVars, InMsgc, InMsgs, BlockedClient, BlockedThread, OpCount, History>>                                             
 
 Stepdown == 
-            /\ ReadyToServe > 0
-            /\ \E s \in Primary:
-                /\ Primary' = Primary \ {s}
-                /\ Secondary' = Secondary \cup {s}
-            /\ UNCHANGED <<Oplog, Store, Ct, Ot, InMsgc, InMsgs, ServerMsg, 
-                            BlockedClient, BlockedThread, OpCount, Pt, Cp, 
-                            State, CalState, SnapshotTable, History, CurrentTerm, 
-                            ReadyToServe, SyncSource>>
+    /\ ReadyToServe > 0
+    /\ \E s \in Primary:
+        /\ Primary' = Primary \ {s}
+        /\ Secondary' = Secondary \cup {s}
+    /\ UNCHANGED <<storageVars, serverVars, Ct, messageVar, timeVar, Cp, State, CurrentTerm, functionalVar, tunableVars>>
 
 \* There are majority nodes agree to elect node i to become primary                            
-ElectPrimary(i, majorNodes) ==
+ElectPrimary ==
     /\ ReadyToServe > 0
-    /\ \A j \in majorNodes: /\ NotBehind(i, j)
-                            /\ CurrentTerm[i] >= CurrentTerm[j]
-    /\ IsMajority(majorNodes)         
+    /\ \E i \in Server: \E majorNodes \in SUBSET(Server):
+        /\ \A j \in majorNodes: /\ NotBehind(i, j)
+                                /\ CurrentTerm[i] >= CurrentTerm[j]
+        /\ IsMajority(majorNodes)         
        \* voted nodes for i cannot be primary anymore
-    /\ Primary' = LET possiblePrimary == Primary \ majorNodes
-                  IN possiblePrimary \cup {i}
+        /\ Primary' = LET possiblePrimary == Primary \ majorNodes
+                      IN possiblePrimary \cup {i}
        \* add voted nodes into secondaries          
-    /\ Secondary' = LET possibleSecondary == Secondary \cup majorNodes
-                    IN possibleSecondary \ {i}                                           
-    /\ CurrentTerm' = [index \in Server |-> IF index \in (majorNodes \cup {i})
-                                            THEN CurrentTerm[i] + 1
-                                            ELSE CurrentTerm[index]]
-    \* A primary node do not have any sync source                                        
-    /\ SyncSource' = [SyncSource EXCEPT ![i] = Nil ]                                        
-    /\ UNCHANGED <<Oplog, Store, Ct, Ot, InMsgc, InMsgs, ServerMsg, BlockedClient, 
-                   BlockedThread, OpCount, Pt, Cp, State, CalState, SnapshotTable, 
-                   History, ReadyToServe>> 
-
+        /\ Secondary' = LET possibleSecondary == Secondary \cup majorNodes
+                        IN possibleSecondary \ {i}                                           
+        /\ CurrentTerm' = [index \in Server |-> IF index \in (majorNodes \cup {i})
+                                                THEN CurrentTerm[i] + 1
+                                                ELSE CurrentTerm[index]]
+        \* A primary node do not have any sync source                                        
+        /\ SyncSource' = [SyncSource EXCEPT ![i] = Nil ]
+    /\ UNCHANGED <<storageVars, Ct, Ot, messageVar, timeVar, Cp, State, functionalVar, tunableVars>> 
+    
 TurnOnReadyToServe ==
     /\ ReadyToServe = 0
     /\ \E s \in Primary:
         /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = CurrentTerm[s] + 1]
+\*        /\ CurrentTerm' = [s \in Server |-> 1] ?
         /\ ReadyToServe' = ReadyToServe + 1
-    /\ UNCHANGED<<Primary,  Secondary, Oplog, Store, Ct, Ot, InMsgc, InMsgs, 
-                  ServerMsg, BlockedClient, BlockedThread, OpCount, Pt, Cp, 
-                  State, CalState, SnapshotTable, History, SyncSource>> 
+    /\ UNCHANGED<<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, Cp, State, tunableVars>>     
 
-AdvanceCp == 
+AdvanceCp ==
     /\ ReadyToServe > 0
-    /\ Cp' = [Cp EXCEPT ![Primary] = CalState[Cardinality(Server) \div 2 + 1] ] 
-    /\ UNCHANGED<<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, InMsgs, 
-                  ServerMsg, BlockedClient, BlockedThread, OpCount, Pt, CalState, 
-                  State, SnapshotTable,History, CurrentTerm, ReadyToServe, SyncSource>> 
-                  
-                                                                                                                                                                                        
+    /\ \E s \in Primary:
+        LET newCp == 
+            LET quorumAgree == QuorumAgreeInSameTerm(State[s]) 
+            IN  IF Cardinality(quorumAgree) > 0 
+                    THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
+                             serverInQuorum == CHOOSE j \in QuorumSet: TRUE
+                             termOfQuorum == State[s][serverInQuorum].term 
+                             StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
+                             newCommitPoint == HLCMinSet(StateSet)
+                             oldCommitPoint == [p |-> Cp[s].p, l |-> Cp[s].l]
+                             \* newCp must be greater than current Cp for primary to advance it
+                         IN IF termOfQuorum = CurrentTerm[s] /\ HLCLt(oldCommitPoint, newCommitPoint)
+                                THEN [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
+                            ELSE Cp[s]
+                ELSE Cp[s]
+        IN Cp' = [ Cp EXCEPT ![s] = newCp]
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, State, CurrentTerm, functionalVar, tunableVars>>                                              
+                                                                                                                                                                                                  
+\*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
 ServerTakeHeartbeat ==
     /\ ReadyToServe > 0
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "heartbeat"
+        /\ CurrentTerm[s] = ServerMsg[s][1].term \* only consider heartbeat msg in same term
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ]
         /\ State' = 
-            LET SubHbState == State[s]
-                hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = 
-                        ServerMsg[s][1].aot ]
-            IN [ State EXCEPT ![s] = hb]
-        /\ CalState' = LET newcal ==   
-                       IF s \in Primary \* primary node: update CalState
-                       THEN  AdvanceState(ServerMsg[s][1].aot, 
-                                       State[s][ServerMsg[s][1].s], CalState) 
-                       ELSE CalState IN newcal
+            LET newState == [
+                    p |-> ServerMsg[s][1].aot.p,
+                    l |-> ServerMsg[s][1].aot.l,
+                    term |-> ServerMsg[s][1].term
+                ]
+            IN LET SubHbState == State[s]
+                   hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = newState ]
+               IN [ State EXCEPT ![s] = hb]
         /\ Cp' = LET newcp ==
                  \* primary node: compute new mcp
-                 IF s \in Primary THEN CalState'[Cardinality(Server) \div 2 + 1]
+                    IF s \in Primary THEN 
+                        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
+                            IF Cardinality(quorumAgree) > 0 
+                                THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
+                                         serverInQuorum == CHOOSE j \in QuorumSet: TRUE
+                                         termOfQuorum == State[s][serverInQuorum].term 
+                                         StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
+                                         newCommitPoint == HLCMinSet(StateSet)
+                                     IN IF termOfQuorum = CurrentTerm[s]
+                                            THEN  
+                                                 [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
+                                         ELSE Cp[s]
+                            ELSE Cp[s]
                  \* secondary node: update mcp   
-                 ELSE IF ~ HLCLt(ServerMsg[s][1].cp, Cp[s])
-                      /\ ~ HLCLt(Ot[s], ServerMsg[s][1].cp)
-                 THEN ServerMsg[s][1].cp
-                 ELSE Cp[s]
+                    ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
+                            /\ ~ HLCLt(msgCP, Cp[s])
+                            /\ ~ HLCLt(Ot[s], msgCP)
+                            \* The term of cp must equal to the CurrentTerm of that node to advance it
+                            /\ ServerMsg[s][1].term = CurrentTerm[s] 
+                        THEN ServerMsg[s][1].cp
+                        ELSE Cp[s]
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ot, InMsgc, 
-                   InMsgs, BlockedClient, BlockedThread, OpCount, Pt, 
-                   SnapshotTable, History, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar, functionalVar, tunableVars>>
 
 ServerTakeUpdatePosition == 
     /\ ReadyToServe > 0
@@ -301,42 +346,50 @@ ServerTakeUpdatePosition ==
         /\ ServerMsg[s][1].type = "update_position"
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ] \* update ct accordingly
         /\ State' = 
-            LET SubHbState == State[s]
-                hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = 
-                        ServerMsg[s][1].aot ]
-            IN [ State EXCEPT ![s] = hb]
-        /\ CalState' = LET newcal ==   
-                       IF s \in Primary \* primary node: update CalState
-                       THEN  AdvanceState(ServerMsg[s][1].aot, 
-                                       State[s][ServerMsg[s][1].s], CalState) 
-                       ELSE CalState IN newcal
+            LET newState == [
+                    p |-> ServerMsg[s][1].aot.p,
+                    l |-> ServerMsg[s][1].aot.l,
+                    term |-> ServerMsg[s][1].term
+                ]
+            IN LET SubHbState == State[s]
+                   hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = newState ]
+               IN [ State EXCEPT ![s] = hb]
         /\ Cp' = LET newcp ==
                  \* primary node: compute new mcp
-                 IF s \in Primary THEN CalState'[Cardinality(Server) \div 2 + 1]
+                    IF s \in Primary THEN 
+                        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
+                            IF Cardinality(quorumAgree) > 0 
+                                THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
+                                         serverInQuorum == CHOOSE j \in QuorumSet: TRUE
+                                         termOfQuorum == State[s][serverInQuorum].term 
+                                         StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
+                                         newCommitPoint == HLCMinSet(StateSet)
+                                     IN IF termOfQuorum = CurrentTerm[s]
+                                            THEN  
+                                                 [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
+                                         ELSE Cp[s]
+                            ELSE Cp[s]
                  \* secondary node: update mcp   
-                 ELSE IF ~ HLCLt(ServerMsg[s][1].cp, Cp[s])
-                      /\ ~ HLCLt(Ot[s], ServerMsg[s][1].cp)
-                 THEN ServerMsg[s][1].cp
-                 ELSE Cp[s]
-                 IN [ Cp EXCEPT ![s] = newcp ]      
+                    ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
+                            /\ ~ HLCLt(msgCP, Cp[s])
+                            /\ ~ HLCLt(Ot[s], msgCP)
+                         THEN ServerMsg[s][1].cp
+                         ELSE Cp[s]
+                 IN [ Cp EXCEPT ![s] = newcp ]    
+       /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]             
        /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
-                           appendMsg == [ type |-> "update_position", s |-> ServerMsg[s][1].s, aot |-> ServerMsg[s][1].aot, 
+                       IN  ( LET  appendMsg == [ type |-> "update_position", s |-> ServerMsg[s][1].s, aot |-> ServerMsg[s][1].aot, 
                                           ct |-> ServerMsg[s][1].ct, cp |-> ServerMsg[s][1].cp, term |-> ServerMsg[s][1].term ]
-                           newMsg == IF s \in Primary 
-                                     THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
-                                     ELSE [newServerMsg EXCEPT ![SyncSource[s]] = Append(newServerMsg[SyncSource[s]], appendMsg)]
-                       IN newMsg
-       /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]                
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ot, InMsgc, InMsgs, 
-                   BlockedClient, BlockedThread, OpCount, Pt, SnapshotTable, 
-                   History, ReadyToServe, SyncSource>>
-
+                             IN ( LET newMsg == IF s \in Primary \/ SyncSource[s] = Nil
+                                                    THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
+                                                ELSE [newServerMsg EXCEPT ![SyncSource[s]] = Append(newServerMsg[SyncSource[s]], appendMsg)]
+                                  IN newMsg))
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar, functionalVar, tunableVars>>                   
+                  
 NTPSync == \* simplify NTP protocal
     /\ ReadyToServe > 0
     /\ Pt' = [ s \in Server |-> MaxPt ] 
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, InMsgs, 
-                  ServerMsg, BlockedClient, BlockedThread, OpCount, Cp,
-                  CalState, State, SnapshotTable, History, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars, messageVar, functionalVar, tunableVars>>
 
 AdvancePt == 
     /\ ReadyToServe > 0
@@ -345,68 +398,77 @@ AdvancePt ==
            /\ Pt[s] <= PtStop 
            /\ Pt' = [ Pt EXCEPT ![s] = @+1 ] \* advance physical time
            /\ BroadcastHeartbeat(s)          \* broadcast heartbeat periodly
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, InMsgs, State, 
-       BlockedClient, BlockedThread, OpCount, Cp, CalState, SnapshotTable, History, CurrentTerm, 
-       ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars, functionalVar, tunableVars>>
                                      
 \* Replication                                     
 \* Idea: 进行replicate的时候，首先进行canSyncFrom的判断，拥有更多log且大于等于term的才能作为同步源
 \* 其次，开始同步之后，把当前节点的同步源设置为SyncSource[s]，随后向SyncSource的信道里加入UpdatePosition消息
 \* 最后，关于UpdatePosition的转发，需要加入一个额外的action，如果自己的信道里有type为updatePosition的消息，则向上层节点转发
-    
 \* Replicate oplog from node j to node i, and update related structures accordingly
- Replicate(i, j) == 
+ Replicate == 
     /\ ReadyToServe > 0
-    /\ CanSyncFrom(i, j) \* i can sync from j only need not to rollback
-    /\ i \in Secondary
-    /\ ReplicateOplog(i, j) /= <<>>
-    /\ Oplog' = [Oplog EXCEPT ![i] = @ \o ReplicateOplog(i, j)]
-    /\ Store' = [Store EXCEPT ![i] =  Store[j]]
-    /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
-    /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i] 
-    /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
-    /\ CurrentTerm' = [CurrentTerm EXCEPT ![i] = Max(CurrentTerm[i], CurrentTerm[j])] \* update CurrentTerm
-    /\ State' = 
-            LET SubHbState == State[i]
-                hb == [ SubHbState EXCEPT ![j] = Ot[j] ]
-            IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
-    /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
-       IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
-    /\ SyncSource' = [SyncSource EXCEPT ![i] = j]   
-    /\ UNCHANGED <<Primary, Secondary, InMsgc, InMsgs, BlockedClient, 
-                    BlockedThread, OpCount, Pt, CalState, SnapshotTable, 
-                    History, ReadyToServe>>
-                   
+    /\ \E i, j \in Server: 
+        /\ CanSyncFrom(i, j) \* i can sync from j only need not to rollback
+        /\ i \in Secondary
+        /\ ReplicateOplog(i, j) /= <<>>
+        /\ Oplog' = [Oplog EXCEPT ![i] = @ \o ReplicateOplog(i, j)]
+        /\ Store' = [Store EXCEPT ![i] =  Store[j]]
+        /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
+        /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i]    
+        /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
+        /\ CurrentTerm' = [CurrentTerm EXCEPT ![i] = Max(CurrentTerm[i], CurrentTerm[j])] \* update CurrentTerm
+        /\ State' = 
+            LET newState == [
+                    p |-> Ot[j].p,
+                    l |-> Ot[j].l,
+                    term |-> CurrentTerm[j]
+                ]
+            IN LET SubHbState == State[i]
+                   hb == [ SubHbState EXCEPT ![j] = newState ]
+               IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
+        /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
+           IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
+        /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
+    /\ UNCHANGED <<electionVars, timeVar, functionalVar, tunableVars>>                    
+                    
 \* Rollback i's oplog and recover it to j's state   
 \* Recover to j's state immediately to prevent internal client request  
-RollbackAndRecover(i, j) ==
+RollbackAndRecover ==
     /\ ReadyToServe > 0
-    /\ i \in Secondary
-    /\ CanRollback(i, j)
-    /\ LET cmp == RollbackCommonPoint(i, j)  IN
-        LET commonLog == SubSeq(Oplog[i], 1, cmp)
-            appendLog == SubSeq(Oplog[j], cmp+1, Len(Oplog[j]))
-        IN Oplog' = [Oplog EXCEPT ![i] = commonLog \o appendLog]
-    /\ CurrentTerm' = [CurrentTerm EXCEPT ![i] = Max(CurrentTerm[i], CurrentTerm[j])] \* update CurrentTerm                                
-    /\ Store' = [Store EXCEPT ![i] =  Store[j]]
-    /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
-    /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i] 
-    /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
-    /\ State' = 
-            LET SubHbState == State[i]
-                hb == [ SubHbState EXCEPT ![j] = Ot[j] ]
-                hb1 == [ hb EXCEPT ![i] = Ot[j] ] \* update i's self state (used in mcp computation
-            IN [ State EXCEPT ![i] = hb1] \* update j's state i knows 
-    /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i] ]
-       IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
-    /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
-    /\ UNCHANGED <<Primary, Secondary, InMsgc, InMsgs, BlockedClient, 
-                    BlockedThread, OpCount, Pt, CalState, SnapshotTable, 
-                    History, ReadyToServe>> 
+    /\ \E i, j \in Server:
+        /\ i \in Secondary
+        /\ CanRollback(i, j)
+        /\ LET cmp == RollbackCommonPoint(i, j)  IN
+           LET commonLog == SubSeq(Oplog[i], 1, cmp)
+               appendLog == SubSeq(Oplog[j], cmp+1, Len(Oplog[j]))
+           IN Oplog' = [Oplog EXCEPT ![i] = commonLog \o appendLog]
+        /\ CurrentTerm' = [CurrentTerm EXCEPT ![i] = Max(CurrentTerm[i], CurrentTerm[j])] \* update CurrentTerm                                
+        /\ Store' = [Store EXCEPT ![i] =  Store[j]]
+        /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
+        /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i] 
+        /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
+        /\ State' = 
+            LET newStatei == [
+                    p |-> Ot'[i].p,
+                    l |-> Ot'[j].l,
+                    term |-> CurrentTerm'[i]
+                ]
+                newStatej == [
+                    p |-> Ot[j].p,
+                    l |-> Ot[j].l,
+                    term |-> CurrentTerm[j]
+                ]
+            IN LET SubHbState == State[i]
+                   hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
+                   hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
+               IN [ State EXCEPT ![i] = hb1]
+        /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
+           IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
+        /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
+    /\ UNCHANGED <<electionVars, timeVar, functionalVar, tunableVars>>                     
     
 \* Tunable Protocol: Server Actions
------------------------------------------------------------------------------
-                           
+-----------------------------------------------------------------------------                  
 \* Server Get
 
 ServerGetReply_local_sleep ==
@@ -419,10 +481,8 @@ ServerGetReply_local_sleep ==
         /\ BlockedThread' = [BlockedThread EXCEPT ![InMsgs[s][1].c] = 
                             [type |-> "read_local", s |-> s, k |-> InMsgs[s][1].k, ot |-> InMsgs[s][1].ot]]
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ot, InMsgc, ServerMsg,
-                   BlockedClient, OpCount, Pt, Cp, 
-                   CalState, State, SnapshotTable, History,
-                   CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, functionalVar, messageVar, servernodeVars, storageVars, timeVar,
+                   Cp, CurrentTerm, State, BlockedClient, clientnodeVars, InMsgc, SnapshotTable>>
                    
         
 ServerGetReply_local_wake ==
@@ -436,10 +496,7 @@ ServerGetReply_local_wake ==
                         ct |-> Ct[BlockedThread[c].s], ot |-> Ot[BlockedThread[c].s]])]
             \* send msg to client   
         /\ BlockedThread' = [BlockedThread EXCEPT ![c] = Nil]
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgs, ServerMsg,
-                   BlockedClient, OpCount, Pt, Cp, 
-                   CalState, State, SnapshotTable, History, 
-                   CurrentTerm, ReadyToServe, SyncSource>>                    
+    /\ UNCHANGED <<serverVars, clientnodeVars, BlockedClient, InMsgs, SnapshotTable>>                    
                                
 ServerGetReply_majority_sleep ==
     /\ ReadyToServe > 0
@@ -451,10 +508,8 @@ ServerGetReply_majority_sleep ==
         /\ BlockedThread' = [BlockedThread EXCEPT ![InMsgs[s][1].c] = 
                             [type |-> "read_major", s |-> s, k |-> InMsgs[s][1].k, ot |-> InMsgs[s][1].ot]]
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]
-    /\ UNCHANGED<<Primary, Secondary, Oplog, Store, Ot, InMsgc, ServerMsg,
-                  BlockedClient, OpCount, Pt, Cp,
-                  CalState, State, SnapshotTable, History, 
-                  CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED<<electionVars, functionalVar, messageVar, servernodeVars, storageVars, timeVar,
+                   Cp, CurrentTerm, State, BlockedClient, clientnodeVars, InMsgc, SnapshotTable>>
                   
 ServerGetReply_majority_wake ==        
     /\ ReadyToServe > 0 
@@ -467,10 +522,7 @@ ServerGetReply_majority_wake ==
                         ct |-> Ct[BlockedThread[c].s], ot |-> Cp[BlockedThread[c].s]])]
             \* send msg to client  
         /\ BlockedThread' = [BlockedThread EXCEPT ![c] = Nil]        
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgs, ServerMsg,
-                   BlockedClient, OpCount, Pt, Cp, 
-                   CalState, State, SnapshotTable, History, 
-                   CurrentTerm, ReadyToServe, SyncSource>>          
+    /\ UNCHANGED <<serverVars, clientnodeVars, BlockedClient, InMsgs, SnapshotTable>>          
           
 ServerGetReply_linearizable_sleep ==
     /\ ReadyToServe > 0
@@ -488,16 +540,14 @@ ServerGetReply_linearizable_sleep ==
         /\ State' = 
             LET SubHbState == State[s]
                 hb == [ SubHbState EXCEPT ![Primary] = Ot'[Primary] ]
-            IN [ State EXCEPT ![s] = hb] \* update primary state
-        /\ CalState' = AdvanceState(Ot'[Primary], Ot[Primary], CalState)                     
+            IN [ State EXCEPT ![s] = hb] \* update primary state                   
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]
         /\ BlockedThread' = [BlockedThread EXCEPT ![InMsgs[s][1].c] = 
                             [type |-> "read_linea", ot|-> Ct'[s], s |-> s, k 
                             |->InMsgs[s][1].k, v |-> Store[s][InMsgs[s][1].k] ] ] 
-                     \* add the user thread to BlockedThread[c]                             
-    /\ UNCHANGED <<Primary, Secondary, Store, InMsgc, ServerMsg, BlockedClient, 
-                   OpCount, Pt, Cp, SnapshotTable, History, 
-                   CurrentTerm, ReadyToServe, SyncSource>> 
+                     \* add the user thread to BlockedThread[c]                                                             
+    /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, messageVar, SyncSource, Store, timeVar,
+                   InMsgc, BlockedClient, clientnodeVars, SnapshotTable>> 
                   
 ServerGetReply_linearizable_wake ==
       /\ ReadyToServe > 0
@@ -509,10 +559,7 @@ ServerGetReply_linearizable_wake ==
                        |-> BlockedThread[c].k, v |-> BlockedThread[c].v, ct
                        |-> Ct[BlockedThread[c].s], ot|->BlockedThread[c].ot ])] 
         /\ BlockedThread' =  [ BlockedThread EXCEPT ![c] = Nil ] \* remove blocked state
-      /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgs, 
-                     ServerMsg, BlockedClient, OpCount, Pt, Cp, 
-                     CalState, State, SnapshotTable, History, 
-                     CurrentTerm, ReadyToServe, SyncSource>> 
+      /\ UNCHANGED <<serverVars, clientnodeVars, BlockedClient, InMsgs, SnapshotTable>> 
                       
 \* Server Put
 \* 注意：只有收到写操作时才会记录server的oplog
@@ -535,12 +582,10 @@ ServerPutReply_zero ==
         /\ State' = 
             LET SubHbState == State[s]
                 hb == [ SubHbState EXCEPT ![s] = Ot'[s] ]
-            IN [ State EXCEPT ![s] = hb] \* update primary state
-        /\ CalState' = AdvanceState(Ot'[s], Ot[s], CalState)                   
+            IN [ State EXCEPT ![s] = hb] \* update primary state                  
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@)]      
-    /\ UNCHANGED <<Primary, Secondary, InMsgc, ServerMsg, BlockedClient, 
-                BlockedThread, OpCount, Pt, Cp, SnapshotTable, 
-                History, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, messageVar, SyncSource, timeVar, 
+                   BlockedClient, BlockedThread, clientnodeVars, InMsgc,SnapshotTable>>
                  
 (***************************************************************************
 DH modified: Add k and v message when block thread, and return them when wake
@@ -562,32 +607,27 @@ ServerPutReply_number_sleep ==
         /\ State' = 
             LET SubHbState == State[s]
                 hb == [ SubHbState EXCEPT ![s] = Ot'[s] ]
-            IN [ State EXCEPT ![s] = hb] \* update primary state
-        /\ CalState' = AdvanceState(Ot'[s], Ot[s], CalState)                
+            IN [ State EXCEPT ![s] = hb] \* update primary state             
         /\ BlockedThread' = [ BlockedThread EXCEPT ![InMsgs[s][1].c] = [ type |-> "write_num", 
                               ot |-> Ot'[s], s |-> s, numnode |-> InMsgs[s][1].num,
                               k |->InMsgs[s][1].k, v |-> InMsgs[s][1].v ] ] 
                       \* add the user thHistory to BlockedThread[c]            
-        /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]         
-    /\ UNCHANGED <<Primary, Secondary, InMsgc, ServerMsg, BlockedClient, 
-                   OpCount, Pt, Cp, SnapshotTable, 
-                   History, CurrentTerm, ReadyToServe, SyncSource>>              
+        /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]       
+    /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, messageVar, SyncSource, timeVar,
+                   InMsgc, BlockedClient, clientnodeVars, SnapshotTable>>              
  
 ServerPutReply_number_wake ==
       /\ ReadyToServe > 0     
       /\ \E c \in Client:
         /\ BlockedThread[c] /=  Nil
         /\ BlockedThread[c].type = "write_num"
-        /\  ~ HLCLt(CalState[Cardinality(Server) - BlockedThread[c].numnode + 1],
-                    BlockedThread[c].ot)  \* CalState[s][n- num + 1] >= target ot
+\*        /\  ~ HLCLt(CalState[Cardinality(Server) - BlockedThread[c].numnode + 1],
+\*                    BlockedThread[c].ot)  \* CalState[s][n- num + 1] >= target ot
         /\ InMsgc' = [ InMsgc EXCEPT ![c] =  Append(@, [ op |-> "put", ct 
                        |-> Ct[Primary], ot |-> BlockedThread[c].ot, k|-> BlockedThread[c].k, v |-> BlockedThread[c].v]) ] 
         /\ BlockedThread' =  [ BlockedThread EXCEPT ![c] = Nil ] 
                                                        \* remove blocked state
-      /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgs, 
-                     ServerMsg, BlockedClient, OpCount, Pt, Cp, 
-                     CalState, State, SnapshotTable, History, 
-                     CurrentTerm, ReadyToServe, SyncSource>>
+      /\ UNCHANGED <<serverVars, clientnodeVars, BlockedClient, InMsgs, SnapshotTable>>
        
 (***************************************************************************
 DH modified: Add k and v message when block thread, and return them when wake
@@ -608,13 +648,12 @@ ServerPutReply_majority_sleep ==
         /\ State' = 
             LET SubHbState == State[s]
                 hb == [ SubHbState EXCEPT ![s] = Ot'[s] ]
-            IN [ State EXCEPT ![s] = hb] \* update primary state
-        /\ CalState' = AdvanceState(Ot'[s], Ot[s], CalState)                       
+            IN [ State EXCEPT ![s] = hb] \* update primary state                      
         /\ BlockedThread' = [BlockedThread EXCEPT ![InMsgs[s][1].c] = [type |-> "write_major", ot
                      |-> Ot'[s], s |-> s, k |->InMsgs[s][1].k, v |-> InMsgs[s][1].v ] ]               
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]       
-    /\ UNCHANGED <<Primary, Secondary, InMsgc, ServerMsg, BlockedClient, OpCount, 
-                   Pt, Cp, SnapshotTable, History, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, messageVar, SyncSource, timeVar,
+                   InMsgc, BlockedClient, clientnodeVars, SnapshotTable>>
     
 ServerPutReply_majority_wake ==    
       /\ ReadyToServe > 0
@@ -626,14 +665,10 @@ ServerPutReply_majority_wake ==
             Append(@, [ op |-> "put", ct |-> Ct[BlockedThread[c].s], ot |-> BlockedThread[c].ot, 
                         k |-> BlockedThread[c].k, v |-> BlockedThread[c].v ]) ]  
         /\ BlockedThread' =  [ BlockedThread EXCEPT ![c] = Nil ]  
-      /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgs, ServerMsg, 
-                     BlockedClient, OpCount, Pt, Cp, CalState, State, SnapshotTable, 
-                     History, CurrentTerm, ReadyToServe, SyncSource>>  
-
+      /\ UNCHANGED <<serverVars, clientnodeVars, BlockedClient, InMsgs, SnapshotTable>>  
 
 \* Tunable Protocol: Client Actions                
 ----------------------------------------------------------------------------- 
-
 \* Client Get
 
 ClientGetRequest_local_primary ==
@@ -642,10 +677,7 @@ ClientGetRequest_local_primary ==
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Append(@,
             [ op |-> "get", c |-> c, rc |-> "local", k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
         /\ BlockedClient' = BlockedClient \cup {c}
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, ServerMsg,
-                   BlockedThread, OpCount, Pt, Cp, CalState, 
-                   State, SnapshotTable, History, 
-                   CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>>
 
 ClientGetRequest_local_secondary ==
     /\ ReadyToServe > 0
@@ -653,9 +685,7 @@ ClientGetRequest_local_secondary ==
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Append(@,
             [ op |-> "get", c |-> c, rc |-> "local", k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
         /\ BlockedClient' = BlockedClient \cup {c}
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, ServerMsg, 
-                   BlockedThread, OpCount, Pt, Cp, CalState, State, SnapshotTable, 
-                   History, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>>
                        
 ClientGetRequest_majority_primary ==     
     /\ ReadyToServe > 0              
@@ -663,9 +693,7 @@ ClientGetRequest_majority_primary ==
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Append(@,
             [ op |-> "get", c |-> c, rc |-> "major", k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
         /\ BlockedClient' = BlockedClient \cup {c}
-    /\ UNCHANGED  <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, ServerMsg, 
-                    BlockedThread, OpCount, Pt, Cp, CalState, State, SnapshotTable, 
-                    History, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED  <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>>
 
 ClientGetRequest_majority_secondary ==    
     /\ ReadyToServe > 0               
@@ -673,9 +701,7 @@ ClientGetRequest_majority_secondary ==
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Append(@,
             [ op |-> "get", c |-> c, rc |-> "major", k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
         /\ BlockedClient' = BlockedClient \cup {c}
-    /\ UNCHANGED  <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, ServerMsg, 
-                    BlockedThread, OpCount, Pt, Cp, CalState, State, SnapshotTable, 
-                    History, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED  <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>>
                        
 ClientGetRequest_linearizable ==      
     /\ ReadyToServe > 0             
@@ -683,9 +709,7 @@ ClientGetRequest_linearizable ==
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Append(@,
             [ op |-> "get", c |-> c, rc |-> "linea", k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
         /\ BlockedClient' = BlockedClient \cup {c}
-    /\ UNCHANGED  <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, ServerMsg, 
-                    BlockedThread, OpCount, Pt, Cp, CalState, State, SnapshotTable, 
-                    History, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED  <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>>
     
 \* Client Put    
 (***************************************************************************
@@ -700,9 +724,7 @@ ClientPutRequest_zero ==
                        |-> k, v |-> v, ct |-> Ct[c]])]
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]    
         /\ History' = [History EXCEPT ![c] = Append(@, [ op |-> "put", ts |-> InMsgc[c][1].ot, k |-> k, v |-> v ]) ]        
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc,ServerMsg, 
-                   BlockedClient, BlockedThread, Pt, Cp, CalState, State, SnapshotTable, 
-                   CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<serverVars, BlockedClient, BlockedThread, InMsgc, SnapshotTable>>
                    
 ClientPutRequest_number ==
     /\ ReadyToServe > 0
@@ -710,9 +732,7 @@ ClientPutRequest_number ==
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = 
             Append(@, [ op |-> "put", c |-> c, wc |-> "num", num |-> num, k |-> k, v |-> v, ct |-> Ct[c]])]
         /\ BlockedClient' = BlockedClient \cup {c}
-    /\ UNCHANGED <<OpCount, Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, 
-                   ServerMsg, BlockedThread, Pt, Cp, CalState, State, SnapshotTable, 
-                   History, CurrentTerm, ReadyToServe, SyncSource>> 
+    /\ UNCHANGED <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>> 
                                                                            
 ClientPutRequest_majority ==
     /\ ReadyToServe > 0
@@ -720,9 +740,7 @@ ClientPutRequest_majority ==
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = 
             Append(@, [ op |-> "put", c |-> c, wc |-> "major", k |-> k, v |-> v, ct |-> Ct[c]])]
         /\ BlockedClient' = BlockedClient \cup {c}
-    /\ UNCHANGED <<OpCount, Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, 
-                   ServerMsg, BlockedThread, Pt, Cp, CalState, State, SnapshotTable, 
-                   History, CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>>
 
                    
 (***************************************************************************
@@ -744,9 +762,8 @@ ClientGetResponse ==
                             THEN BlockedClient \ {c}
                             ELSE BlockedClient  \* remove blocked state
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Ct, Ot, InMsgs, ServerMsg, 
-                   BlockedThread, Pt, Cp, CalState, State, SnapshotTable, 
-                   CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, functionalVar, learnableVars, messageVar, servernodeVars, Oplog, timeVar,
+                   BlockedThread, InMsgs, SnapshotTable>>
                    
 (***************************************************************************
 DH modified: record the k and v in msg to history， record ot from server
@@ -767,9 +784,8 @@ ClientPutResponse ==
                             THEN BlockedClient \ {c}
                             ELSE BlockedClient  \* remove blocked state
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
-    /\ UNCHANGED <<Primary, Secondary, Oplog, Store, InMsgs, ServerMsg,
-                   BlockedThread, Pt, Cp, CalState, State, SnapshotTable, 
-                   CurrentTerm, ReadyToServe, SyncSource>>
+    /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, State, messageVar, SyncSource, storageVars, timeVar,
+                   BlockedThread, InMsgs, SnapshotTable>>
 
 \* Action Wrapper                   
 -----------------------------------------------------------------------------
@@ -803,29 +819,23 @@ ServerPutReply == \/ ServerPutReply_zero
                   \/ ServerPutReply_majority_sleep
                   \/ ServerPutReply_number_wake  
                   \/ ServerPutReply_majority_wake
-                                                     
-RollbackOplogAction == \E i, j \in Server: RollbackAndRecover(i, j)   
-
-ReplicateAction == \E i, j \in Server: Replicate(i, j)   
-
-ElectPrimaryAction == 
-    \E i \in Server: \E majorNodes \in SUBSET(Server): ElectPrimary(i, majorNodes)                                                                       
-
+                                                            
 -----------------------------------------------------------------------------
                   
 \* Next state for all configurations
 Next == \/ ClientGetRequest \/ ClientPutRequest
         \/ ClientGetResponse \/ ClientPutResponse
         \/ ServerGetReply \/ ServerPutReply
-        \/ ReplicateAction 
+        \/ Replicate 
         \/ AdvancePt
         \/ ServerTakeHeartbeat
         \/ ServerTakeUpdatePosition
         \/ Snapshot
         \/ Stepdown
-        \/ RollbackOplogAction
+        \/ RollbackAndRecover
         \/ TurnOnReadyToServe
-        \/ ElectPrimaryAction
+        \/ ElectPrimary
+        \/ AdvanceCp
         
 Spec == Init /\ [][Next]_vars       
  
@@ -833,15 +843,15 @@ Next_Except_ClientRequset == \/ ClientGetResponse
                              \/ ClientPutResponse
                              \/ ServerGetReply        
                              \/ ServerPutReply
-                             \/ ReplicateAction 
+                             \/ Replicate
                              \/ AdvancePt
                              \/ ServerTakeHeartbeat
                              \/ ServerTakeUpdatePosition
                              \/ Snapshot
                              \/ Stepdown
-                             \/ RollbackOplogAction
+                             \/ RollbackAndRecover
                              \/ TurnOnReadyToServe
-                             \/ ElectPrimaryAction
+                             \/ ElectPrimary
                              
 ClientRequset_1 == \/ ClientPutRequest_majority   
                    \/ ClientGetRequest_local_primary  
@@ -940,8 +950,7 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ History[c][j].op = "put"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
                   
-
 =============================================================================
 \* Modification History
-\* Last modified Wed Apr 27 15:57:56 CST 2022 by dh
+\* Last modified Thu May 12 17:27:51 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh

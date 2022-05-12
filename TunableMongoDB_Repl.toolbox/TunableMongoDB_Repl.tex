@@ -1006,8 +1006,8 @@
 \@xx{}%
 \@x{\@s{51.42} ServerMsg ,\,\@s{23.64}}%
 \@y{\@s{0}%
- \ensuremath{ServerMsg[s]}: the channel of heartbeat \ensuremath{msgs} at
- server \ensuremath{s
+ \ensuremath{ServerMsg[s]}: the channel of heartbeat msgs at server
+ \ensuremath{s
 }}%
 \@xx{}%
 \@x{\@s{51.42} Pt ,\,\@s{58.98}}%
@@ -1049,6 +1049,51 @@
 \@xx{}%
 \@pvspace{8.0pt}%
 \@x{}\midbar\@xx{}%
+\@x{}%
+\@y{\@s{0}%
+ group related \ensuremath{vars} to optimize code
+}%
+\@xx{}%
+ \@x{ electionVars \.{\defeq} {\langle} Primary ,\, Secondary
+ {\rangle}\@s{57.28}}%
+\@y{\@s{0}%
+ \ensuremath{vars} that are related to election
+}%
+\@xx{}%
+\@x{ storageVars \.{\defeq} {\langle} Oplog ,\, Store {\rangle}\@s{93.20}}%
+\@y{\@s{0}%
+ \ensuremath{vars} that are related to storage
+}%
+\@xx{}%
+\@x{ messageVar \.{\defeq} {\langle} ServerMsg {\rangle}\@s{100.55}}%
+\@y{\@s{0}%
+ var that is related to message
+}%
+\@xx{}%
+ \@x{ serverVars\@s{5.11} \.{\defeq} {\langle} Ot ,\, SyncSource
+ {\rangle}\@s{78.95}}%
+\@y{\@s{0}%
+ \ensuremath{vars} that each server node holds for itself
+}%
+\@xx{}%
+ \@x{ learnableVars \.{\defeq} {\langle} Ct ,\, State ,\, Cp ,\, CurrentTerm
+ {\rangle}\@s{16.40}}%
+\@y{\@s{0}%
+ \ensuremath{vars} that must learn from msgs
+}%
+\@xx{}%
+\@x{ timeVar \.{\defeq} {\langle} Pt {\rangle}\@s{151.99}}%
+\@y{\@s{0}%
+ var that is used for timing
+}%
+\@xx{}%
+\@x{ functionalVar \.{\defeq} {\langle} ReadyToServe {\rangle}\@s{76.93}}%
+\@y{\@s{0}%
+ var that is used for some extra function
+}%
+\@xx{}%
+\@pvspace{8.0pt}%
+\@x{}\midbar\@xx{}%
 \@x{ {\ASSUME} Cardinality ( Client )\@s{1.66} \.{\geq} 1\@s{4.10}}%
 \@y{\@s{0}%
  at least one clinet
@@ -1059,12 +1104,12 @@
  at least one primary and one secondary
 }%
 \@xx{}%
-\@x{ {\ASSUME} Cardinality ( Key ) \.{\geq} 1\@s{4.1}}%
+\@x{ {\ASSUME} Cardinality ( Key ) \.{\geq} 1\@s{15.22}}%
 \@y{\@s{0}%
  at least one object
 }%
 \@xx{}%
-\@x{ {\ASSUME} Cardinality ( Value ) \.{\geq} 2\@s{4.1}}%
+\@x{ {\ASSUME} Cardinality ( Value ) \.{\geq} 2\@s{7.98}}%
 \@y{\@s{0}%
  at least two values to update
 }%
@@ -1095,7 +1140,7 @@
 \@x{ Max ( x ,\, y ) \.{\defeq} {\IF} x \.{>} y \.{\THEN} x \.{\ELSE} y}%
 \@pvspace{8.0pt}%
  \@x{ vars \.{\defeq} {\langle} Primary ,\, Secondary ,\, Oplog ,\, Store ,\,
- Ct ,\, Ot ,\, ServerMsg ,\,}%
+ Ct ,\, Ot ,\, messageVar ,\,}%
  \@x{\@s{41.61} Pt ,\, Cp ,\, State ,\, CurrentTerm ,\, ReadyToServe ,\,
  SyncSource {\rangle}}%
 \@pvspace{8.0pt}%
@@ -1200,9 +1245,8 @@
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- Can node \ensuremath{i} rollback its \ensuremath{log} based on
- \ensuremath{j}\mbox{'}s \ensuremath{log
-}}%
+ Can node \ensuremath{i} rollback its log based on \ensuremath{j}\mbox{'}s log
+}%
 \@xx{}%
  \@x{ CanRollback ( i ,\, j ) \.{\defeq} \.{\land} Len ( Oplog [ i ]
  )\@s{0.42} \.{>} 0}%
@@ -1270,7 +1314,7 @@
  \@x{\@s{109.54} s \.{\neq} t \.{\implies} states [ s ] . term \.{=} states [
  s ] . term \}}%
 \@x{\@s{16.4} \.{\IN} quorums}%
-\@pvspace{16.0pt}%
+\@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
  \ensuremath{Init} Part
@@ -1325,27 +1369,30 @@
 }%
 \@xx{}%
 \@x{}\midbar\@xx{}%
-\@pvspace{8.0pt}%
 \@x{ TurnOnReadyToServe \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{=} 0}%
 \@x{\@s{16.4} \.{\land} \E\, s \.{\in} Primary \.{:}}%
  \@x{\@s{31.61} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
  {\bang} [ s ] \.{=} CurrentTerm [ s ] \.{+} 1 ]}%
-\@x{\@s{31.61} \.{\land} ReadyToServe \.{'} \.{=} ReadyToServe \.{+} 1}%
- \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\,\@s{4.1} Secondary
- ,\, Oplog ,\, Store ,\, Ct ,\, Ot ,\,}%
-\@x{\@s{89.98} ServerMsg ,\, Pt ,\, Cp ,\, State ,\, SyncSource {\rangle}}%
+\@x{}%
+\@y{\@s{17.5}%
+ \ensuremath{\.{\land} CurrentTerm\.{'} \.{=}} [\ensuremath{s \.{\in} Server
+ \.{\mapsto} 1}]
+}%
+\@xx{}%
+\@x{\@s{32.8} \.{\land} ReadyToServe \.{'} \.{=} ReadyToServe \.{+} 1}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} electionVars ,\, storageVars
+ ,\, serverVars ,\, Ct ,\, messageVar ,\, timeVar ,\, Cp ,\, State {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ Stepdown \.{\defeq}}%
-\@x{\@s{53.70} \.{\land} ReadyToServe \.{>} 0}%
-\@x{\@s{53.70} \.{\land} \E\, s \.{\in} Primary \.{:}}%
- \@x{\@s{68.91} \.{\land} Primary \.{'} \.{=} Primary \.{\,\backslash\,} \{ s
+\@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
+\@x{\@s{16.4} \.{\land} \E\, s \.{\in} Primary \.{:}}%
+ \@x{\@s{31.61} \.{\land} Primary \.{'} \.{=} Primary \.{\,\backslash\,} \{ s
  \}}%
-\@x{\@s{68.91} \.{\land} Secondary \.{'} \.{=} Secondary \.{\cup} \{ s \}}%
- \@x{\@s{53.70} \.{\land} {\UNCHANGED} {\langle} Oplog ,\, Store ,\, Ct ,\, Ot
- ,\, ServerMsg ,\,}%
-\@x{\@s{127.28} Pt ,\, Cp ,\, State ,\, CurrentTerm ,\,}%
-\@x{\@s{131.38} ReadyToServe ,\, SyncSource {\rangle}}%
+\@x{\@s{31.61} \.{\land} Secondary \.{'} \.{=} Secondary \.{\cup} \{ s \}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} storageVars ,\, serverVars ,\,
+ Ct ,\, messageVar ,\, timeVar ,\, Cp ,\, State ,\, CurrentTerm ,\,
+ functionalVar {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1393,8 +1440,8 @@
 \@xx{}%
  \@x{\@s{31.61} \.{\land} SyncSource \.{'} \.{=} [ SyncSource {\EXCEPT}
  {\bang} [ i ] \.{=} Nil ]}%
- \@x{\@s{31.61} \.{\land} {\UNCHANGED} {\langle} Oplog ,\, Store ,\, Ct ,\, Ot
- ,\, ServerMsg ,\, Pt ,\, Cp ,\, State ,\, ReadyToServe {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} storageVars ,\, Ct ,\, Ot ,\,
+ messageVar ,\, timeVar ,\, Cp ,\, State ,\, functionalVar {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ AdvanceCp \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -1428,10 +1475,9 @@
 \@x{\@s{72.41} \.{\ELSE} Cp [ s ]}%
  \@x{\@s{31.61} \.{\IN} Cp \.{'} \.{=} [ Cp {\EXCEPT} {\bang} [ s ] \.{=}
  newCp ]}%
- \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ct ,\, Ot ,\,}%
- \@x{\@s{90.19} ServerMsg ,\,\@s{4.1} Pt ,\, State ,\, CurrentTerm ,\,
- ReadyToServe ,\, SyncSource {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} electionVars ,\, storageVars
+ ,\, serverVars ,\, Ct ,\, messageVar ,\, timeVar ,\, State ,\, CurrentTerm
+ ,\, functionalVar {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{%
@@ -1502,7 +1548,7 @@
  that node to advance it
 }%
 \@xx{}%
- \@x{\@s{135.62} \.{\land} ServerMsg [ s ] . cp . term \.{=} CurrentTerm [ s
+ \@x{\@s{135.62} \.{\land} ServerMsg [ s ] [ 1 ] . term \.{=} CurrentTerm [ s
  ]}%
 \@x{\@s{108.55} \.{\THEN} ServerMsg [ s ] [ 1 ] . cp}%
 \@x{\@s{108.55} \.{\ELSE} Cp [ s ]}%
@@ -1512,9 +1558,8 @@
  \@x{\@s{27.51} \.{\land} CurrentTerm \.{'} \.{=} [ CurrentTerm {\EXCEPT}
  {\bang} [ s ] \.{=} Max ( CurrentTerm [ s ] ,\, ServerMsg [ s ] [ 1 ] . term
  ) ]}%
- \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ot ,\, Pt ,\,}%
-\@x{\@s{89.98} ReadyToServe ,\, SyncSource {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} electionVars ,\, storageVars
+ ,\, serverVars ,\, timeVar ,\, functionalVar {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ServerTakeUpdatePosition \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -1602,9 +1647,8 @@
  \@x{\@s{224.42} \.{\ELSE} [ newServerMsg {\EXCEPT} {\bang} [ SyncSource [ s ]
  ] \.{=} Append ( newServerMsg [ SyncSource [ s ] ] ,\, appendMsg ) ]}%
 \@x{\@s{149.73} \.{\IN} newMsg ) )}%
- \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ot ,\,}%
-\@x{\@s{89.98} Pt ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} electionVars ,\, storageVars
+ ,\, serverVars ,\, timeVar ,\, functionalVar {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ NTPSync \.{\defeq}}%
 \@y{\@s{0}%
@@ -1614,10 +1658,8 @@
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
  \@x{\@s{16.4} \.{\land} Pt \.{'} \.{=} [ s \.{\in} Server \.{\mapsto} MaxPt
  ]}%
- \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ct ,\, Ot ,\,}%
- \@x{\@s{90.19} ServerMsg ,\, Cp ,\, State ,\, CurrentTerm ,\, ReadyToServe
- ,\, SyncSource {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} electionVars ,\, storageVars
+ ,\, serverVars ,\, learnableVars ,\, messageVar ,\, functionalVar {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ AdvancePt \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -1639,9 +1681,8 @@
  broadcast heartbeat periodly
 }%
 \@xx{}%
- \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\,
- Oplog ,\, Store ,\, Ct ,\, Ot ,\, State ,\,}%
-\@x{\@s{89.98} Cp ,\, CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} electionVars ,\, storageVars
+ ,\, serverVars ,\, learnableVars ,\, functionalVar {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1710,14 +1751,8 @@
  j ] \.{=} Append ( ServerMsg [ j ] ,\, msg ) ]}%
  \@x{\@s{31.61} \.{\land} SyncSource \.{'} \.{=} [ SyncSource {\EXCEPT}
  {\bang} [ i ] \.{=} j ]}%
-\@x{}%
-\@y{\@s{17.5}%
- \ensuremath{\.{\land} CalState\.{'} \.{=}} [\ensuremath{CalState}
- \ensuremath{{\EXCEPT} {\bang}[i] \.{=} CalState[j]}]
-}%
-\@xx{}%
- \@x{\@s{32.8} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\, Pt
- ,\, ReadyToServe {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} electionVars ,\, timeVar ,\,
+ functionalVar {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1802,8 +1837,8 @@
  j ] \.{=} Append ( ServerMsg [ j ] ,\, msg ) ]}%
  \@x{\@s{31.61} \.{\land} SyncSource \.{'} \.{=} [ SyncSource {\EXCEPT}
  {\bang} [ i ] \.{=} j ]}%
- \@x{\@s{31.61} \.{\land} {\UNCHANGED} {\langle} Primary ,\, Secondary ,\, Pt
- ,\, ReadyToServe {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} electionVars ,\, timeVar ,\,
+ functionalVar {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{ ClientRequest \.{\defeq}}%
 \@x{\@s{16.4} \.{\land} ReadyToServe \.{>} 0}%
@@ -1835,10 +1870,9 @@
  update \ensuremath{i}\mbox{'}s state
 }%
 \@xx{}%
- \@x{\@s{31.61} \.{\land} {\UNCHANGED} {\langle} Primary ,\,\@s{4.1} Secondary
- ,\, ServerMsg ,\,}%
-\@x{\@s{105.19} Pt ,\, Cp ,\,}%
-\@x{\@s{105.19} CurrentTerm ,\, ReadyToServe ,\, SyncSource {\rangle}}%
+ \@x{\@s{16.4} \.{\land} {\UNCHANGED} {\langle} electionVars ,\, messageVar
+ ,\, timeVar ,\, Cp ,\, CurrentTerm ,\, functionalVar ,\, SyncSource
+ {\rangle}}%
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
@@ -1872,8 +1906,8 @@
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- If two logs have the same last \ensuremath{log} entry term, then one is a
- prefix of the other (from Will)
+ If two logs have the same last log entry term, then one is a prefix of the
+ other (from Will
 }%
 \@xx{}%
 \@x{ LastTermsEquivalentImplyPrefixes \.{\defeq}}%
@@ -1892,8 +1926,7 @@
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- Check the \ensuremath{log} in \ensuremath{Primary} node is append only (from
- Will
+ Check the log in \ensuremath{Primary} node is append only (from Will
 }%
 \@xx{}%
 \@x{ PrimaryAppendOnly \.{\defeq}}%
@@ -1916,7 +1949,7 @@
 \@pvspace{8.0pt}%
 \@x{}%
 \@y{\@s{0}%
- Eventually \ensuremath{log} correctness (from Will
+ Eventually log correctness (from Will
 }%
 \@xx{}%
  \@x{ EventuallyLogsConverge\@s{6.55} \.{\defeq} {\Diamond} {\Box} [ \A\, s
@@ -1971,17 +2004,15 @@
  \@x{ NonTrivialSyncCycle \.{\defeq} SyncSourceCycle \.{\land} {\lnot}
  SyncSourceCycleTwoNode}%
 \@x{ NoNonTrivialSyncCycle \.{\defeq} {\lnot} NonTrivialSyncCycle}%
-\@pvspace{8.0pt}%
 \@x{}\bottombar\@xx{}%
 \setboolean{shading}{false}
 \begin{lcom}{0}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
-\ensuremath{\.{\,\backslash\,}\.{*}} Modification \ensuremath{History
-}%
+\ensuremath{\.{\,\backslash\,}\.{*}} Modification History
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
- \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Wed} May 04
- 15:41:10 \ensuremath{CST} 2022 by \ensuremath{dh
+ \ensuremath{\.{\,\backslash\,}\.{*}} Last modified \ensuremath{Wed} May 11
+ 22:55:31 \ensuremath{CST} 2022 by \ensuremath{dh
 }%
 \end{cpar}%
 \begin{cpar}{0}{F}{F}{0}{0}{}%
