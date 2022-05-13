@@ -140,7 +140,38 @@ QuorumAgreeInSameTerm(states) ==
                     \* Make sure every applied entry in quorum has the same term.
                     /\ \A s, t \in Q : 
                        s # t => states[s].term = states[s].term} 
-    IN quorums         
+    IN quorums   
+    
+\* compute a new common point according to new update position msg
+ComputeNewCp(s) == 
+    \* primary node: compute new mcp
+    IF s \in Primary THEN 
+        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
+        IF  Cardinality(quorumAgree) > 0 
+            THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
+                     serverInQuorum == CHOOSE j \in QuorumSet: TRUE
+                     termOfQuorum == State[s][serverInQuorum].term 
+                     StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
+                     newCommitPoint == HLCMinSet(StateSet)
+                 IN  IF termOfQuorum = CurrentTerm[s]
+                        THEN [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
+                     ELSE Cp[s]
+          ELSE Cp[s]
+    \* secondary node: update mcp   
+    ELSE IF Len(ServerMsg[s]) /= 0 THEN
+            LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN 
+            IF /\ ~ HLCLt(msgCP, Cp[s])
+               /\ ~ HLCLt(Ot[s], msgCP)
+               \* The term of cp must equal to the CurrentTerm of that node to advance it
+               /\ ServerMsg[s][1].term = CurrentTerm[s] 
+               THEN ServerMsg[s][1].cp
+            ELSE Cp[s]
+         ELSE Cp[s]
+    
+GetNewState(s, d, np, nl, nterm) == 
+    LET newSubState == [p |-> np, l |-> nl, term |-> nterm] 
+        sState == State[s]
+    IN  [sState EXCEPT ![d] = newSubState]    
            
 \* Init Part                       
 -----------------------------------------------------------------------------
@@ -209,20 +240,7 @@ ElectPrimary ==
 AdvanceCp ==
     /\ ReadyToServe > 0
     /\ \E s \in Primary:
-        LET newCp == 
-            LET quorumAgree == QuorumAgreeInSameTerm(State[s]) 
-            IN  IF Cardinality(quorumAgree) > 0 
-                    THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
-                             serverInQuorum == CHOOSE j \in QuorumSet: TRUE
-                             termOfQuorum == State[s][serverInQuorum].term 
-                             StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
-                             newCommitPoint == HLCMinSet(StateSet)
-                             oldCommitPoint == [p |-> Cp[s].p, l |-> Cp[s].l]
-                             \* newCp must be greater than current Cp for primary to advance it
-                         IN IF termOfQuorum = CurrentTerm[s] /\ HLCLt(oldCommitPoint, newCommitPoint)
-                                THEN [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
-                            ELSE Cp[s]
-                ELSE Cp[s]
+        LET newCp == ComputeNewCp(s)
         IN Cp' = [ Cp EXCEPT ![s] = newCp]
     /\ UNCHANGED <<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, State, CurrentTerm, functionalVar>>                                
            
@@ -233,39 +251,10 @@ ServerTakeHeartbeat ==
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "heartbeat"
         /\ CurrentTerm[s] = ServerMsg[s][1].term
-        /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ]
-        /\ State' = 
-            LET newState == [
-                    p |-> ServerMsg[s][1].aot.p,
-                    l |-> ServerMsg[s][1].aot.l,
-                    term |-> ServerMsg[s][1].term
-                ]
-            IN LET SubHbState == State[s]
-                   hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = newState ]
-               IN [ State EXCEPT ![s] = hb]
-        /\ Cp' = LET newcp ==
-                 \* primary node: compute new mcp
-                    IF s \in Primary THEN 
-                        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
-                            IF Cardinality(quorumAgree) > 0 
-                                THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
-                                         serverInQuorum == CHOOSE j \in QuorumSet: TRUE
-                                         termOfQuorum == State[s][serverInQuorum].term 
-                                         StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
-                                         newCommitPoint == HLCMinSet(StateSet)
-                                     IN IF termOfQuorum = CurrentTerm[s]
-                                            THEN  
-                                                 [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
-                                         ELSE Cp[s]
-                            ELSE Cp[s]
-                 \* secondary node: update mcp   
-                    ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
-                            /\ ~ HLCLt(msgCP, Cp[s])
-                            /\ ~ HLCLt(Ot[s], msgCP)
-                            \* The term of cp must equal to the CurrentTerm of that node to advance it
-                            /\ ServerMsg[s][1].term = CurrentTerm[s] 
-                        THEN ServerMsg[s][1].cp
-                        ELSE Cp[s]
+        /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ]          
+        /\ State' = LET newState == GetNewState(s, ServerMsg[s][1].s, ServerMsg[s][1].aot.p, ServerMsg[s][1].aot.l, ServerMsg[s][1].term)
+                    IN  [State EXCEPT ![s] = newState]
+        /\ Cp' = LET newcp == ComputeNewCp(s)
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
@@ -277,36 +266,9 @@ ServerTakeUpdatePosition ==
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "update_position"
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ] \* update ct accordingly
-        /\ State' = 
-            LET newState == [
-                    p |-> ServerMsg[s][1].aot.p,
-                    l |-> ServerMsg[s][1].aot.l,
-                    term |-> ServerMsg[s][1].term
-                ]
-            IN LET SubHbState == State[s]
-                   hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = newState ]
-               IN [ State EXCEPT ![s] = hb]
-        /\ Cp' = LET newcp ==
-                 \* primary node: compute new mcp
-                    IF s \in Primary THEN 
-                        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
-                            IF Cardinality(quorumAgree) > 0 
-                                THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
-                                         serverInQuorum == CHOOSE j \in QuorumSet: TRUE
-                                         termOfQuorum == State[s][serverInQuorum].term 
-                                         StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
-                                         newCommitPoint == HLCMinSet(StateSet)
-                                     IN IF termOfQuorum = CurrentTerm[s]
-                                            THEN  
-                                                 [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
-                                         ELSE Cp[s]
-                            ELSE Cp[s]
-                 \* secondary node: update mcp   
-                    ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
-                            /\ ~ HLCLt(msgCP, Cp[s])
-                            /\ ~ HLCLt(Ot[s], msgCP)
-                         THEN ServerMsg[s][1].cp
-                         ELSE Cp[s]
+        /\ State' = LET newState == GetNewState(s, ServerMsg[s][1].s, ServerMsg[s][1].aot.p, ServerMsg[s][1].aot.l, ServerMsg[s][1].term)
+                    IN  [State EXCEPT ![s] = newState]
+        /\ Cp' = LET newcp == ComputeNewCp(s)
                  IN [ Cp EXCEPT ![s] = newcp ]    
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]             
        /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
@@ -345,15 +307,8 @@ AdvancePt ==
         /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i]    
         /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
         /\ CurrentTerm' = [CurrentTerm EXCEPT ![i] = Max(CurrentTerm[i], CurrentTerm[j])] \* update CurrentTerm
-        /\ State' = 
-            LET newState == [
-                    p |-> Ot[j].p,
-                    l |-> Ot[j].l,
-                    term |-> CurrentTerm[j]
-                ]
-            IN LET SubHbState == State[i]
-                   hb == [ SubHbState EXCEPT ![j] = newState ]
-               IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
+        /\ State' = LET newState == GetNewState(i, j, Ot[j].p, Ot[j].l, CurrentTerm[j]) \* update j's state i knows 
+                    IN [State EXCEPT ![i] = newState]
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
@@ -374,18 +329,10 @@ RollbackAndRecover ==
         /\ Store' = [Store EXCEPT ![i] =  Store[j]]
         /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
         /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i] 
-        /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
+        /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]     
         /\ State' = 
-            LET newStatei == [
-                    p |-> Ot'[i].p,
-                    l |-> Ot'[j].l,
-                    term |-> CurrentTerm'[i]
-                ]
-                newStatej == [
-                    p |-> Ot[j].p,
-                    l |-> Ot[j].l,
-                    term |-> CurrentTerm[j]
-                ]
+            LET newStatei == [p |-> Ot'[i].p, l |-> Ot'[i].l, term |-> CurrentTerm'[i]]
+                newStatej == [p |-> Ot[j].p, l |-> Ot[j].l, term |-> CurrentTerm[j]]
             IN LET SubHbState == State[i]
                    hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
                    hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
@@ -405,15 +352,8 @@ ClientRequest ==
         /\ Oplog' = LET entry == [ k|-> k, v |-> v, ot |-> Ot'[s], term |-> CurrentTerm[s]]
                         newLog == Append(Oplog[s], entry)
                     IN  [ Oplog EXCEPT ![s] = newLog ]
-        /\ State' =
-            LET newState == [
-                    p |-> Ot'[s].p,
-                    l |-> Ot'[s].l,
-                    term |-> CurrentTerm[s]
-                ]
-            IN LET SubHbState == State[s]
-                   hb == [ SubHbState EXCEPT ![s] = newState ]
-               IN [ State EXCEPT ![s] = hb] \* update i's state            
+        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l, CurrentTerm[s]) \* update i's state  
+                    IN  [State EXCEPT ![s] = newState]       
     /\ UNCHANGED <<electionVars, messageVar, timeVar, Cp, CurrentTerm, functionalVar, SyncSource>>       
                   
 \* Next state for all configurations
@@ -497,5 +437,5 @@ NonTrivialSyncCycle == SyncSourceCycle /\ ~SyncSourceCycleTwoNode
 NoNonTrivialSyncCycle == ~NonTrivialSyncCycle    
 =============================================================================
 \* Modification History
-\* Last modified Thu May 12 16:06:07 CST 2022 by dh
+\* Last modified Fri May 13 11:49:32 CST 2022 by dh
 \* Created Mon Apr 18 11:38:53 CST 2022 by dh

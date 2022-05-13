@@ -82,12 +82,6 @@ vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc,
           InMsgs, ServerMsg, BlockedClient, BlockedThread, 
           OpCount, Pt, Cp, State, SnapshotTable, 
           History, CurrentTerm, ReadyToServe, SyncSource>>
-
-RECURSIVE CreateState(_,_) \* init state
-CreateState(len, seq) == 
-    IF len = 0 THEN seq
-    ELSE CreateState(len - 1, Append(seq, [ p |-> 0, l |-> 0 ]))
-
 \* snapshot helpers
 RECURSIVE SelectSnapshot_rec(_, _, _)
 SelectSnapshot_rec(stable, cp, index) ==
@@ -111,31 +105,7 @@ IsMajority(servers) == Cardinality(servers) * 2 > Cardinality(Server)
 \* Return the maximum value from a set, or undefined if the set is empty.
 MaxVal(s) == CHOOSE x \in s : \A y \in s : x >= y                            
 
-\* commit point
-RECURSIVE AddState(_,_,_)
-AddState(new, state, index) == 
-    IF index = 1 /\ HLCLt(new, state[1]) 
-        THEN  <<new>> \o state\* less than the first 
-    ELSE IF index = Len(state) + 1 
-        THEN state \o <<new>>
-    ELSE IF HLCLt(new, state[index]) 
-        THEN SubSeq(state, 1, index - 1) \o <<new>> \o SubSeq(state, index, Len(state))
-    ELSE AddState(new, state, index + 1)
-    
-RECURSIVE RemoveState(_,_,_) 
-RemoveState(old, state, index) == 
-    IF state[index] = old 
-        THEN SubSeq(state, 1, index - 1) \o SubSeq(state, index + 1, Len(state))
-    ELSE RemoveState(old, state, index + 1)
-
-AdvanceState(new, old, state) == AddState(new, RemoveState(old, state, 1), 1)  
-
 \* clock
-
-UnchangedExPt == <<Primary, Secondary, InMsgc, InMsgs, ServerMsg, Oplog, Store,
-                   Ct, Ot, BlockedClient, OpCount>>
-UnchangedExCt == <<Primary, Secondary, InMsgc, InMsgs, ServerMsg, Oplog, Store,
-                   Pt, Ot, BlockedClient, OpCount>>
 MaxPt == LET x == CHOOSE s \in Server: \A s1 \in Server \ {s}:
                             Pt[s] >= Pt[s1] IN Pt[x]      
                             
@@ -167,8 +137,7 @@ ReplicateOplog(i, j) ==
 CanRollback(i, j) == /\ Len(Oplog[i]) > 0       
                      /\ Len(Oplog[j]) > 0
                      /\ CurrentTerm[i] < CurrentTerm[j]
-                     /\ 
-                        \/ Len(Oplog[i]) > Len(Oplog[j])
+                     /\ \/ Len(Oplog[i]) > Len(Oplog[j])
                         \/ /\ Len(Oplog[i]) <= Len(Oplog[j])
                            /\ CurrentTerm[i] /= LogTerm(j, Len(Oplog[i]))
                            
@@ -194,6 +163,37 @@ QuorumAgreeInSameTerm(states) ==
                     /\ \A s, t \in Q : 
                        s # t => states[s].term = states[s].term} 
     IN quorums            
+ 
+ \* compute a new common point according to new update position msg
+ComputeNewCp(s) == 
+    \* primary node: compute new mcp
+    IF s \in Primary THEN 
+        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
+        IF  Cardinality(quorumAgree) > 0 
+            THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
+                     serverInQuorum == CHOOSE j \in QuorumSet: TRUE
+                     termOfQuorum == State[s][serverInQuorum].term 
+                     StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
+                     newCommitPoint == HLCMinSet(StateSet)
+                 IN  IF termOfQuorum = CurrentTerm[s]
+                        THEN [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
+                     ELSE Cp[s]
+          ELSE Cp[s]
+    \* secondary node: update mcp   
+    ELSE IF Len(ServerMsg[s]) /= 0 THEN
+            LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN 
+            IF /\ ~ HLCLt(msgCP, Cp[s])
+               /\ ~ HLCLt(Ot[s], msgCP)
+               \* The term of cp must equal to the CurrentTerm of that node to advance it
+               /\ ServerMsg[s][1].term = CurrentTerm[s] 
+               THEN ServerMsg[s][1].cp
+            ELSE Cp[s]
+         ELSE Cp[s]
+         
+GetNewState(s, d, np, nl, nterm) == 
+    LET newSubState == [p |-> np, l |-> nl, term |-> nterm] 
+        sState == State[s]
+    IN  [sState EXCEPT ![d] = newSubState]    
                                  
 \* Init Part                       
 -----------------------------------------------------------------------------
@@ -212,7 +212,7 @@ InitOpCount == OpCount = [ c \in Client |-> OpTimes ]
 InitPt == Pt = [ s \in Server |-> 1 ]
 InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitState == State = [ s \in Server |-> [ s0 \in Server |-> 
-                                              [ p |-> 0, l |-> 0 ] ] ]
+                                              [ p |-> 0, l |-> 0, term |-> 0 ] ] ]
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
                                                    store |-> [ k \in Key |-> Nil] ] >>]  
 InitHistory == History = [c \in Client |-> <<>>]  \* History operation seq is empty  
@@ -277,20 +277,7 @@ TurnOnReadyToServe ==
 AdvanceCp ==
     /\ ReadyToServe > 0
     /\ \E s \in Primary:
-        LET newCp == 
-            LET quorumAgree == QuorumAgreeInSameTerm(State[s]) 
-            IN  IF Cardinality(quorumAgree) > 0 
-                    THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
-                             serverInQuorum == CHOOSE j \in QuorumSet: TRUE
-                             termOfQuorum == State[s][serverInQuorum].term 
-                             StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
-                             newCommitPoint == HLCMinSet(StateSet)
-                             oldCommitPoint == [p |-> Cp[s].p, l |-> Cp[s].l]
-                             \* newCp must be greater than current Cp for primary to advance it
-                         IN IF termOfQuorum = CurrentTerm[s] /\ HLCLt(oldCommitPoint, newCommitPoint)
-                                THEN [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
-                            ELSE Cp[s]
-                ELSE Cp[s]
+        LET newCp == ComputeNewCp(s)
         IN Cp' = [ Cp EXCEPT ![s] = newCp]
     /\ UNCHANGED <<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, State, CurrentTerm, functionalVar, tunableVars>>                                              
                                                                                                                                                                                                   
@@ -302,38 +289,9 @@ ServerTakeHeartbeat ==
         /\ ServerMsg[s][1].type = "heartbeat"
         /\ CurrentTerm[s] = ServerMsg[s][1].term \* only consider heartbeat msg in same term
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ]
-        /\ State' = 
-            LET newState == [
-                    p |-> ServerMsg[s][1].aot.p,
-                    l |-> ServerMsg[s][1].aot.l,
-                    term |-> ServerMsg[s][1].term
-                ]
-            IN LET SubHbState == State[s]
-                   hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = newState ]
-               IN [ State EXCEPT ![s] = hb]
-        /\ Cp' = LET newcp ==
-                 \* primary node: compute new mcp
-                    IF s \in Primary THEN 
-                        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
-                            IF Cardinality(quorumAgree) > 0 
-                                THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
-                                         serverInQuorum == CHOOSE j \in QuorumSet: TRUE
-                                         termOfQuorum == State[s][serverInQuorum].term 
-                                         StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
-                                         newCommitPoint == HLCMinSet(StateSet)
-                                     IN IF termOfQuorum = CurrentTerm[s]
-                                            THEN  
-                                                 [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
-                                         ELSE Cp[s]
-                            ELSE Cp[s]
-                 \* secondary node: update mcp   
-                    ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
-                            /\ ~ HLCLt(msgCP, Cp[s])
-                            /\ ~ HLCLt(Ot[s], msgCP)
-                            \* The term of cp must equal to the CurrentTerm of that node to advance it
-                            /\ ServerMsg[s][1].term = CurrentTerm[s] 
-                        THEN ServerMsg[s][1].cp
-                        ELSE Cp[s]
+        /\ State' = LET newState == GetNewState(s, ServerMsg[s][1].s, ServerMsg[s][1].aot.p, ServerMsg[s][1].aot.l,ServerMsg[s][1].term)
+                    IN  [ State EXCEPT ![s] = newState]
+        /\ Cp' = LET newcp == ComputeNewCp(s)
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
@@ -345,36 +303,9 @@ ServerTakeUpdatePosition ==
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "update_position"
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ] \* update ct accordingly
-        /\ State' = 
-            LET newState == [
-                    p |-> ServerMsg[s][1].aot.p,
-                    l |-> ServerMsg[s][1].aot.l,
-                    term |-> ServerMsg[s][1].term
-                ]
-            IN LET SubHbState == State[s]
-                   hb == [ SubHbState EXCEPT ![ServerMsg[s][1].s] = newState ]
-               IN [ State EXCEPT ![s] = hb]
-        /\ Cp' = LET newcp ==
-                 \* primary node: compute new mcp
-                    IF s \in Primary THEN 
-                        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
-                            IF Cardinality(quorumAgree) > 0 
-                                THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
-                                         serverInQuorum == CHOOSE j \in QuorumSet: TRUE
-                                         termOfQuorum == State[s][serverInQuorum].term 
-                                         StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
-                                         newCommitPoint == HLCMinSet(StateSet)
-                                     IN IF termOfQuorum = CurrentTerm[s]
-                                            THEN  
-                                                 [p |-> newCommitPoint.p, l |-> newCommitPoint.l, term |-> termOfQuorum]
-                                         ELSE Cp[s]
-                            ELSE Cp[s]
-                 \* secondary node: update mcp   
-                    ELSE IF LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN
-                            /\ ~ HLCLt(msgCP, Cp[s])
-                            /\ ~ HLCLt(Ot[s], msgCP)
-                         THEN ServerMsg[s][1].cp
-                         ELSE Cp[s]
+        /\ State' = LET newState == GetNewState(s, ServerMsg[s][1].s, ServerMsg[s][1].aot.p, ServerMsg[s][1].aot.l,ServerMsg[s][1].term)
+                    IN  [ State EXCEPT ![s] = newState]
+        /\ Cp' = LET newcp == ComputeNewCp(s)
                  IN [ Cp EXCEPT ![s] = newcp ]    
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]             
        /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
@@ -417,15 +348,8 @@ AdvancePt ==
         /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i]    
         /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
         /\ CurrentTerm' = [CurrentTerm EXCEPT ![i] = Max(CurrentTerm[i], CurrentTerm[j])] \* update CurrentTerm
-        /\ State' = 
-            LET newState == [
-                    p |-> Ot[j].p,
-                    l |-> Ot[j].l,
-                    term |-> CurrentTerm[j]
-                ]
-            IN LET SubHbState == State[i]
-                   hb == [ SubHbState EXCEPT ![j] = newState ]
-               IN [ State EXCEPT ![i] = hb] \* update j's state i knows 
+        /\ State' = LET newState == GetNewState(i, j, Ot[j].p, Ot[j].l, CurrentTerm[j])
+                    IN  [ State EXCEPT ![i] = newState]  \* update j's state i knows 
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
@@ -448,16 +372,8 @@ RollbackAndRecover ==
         /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i] 
         /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
         /\ State' = 
-            LET newStatei == [
-                    p |-> Ot'[i].p,
-                    l |-> Ot'[j].l,
-                    term |-> CurrentTerm'[i]
-                ]
-                newStatej == [
-                    p |-> Ot[j].p,
-                    l |-> Ot[j].l,
-                    term |-> CurrentTerm[j]
-                ]
+            LET newStatei == [p |-> Ot'[i].p, l |-> Ot'[i].l, term |-> CurrentTerm'[i]]
+                newStatej == [p |-> Ot[j].p, l |-> Ot[j].l,term |-> CurrentTerm[j]]
             IN LET SubHbState == State[i]
                    hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
                    hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
@@ -537,10 +453,8 @@ ServerGetReply_linearizable_sleep ==
                     \* append noop operation to oplog[s]
         /\ Ot' = [ Ot EXCEPT ![s] =  Ct'[s] ] 
                     \* advance the last applied operation time Ot[s]
-        /\ State' = 
-            LET SubHbState == State[s]
-                hb == [ SubHbState EXCEPT ![Primary] = Ot'[Primary] ]
-            IN [ State EXCEPT ![s] = hb] \* update primary state                   
+        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l, CurrentTerm[s])      
+                    IN  [State EXCEPT ![s] = newState]      \* update primary state
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]
         /\ BlockedThread' = [BlockedThread EXCEPT ![InMsgs[s][1].c] = 
                             [type |-> "read_linea", ot|-> Ct'[s], s |-> s, k 
@@ -579,10 +493,8 @@ ServerPutReply_zero ==
                                   ot |-> Ot'[s], term |-> CurrentTerm[s]]
                         newLog == Append(Oplog[s], entry)
                     IN [Oplog EXCEPT ![s] = newLog]            
-        /\ State' = 
-            LET SubHbState == State[s]
-                hb == [ SubHbState EXCEPT ![s] = Ot'[s] ]
-            IN [ State EXCEPT ![s] = hb] \* update primary state                  
+        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l, CurrentTerm[s])      
+                    IN  [State EXCEPT ![s] = newState]      \* update primary state               
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@)]      
     /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, messageVar, SyncSource, timeVar, 
                    BlockedClient, BlockedThread, clientnodeVars, InMsgc,SnapshotTable>>
@@ -604,10 +516,8 @@ ServerPutReply_number_sleep ==
                           ot |-> Ot'[s], term |-> CurrentTerm[s] ]
                newLog == Append(Oplog[s], entry)
            IN Oplog' = [ Oplog EXCEPT ![s] = newLog ]
-        /\ State' = 
-            LET SubHbState == State[s]
-                hb == [ SubHbState EXCEPT ![s] = Ot'[s] ]
-            IN [ State EXCEPT ![s] = hb] \* update primary state             
+        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l, CurrentTerm[s])      
+                    IN  [State EXCEPT ![s] = newState]      \* update primary state     
         /\ BlockedThread' = [ BlockedThread EXCEPT ![InMsgs[s][1].c] = [ type |-> "write_num", 
                               ot |-> Ot'[s], s |-> s, numnode |-> InMsgs[s][1].num,
                               k |->InMsgs[s][1].k, v |-> InMsgs[s][1].v ] ] 
@@ -645,10 +555,8 @@ ServerPutReply_majority_sleep ==
             LET entry == [k |-> InMsgs[s][1].k, v |-> InMsgs[s][1].v, ot |-> Ot'[s], term |-> CurrentTerm[s]]
                 newLog == Append(Oplog[s], entry)
             IN  [ Oplog EXCEPT ![s] = newLog ]
-        /\ State' = 
-            LET SubHbState == State[s]
-                hb == [ SubHbState EXCEPT ![s] = Ot'[s] ]
-            IN [ State EXCEPT ![s] = hb] \* update primary state                      
+        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l, CurrentTerm[s])      
+                    IN  [State EXCEPT ![s] = newState]      \* update primary state              
         /\ BlockedThread' = [BlockedThread EXCEPT ![InMsgs[s][1].c] = [type |-> "write_major", ot
                      |-> Ot'[s], s |-> s, k |->InMsgs[s][1].k, v |-> InMsgs[s][1].v ] ]               
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]       
@@ -952,5 +860,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                   
 =============================================================================
 \* Modification History
-\* Last modified Thu May 12 17:27:51 CST 2022 by dh
+\* Last modified Fri May 13 12:24:02 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh
