@@ -163,6 +163,14 @@ QuorumAgreeInSameTerm(states) ==
                     /\ \A s, t \in Q : 
                        s # t => states[s].term = states[s].term} 
     IN quorums            
+
+ReplicatedServers(states, ot) ==
+    LET serverSet == {subServers \in SUBSET(Server): \A s \in subServers: LET stateTime == [p|-> states[s].p, l|-> states[s].l]
+                                                                          IN  ~HLCLt(stateTime, ot)}
+    IN  CHOOSE maxSet \in serverSet: \A otherSet \in serverSet: Cardinality(otherSet) < Cardinality(maxSet)
+    
+    
+                    
  
  \* compute a new common point according to new update position msg
 ComputeNewCp(s) == 
@@ -448,7 +456,7 @@ ServerGetReply_linearizable_sleep ==
         /\ InMsgs[s][1].op = "get"
         /\ InMsgs[s][1].rc = "linea" \* Read Concern: linearizable
         /\ Tick(s)  \* advance cluster time
-        /\ Oplog' = [ Oplog EXCEPT ![Primary] =
+        /\ Oplog' = [ Oplog EXCEPT ![s] =
                     Append(@, <<Nil, Nil, Ct'[s]>>)]
                     \* append noop operation to oplog[s]
         /\ Ot' = [ Ot EXCEPT ![s] =  Ct'[s] ] 
@@ -486,9 +494,9 @@ ServerPutReply_zero ==
         /\ InMsgs[s][1].wc = "zero"  \* Write Concern: 0
         /\ Tick(s)                   \* advance cluster time
         /\ Ot' = [ Ot EXCEPT ![s] =  Ct'[s] ]
-                         \* advance the last applied operation time Ot[Primary]
+                         \* advance the last applied operation time Ot[s]
         /\ Store' = [ Store EXCEPT ![s][InMsgs[s][1].k] = InMsgs[s][1].v ]
-                    \* append operation to oplog[primary]
+                    \* append operation to oplog[s]
         /\ Oplog' = LET entry == [k |-> InMsgs[s][1].k, v |-> InMsgs[s][1].v, 
                                   ot |-> Ot'[s], term |-> CurrentTerm[s]]
                         newLog == Append(Oplog[s], entry)
@@ -499,9 +507,6 @@ ServerPutReply_zero ==
     /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, messageVar, SyncSource, timeVar, 
                    BlockedClient, BlockedThread, clientnodeVars, InMsgc,SnapshotTable>>
                  
-(***************************************************************************
-DH modified: Add k and v message when block thread, and return them when wake
- ***************************************************************************)    
 ServerPutReply_number_sleep ==
     /\ ReadyToServe > 0
     /\ \E s \in Primary:
@@ -510,7 +515,7 @@ ServerPutReply_number_sleep ==
         /\ InMsgs[s][1].wc = "num"   \* Write Concern: num
         /\ Tick(s)                   \* advance cluster time
         /\ Ot' = [ Ot EXCEPT ![s] =  Ct'[s] ]
-                         \* advance the last applied operation time Ot[Primary]
+                         \* advance the last applied operation time Ot[s]
         /\ Store' = [ Store EXCEPT ![s][InMsgs[s][1].k] = InMsgs[s][1].v ]
         /\ LET entry == [ k |-> InMsgs[s][1].k, v |-> InMsgs[s][1].v, 
                           ot |-> Ot'[s], term |-> CurrentTerm[s] ]
@@ -521,7 +526,7 @@ ServerPutReply_number_sleep ==
         /\ BlockedThread' = [ BlockedThread EXCEPT ![InMsgs[s][1].c] = [ type |-> "write_num", 
                               ot |-> Ot'[s], s |-> s, numnode |-> InMsgs[s][1].num,
                               k |->InMsgs[s][1].k, v |-> InMsgs[s][1].v ] ] 
-                      \* add the user thHistory to BlockedThread[c]            
+                      \* add the user History to BlockedThread[c]            
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]       
     /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, messageVar, SyncSource, timeVar,
                    InMsgc, BlockedClient, clientnodeVars, SnapshotTable>>              
@@ -531,10 +536,12 @@ ServerPutReply_number_wake ==
       /\ \E c \in Client:
         /\ BlockedThread[c] /=  Nil
         /\ BlockedThread[c].type = "write_num"
+        /\ LET serverSet == ReplicatedServers(State[BlockedThread[c].s], BlockedThread[c].ot)
+           IN  Cardinality(serverSet) >= BlockedThread[c].numnode
 \*        /\  ~ HLCLt(CalState[Cardinality(Server) - BlockedThread[c].numnode + 1],
 \*                    BlockedThread[c].ot)  \* CalState[s][n- num + 1] >= target ot
         /\ InMsgc' = [ InMsgc EXCEPT ![c] =  Append(@, [ op |-> "put", ct 
-                       |-> Ct[Primary], ot |-> BlockedThread[c].ot, k|-> BlockedThread[c].k, v |-> BlockedThread[c].v]) ] 
+                       |-> Ct[BlockedThread[c].s], ot |-> BlockedThread[c].ot, k|-> BlockedThread[c].k, v |-> BlockedThread[c].v]) ] 
         /\ BlockedThread' =  [ BlockedThread EXCEPT ![c] = Nil ] 
                                                        \* remove blocked state
       /\ UNCHANGED <<serverVars, clientnodeVars, BlockedClient, InMsgs, SnapshotTable>>
@@ -568,7 +575,7 @@ ServerPutReply_majority_wake ==
       /\ \E c \in Client:
         /\ BlockedThread[c] /=  Nil        
         /\ BlockedThread[c].type = "write_major"
-        /\  ~ HLCLt(Cp[Primary], BlockedThread[c].ot)      
+        /\  ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot)      
         /\ InMsgc' = [ InMsgc EXCEPT ![c] = 
             Append(@, [ op |-> "put", ct |-> Ct[BlockedThread[c].s], ot |-> BlockedThread[c].ot, 
                         k |-> BlockedThread[c].k, v |-> BlockedThread[c].v ]) ]  
@@ -860,5 +867,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                   
 =============================================================================
 \* Modification History
-\* Last modified Fri May 13 12:24:02 CST 2022 by dh
+\* Last modified Mon May 16 15:35:40 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh

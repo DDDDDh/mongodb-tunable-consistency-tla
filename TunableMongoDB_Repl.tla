@@ -258,7 +258,7 @@ ServerTakeHeartbeat ==
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
-    /\ UNCHANGED <<Primary, electionVars, storageVars, serverVars, timeVar, functionalVar>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar, functionalVar>>
 
 ServerTakeUpdatePosition == 
     /\ ReadyToServe > 0
@@ -437,5 +437,5 @@ NonTrivialSyncCycle == SyncSourceCycle /\ ~SyncSourceCycleTwoNode
 NoNonTrivialSyncCycle == ~NonTrivialSyncCycle    
 =============================================================================
 \* Modification History
-\* Last modified Fri May 13 11:49:32 CST 2022 by dh
+\* Last modified Fri May 13 12:27:57 CST 2022 by dh
 \* Created Mon Apr 18 11:38:53 CST 2022 by dh
