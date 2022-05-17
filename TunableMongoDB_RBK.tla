@@ -451,7 +451,7 @@ ServerGetReply_majority_wake ==
 ServerGetReply_linearizable_sleep ==
     /\ ReadyToServe > 0
     /\ \E s \in Server:
-        /\ s = Primary
+        /\ s \in Primary
         /\ Len(InMsgs[s]) /= 0
         /\ InMsgs[s][1].op = "get"
         /\ InMsgs[s][1].rc = "linea" \* Read Concern: linearizable
@@ -536,8 +536,8 @@ ServerPutReply_number_wake ==
       /\ \E c \in Client:
         /\ BlockedThread[c] /=  Nil
         /\ BlockedThread[c].type = "write_num"
-        /\ LET serverSet == ReplicatedServers(State[BlockedThread[c].s], BlockedThread[c].ot)
-           IN  Cardinality(serverSet) >= BlockedThread[c].numnode
+        /\ LET replicatedServers == ReplicatedServers(State[BlockedThread[c].s], BlockedThread[c].ot)
+           IN  Cardinality(replicatedServers) >= BlockedThread[c].numnode
 \*        /\  ~ HLCLt(CalState[Cardinality(Server) - BlockedThread[c].numnode + 1],
 \*                    BlockedThread[c].ot)  \* CalState[s][n- num + 1] >= target ot
         /\ InMsgc' = [ InMsgc EXCEPT ![c] =  Append(@, [ op |-> "put", ct 
@@ -546,9 +546,6 @@ ServerPutReply_number_wake ==
                                                        \* remove blocked state
       /\ UNCHANGED <<serverVars, clientnodeVars, BlockedClient, InMsgs, SnapshotTable>>
        
-(***************************************************************************
-DH modified: Add k and v message when block thread, and return them when wake
- ***************************************************************************)  
 ServerPutReply_majority_sleep == 
     /\ ReadyToServe > 0
     /\ \E s \in Primary:
@@ -627,9 +624,6 @@ ClientGetRequest_linearizable ==
     /\ UNCHANGED  <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>>
     
 \* Client Put    
-(***************************************************************************
-DH modified: change the state of history when write with w:0
- ***************************************************************************)
 ClientPutRequest_zero ==
     /\ ReadyToServe > 0
     /\ \E k \in Key, v \in Value, c \in Client \ BlockedClient, s \in Primary:
@@ -638,7 +632,7 @@ ClientPutRequest_zero ==
             Append(@, [ op |-> "put", c |-> c, wc |-> "zero", k
                        |-> k, v |-> v, ct |-> Ct[c]])]
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]    
-        /\ History' = [History EXCEPT ![c] = Append(@, [ op |-> "put", ts |-> InMsgc[c][1].ot, k |-> k, v |-> v ]) ]        
+        /\ History' = [History EXCEPT ![c] = Append(@, [ op |-> "put", ts |-> Ot[c], k |-> k, v |-> v ]) ]        
     /\ UNCHANGED <<serverVars, BlockedClient, BlockedThread, InMsgc, SnapshotTable>>
                    
 ClientPutRequest_number ==
@@ -657,33 +651,24 @@ ClientPutRequest_majority ==
         /\ BlockedClient' = BlockedClient \cup {c}
     /\ UNCHANGED <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>>
 
-                   
-(***************************************************************************
-DH modified: record the k and v in msg to history
- ***************************************************************************)                                   
+\* do we need to update Ct[c] here?                                                 
 ClientGetResponse ==
     /\ ReadyToServe > 0
     /\ \E c \in Client:
         /\ OpCount[c] /= 0          \* client c has operation times
         /\ Len(InMsgc[c]) /= 0      \* message channel is not empty
         /\ InMsgc[c][1].op = "get"  \* msg type: get
-        /\ Store' = [ Store EXCEPT ![c][InMsgc[c][1].k] = InMsgc[c][1].v ] 
-            \* store data
+        /\ Store' = [ Store EXCEPT ![c][InMsgc[c][1].k] = InMsgc[c][1].v ]  \* store data
         /\ History' = [ History EXCEPT ![c] = Append(@, [ op |-> "get", 
                         ts |-> InMsgc[c][1].ot, k |-> InMsgc[c][1].k, v |-> InMsgc[c][1].v ]) ]    
-                        
         /\ InMsgc' = [ InMsgc EXCEPT ![c] = Tail(@) ]
         /\ BlockedClient' = IF Len(InMsgc'[c]) = 0
-                            THEN BlockedClient \ {c}
+                                THEN BlockedClient \ {c}
                             ELSE BlockedClient  \* remove blocked state
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
     /\ UNCHANGED <<electionVars, functionalVar, learnableVars, messageVar, servernodeVars, Oplog, timeVar,
                    BlockedThread, InMsgs, SnapshotTable>>
                    
-(***************************************************************************
-DH modified: record the k and v in msg to history， record ot from server
- ***************************************************************************)     
-
 ClientPutResponse ==
     /\ ReadyToServe > 0
     /\ \E c \in Client:
@@ -696,7 +681,7 @@ ClientPutResponse ==
                         |-> "put", ts |-> InMsgc[c][1].ot, k |-> InMsgc[c][1].k, v |-> InMsgc[c][1].v ]) ]         
         /\ InMsgc' = [ InMsgc EXCEPT ![c] = Tail(@) ]
         /\ BlockedClient' = IF Len(InMsgc'[c]) = 0
-                            THEN BlockedClient \ {c}
+                                THEN BlockedClient \ {c}
                             ELSE BlockedClient  \* remove blocked state
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
     /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, State, messageVar, SyncSource, storageVars, timeVar,
@@ -867,5 +852,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                   
 =============================================================================
 \* Modification History
-\* Last modified Mon May 16 15:35:40 CST 2022 by dh
+\* Last modified Tue May 17 00:09:18 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh
