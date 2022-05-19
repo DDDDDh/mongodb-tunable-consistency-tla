@@ -40,14 +40,11 @@ VARIABLES Primary,        \* Primary node
 electionVars == <<Primary, Secondary>>              \* vars that are related to election  
 storageVars == <<Oplog, Store>>                     \* vars that are related to storage
 messageVar == <<ServerMsg>>                         \* var that is related to message
-servernodeVars == <<Ot, SyncSource, SnapshotTable>>                    \* vars that each server node holds for itself
+servernodeVars == <<Ot, SyncSource>>                    \* vars that each server node holds for itself
 learnableVars == <<Ct, State, Cp, CurrentTerm>>     \* vars that must learn from msgs
 timeVar == <<Pt>>                                   \* var that is used for timing
 functionalVar == <<ReadyToServe>>                   \* var that is used for some extra function  
 clientnodeVars == <<History, OpCount>>
-
-tmessageVars == <<InMsgc, InMsgs>>
-tfunctionalVars == <<BlockedClient, BlockedThread>>
 
 serverVars == <<electionVars, storageVars, messageVar, servernodeVars, learnableVars, timeVar, functionalVar>>
 tunableVars == <<BlockedClient, BlockedThread, History, InMsgc, InMsgs, OpCount, SnapshotTable>>        
@@ -59,6 +56,7 @@ ASSUME Cardinality(Value) >= 2  \* at least two values to update
 ASSUME ReadConcern \in {"local", "majority", "linearizable"}
 ASSUME WriteConcern \in {"zero", "num", "majority"}
 ASSUME ReadPreference \in {"primary", "secondary"}
+ASSUME WriteNumber <= Cardinality(Server) \* w:num cannot be greater than server number
 -----------------------------------------------------------------------------
 \* Helpers
 HLCLt(x, y) == IF x.p < y.p
@@ -172,7 +170,7 @@ ComputeNewCp(s) ==
         IF  Cardinality(quorumAgree) > 0 
             THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
                      serverInQuorum == CHOOSE j \in QuorumSet: TRUE
-                     termOfQuorum == State[s][serverInQuorum].term 
+                     termOfQuorum == State[s][serverInQuorum].term \* never commit log entries from previous terms
                      StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
                      newCommitPoint == HLCMinSet(StateSet)
                  IN  IF termOfQuorum = CurrentTerm[s]
@@ -197,8 +195,8 @@ GetNewState(s, d, np, nl, nterm) ==
                                                       
 -----------------------------------------------------------------------------
 \* Init Part  
-InitPrimary == Primary = CHOOSE s \in Server: TRUE
-InitSecondary == Secondary = Server \ {Primary}
+InitPrimary == Primary = {CHOOSE s \in Server: TRUE}
+InitSecondary == Secondary = Server \ Primary
 InitOplog == Oplog = [ s \in Server |-> <<>> ]
 InitStore == Store = [ n \in Server \cup Client  |-> [ k \in Key |-> Nil ] ]
 InitCt == Ct = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
@@ -244,7 +242,7 @@ Stepdown ==
     /\ \E s \in Primary:
         /\ Primary' = Primary \ {s}
         /\ Secondary' = Secondary \cup {s}
-    /\ UNCHANGED <<storageVars, serverVars, Ct, messageVar, timeVar, Cp, State, CurrentTerm, functionalVar, tunableVars>>
+    /\ UNCHANGED <<storageVars, servernodeVars, Ct, messageVar, timeVar, Cp, State, CurrentTerm, functionalVar, tunableVars>>
 
 \* There are majority nodes agree to elect node i to become primary                            
 ElectPrimary ==
@@ -272,14 +270,14 @@ TurnOnReadyToServe ==
         /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = CurrentTerm[s] + 1]
 \*        /\ CurrentTerm' = [s \in Server |-> 1] ?
         /\ ReadyToServe' = ReadyToServe + 1
-    /\ UNCHANGED<<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, Cp, State, tunableVars>>     
+    /\ UNCHANGED<<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, Cp, State, tunableVars>>     
 
 AdvanceCp ==
     /\ ReadyToServe > 0
     /\ \E s \in Primary:
         LET newCp == ComputeNewCp(s)
         IN Cp' = [ Cp EXCEPT ![s] = newCp]
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, State, CurrentTerm, functionalVar, tunableVars>>                                              
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, State, CurrentTerm, functionalVar, tunableVars>>                                              
                                                                                                                                                                                                   
 \*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
 ServerTakeHeartbeat ==
@@ -295,7 +293,7 @@ ServerTakeHeartbeat ==
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar, functionalVar, tunableVars>>
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, functionalVar, tunableVars>>
 
 ServerTakeUpdatePosition == 
     /\ ReadyToServe > 0
@@ -315,12 +313,12 @@ ServerTakeUpdatePosition ==
                                                     THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
                                                 ELSE [newServerMsg EXCEPT ![SyncSource[s]] = Append(newServerMsg[SyncSource[s]], appendMsg)]
                                   IN newMsg))
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar, functionalVar, tunableVars>>                   
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, functionalVar, tunableVars>>                   
                   
 NTPSync == \* simplify NTP protocal
     /\ ReadyToServe > 0
     /\ Pt' = [ s \in Server |-> MaxPt ] 
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars, messageVar, functionalVar, tunableVars>>
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, messageVar, functionalVar, tunableVars>>
 
 AdvancePt == 
     /\ ReadyToServe > 0
@@ -329,7 +327,7 @@ AdvancePt ==
            /\ Pt[s] <= PtStop 
            /\ Pt' = [ Pt EXCEPT ![s] = @+1 ] \* advance physical time
            /\ BroadcastHeartbeat(s)          \* broadcast heartbeat periodly
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars, functionalVar, tunableVars>>
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, functionalVar, tunableVars>>
                                      
 \* Replication                                     
 \* Idea: 进行replicate的时候，首先进行canSyncFrom的判断，拥有更多log且大于等于term的才能作为同步源
@@ -383,8 +381,8 @@ RollbackAndRecover ==
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
     /\ UNCHANGED <<electionVars, timeVar, functionalVar, tunableVars>>                     
     
-\* Tunable Protocol: Server Actions
------------------------------------------------------------------------------                  
+----------------------------------------------------------------------------- 
+\* Tunable Protocol: Server Actions                 
 \* Server Get
 ServerGetReply_sleep ==
     /\ ReadyToServe > 0
@@ -474,35 +472,35 @@ ServerPutReply_wake ==
                        k|-> BlockedThread[c].k, v |-> BlockedThread[c].v]) ] 
         /\ BlockedThread' =  [ BlockedThread EXCEPT ![c] = Nil ] \* remove blocked state     
     /\ UNCHANGED <<serverVars, clientnodeVars, BlockedClient, InMsgs, SnapshotTable>>               
-
-\* Tunable Protocol: Client Actions                
+          
 ----------------------------------------------------------------------------- 
+\* Tunable Protocol: Client Actions      
 \* Client Get
 ClientGetRequest ==
     /\ ReadyToServe > 0
-    /\ \E k \in Key, c \in Client \ BlockedClient, rConcern \in ReadConcern, rp \in ReadPreference: 
-        /\ IF rConcern = "linearizable" \* In this case, read can only be sent to primary
+    /\ \E k \in Key, c \in Client \ BlockedClient: 
+        /\ IF ReadConcern = "linearizable" \* In this case, read can only be sent to primary
            THEN \E s \in Primary:
                 InMsgs' = [InMsgs EXCEPT ![s] = Append(@,
-                [op |-> "get", c |-> c, rc |-> rConcern, k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
-           ELSE IF rp = "primary" \* rp can be only primary or secondary
+                [op |-> "get", c |-> c, rc |-> ReadConcern, k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
+           ELSE IF ReadPreference = "primary" \* rp can be only primary or secondary
                     THEN \E s \in Primary:
                          InMsgs' = [InMsgs EXCEPT ![s] = Append(@,
-                         [op |-> "get", c |-> c, rc |-> rConcern, k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
+                         [op |-> "get", c |-> c, rc |-> ReadConcern, k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
                 ELSE \E s \in Secondary:
                      InMsgs' = [InMsgs EXCEPT ![s] = Append(@,
-                     [op |-> "get", c |-> c, rc |-> rConcern, k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
+                     [op |-> "get", c |-> c, rc |-> ReadConcern, k |-> k, ct |-> Ct[c], ot |-> Ot[c]])]
         /\ BlockedClient' = BlockedClient \cup {c}          
     /\ UNCHANGED <<serverVars, clientnodeVars, BlockedThread, InMsgc, SnapshotTable>>    
 
 \* Client Put    
 ClientPutRequest == 
     /\ ReadyToServe > 0
-    /\ \E k \in Key, v \in Value, c \in Client \ BlockedClient, wConcern \in WriteConcern, wNum \in WriteNumber, s \in Primary:
+    /\ \E k \in Key, v \in Value, c \in Client \ BlockedClient, s \in Primary:
         /\ OpCount[c] /= 0
         /\ InMsgs' = [InMsgs EXCEPT ![s] = Append(@, 
-                        [op |-> "put", c |-> c, wc |-> wConcern, num |-> wNum, k |-> k, v |-> v, ct |-> Ct[c]])]
-        /\ IF wConcern = "zero" \*If w:0, decrease op count and record history
+                        [op |-> "put", c |-> c, wc |-> WriteConcern, num |-> WriteNumber, k |-> k, v |-> v, ct |-> Ct[c]])]
+        /\ IF WriteConcern = "zero" \*If w:0, decrease op count and record history
             THEN /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
                  /\ History' = [History EXCEPT ![c] = Append(@, [ op |-> "put", ts |-> Ot[c], k |-> k, v |-> v])]
                  /\ BlockedClient' = BlockedClient
@@ -546,9 +544,9 @@ ClientPutResponse ==
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
     /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, State, messageVar, SyncSource, storageVars, timeVar,
                    BlockedThread, InMsgs, SnapshotTable>>
-
-\* Action Wrapper                   
+                
 -----------------------------------------------------------------------------
+\* Action Wrapper   
 \* all possible server get actions                     
 ServerGetReply == \/ ServerGetReply_sleep 
                   \/ ServerGetReply_wake
@@ -571,11 +569,12 @@ Next == \/ ClientGetRequest \/ ClientPutRequest
         \/ TurnOnReadyToServe
         \/ ElectPrimary
         \/ AdvanceCp
+        \/ NTPSync
         
 Spec == Init /\ [][Next]_vars       
 
-\* Causal Specifications
 -----------------------------------------------------------------------------
+\* Causal Specifications
 MonotonicRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                     /\ i<j 
                     /\ History[c][i].op = "get"
@@ -601,5 +600,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
 =============================================================================
 \* Modification History
-\* Last modified Tue May 17 17:12:38 CST 2022 by dh
+\* Last modified Thu May 19 11:54:21 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh
