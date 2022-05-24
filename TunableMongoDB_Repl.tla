@@ -21,7 +21,6 @@ VARIABLES Primary,        \* Primary node
           State,          \* State[s]: the latest Ot of all servers that server s knows   
           CurrentTerm,    \* CurrentTerm[s]: current election term at server s 
                           \* -> updated in update_position, heartbeat and replicate
-          ReadyToServe,   \* equal to 0 before any primary is elected
           SyncSource      \* SyncSource[s]: sync source of server node s
           
 -----------------------------------------------------------------------------          
@@ -32,17 +31,14 @@ messageVar == <<ServerMsg>>                         \* var that is related to me
 serverVars == <<Ot, SyncSource>>                    \* vars that each server node holds for itself
 learnableVars == <<Ct, State, Cp, CurrentTerm>>     \* vars that must learn from msgs
 timeVar == <<Pt>>                                   \* var that is used for timing
-functionalVar == <<ReadyToServe>>                   \* var that is used for some extra function
 
 -----------------------------------------------------------------------------
 ASSUME Cardinality(Client) >= 1  \* at least one clinet
 ASSUME Cardinality(Server) >= 2  \* at least one primary and one secondary
 ASSUME Cardinality(Key) >= 1     \* at least one object
 ASSUME Cardinality(Value) >= 2   \* at least two values to update
-
-\* Helpers
 -----------------------------------------------------------------------------
-
+\* Helpers
 HLCLt(x, y) == IF x.p < y.p
                 THEN TRUE
                ELSE IF x.p = y.p
@@ -58,12 +54,7 @@ Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
 
 vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, messageVar, 
-          Pt, Cp, State, CurrentTerm, ReadyToServe, SyncSource>>
-
-RECURSIVE CreateState(_,_) \* init state
-CreateState(len, seq) == 
-    IF len = 0 THEN seq
-    ELSE CreateState(len - 1, Append(seq, [ p |-> 0, l |-> 0 ]))
+          Pt, Cp, State, CurrentTerm, SyncSource>>
 
 LogTerm(i, index) == IF index = 0 THEN 0 ELSE Oplog[i][index].term   
 LastTerm(i) == CurrentTerm[i]                                       
@@ -80,7 +71,6 @@ MaxVal(s) == CHOOSE x \in s : \A y \in s : x >= y
 HLCMinSet(s) == CHOOSE x \in s: \A y \in s: ~HLCLt(y, x)                    
 
 \* clock
-
 MaxPt == LET x == CHOOSE s \in Server: \A s1 \in Server \ {s}:
                             Pt[s] >= Pt[s1] 
          IN Pt[x]      
@@ -186,40 +176,29 @@ InitPt == Pt = [ s \in Server |-> 1 ]
 InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitState == State = [ s \in Server |-> [ s0 \in Server |-> 
                                               [ p |-> 0, l |-> 0, term |-> 0] ] ] 
-InitCurrentTerm == CurrentTerm = [s \in Server |-> 0] 
-InitReadyToServe == ReadyToServe = 0
-InitSyncSource == SyncSource = [ s \in Server |-> Nil]                                                                              
+InitCurrentTerm == CurrentTerm = [ p \in Primary |-> 1 ] @@ [ s \in Server |-> 0 ] 
+InitSyncSource == SyncSource = [ s \in Server |-> Nil ]                                                                              
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
     /\ InitOt /\ InitPt /\ InitCp 
     /\ InitServerMsg 
-    /\ InitState /\ InitCurrentTerm /\ InitReadyToServe
+    /\ InitState /\ InitCurrentTerm
     /\ InitSyncSource
     
 \* Next State Actions  
 \* Replication Protocol: possible actions  
 -----------------------------------------------------------------------------                                           
-TurnOnReadyToServe ==
-    /\ ReadyToServe = 0
-    /\ \E s \in Primary:
-        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = CurrentTerm[s] + 1]
-\*        /\ CurrentTerm' = [s \in Server |-> 1]
-        /\ ReadyToServe' = ReadyToServe + 1
-    /\ UNCHANGED<<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, Cp, State>> 
-
 Stepdown == 
-    /\ ReadyToServe > 0
     /\ \E s \in Primary:
         /\ Primary' = Primary \ {s}
         /\ Secondary' = Secondary \cup {s}
-    /\ UNCHANGED <<storageVars, serverVars, Ct, messageVar, timeVar, Cp, State, CurrentTerm, functionalVar>>
+    /\ UNCHANGED <<storageVars, serverVars, Ct, messageVar, timeVar, Cp, State, CurrentTerm>>
                             
 \* Todo: Stepdown when receiving a higher term heartbeat                            
 
 \* There are majority nodes agree to elect node i to become primary                            
 ElectPrimary ==
-    /\ ReadyToServe > 0
     /\ \E i \in Server: \E majorNodes \in SUBSET(Server):
         /\ \A j \in majorNodes: /\ NotBehind(i, j)
                                 /\ CurrentTerm[i] >= CurrentTerm[j]
@@ -235,18 +214,16 @@ ElectPrimary ==
                                                 ELSE CurrentTerm[index]]
         \* A primary node do not have any sync source                                        
         /\ SyncSource' = [SyncSource EXCEPT ![i] = Nil ]
-    /\ UNCHANGED <<storageVars, Ct, Ot, messageVar, timeVar, Cp, State, functionalVar>> 
+    /\ UNCHANGED <<storageVars, Ct, Ot, messageVar, timeVar, Cp, State>> 
             
 AdvanceCp ==
-    /\ ReadyToServe > 0
     /\ \E s \in Primary:
         LET newCp == ComputeNewCp(s)
         IN Cp' = [ Cp EXCEPT ![s] = newCp]
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, State, CurrentTerm, functionalVar>>                                
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, Ct, messageVar, timeVar, State, CurrentTerm>>                                
            
 \*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
 ServerTakeHeartbeat ==
-    /\ ReadyToServe > 0
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "heartbeat"
@@ -258,10 +235,9 @@ ServerTakeHeartbeat ==
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar, functionalVar>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar>>
 
 ServerTakeUpdatePosition == 
-    /\ ReadyToServe > 0
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "update_position"
@@ -278,25 +254,22 @@ ServerTakeUpdatePosition ==
                                                     THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
                                                 ELSE [newServerMsg EXCEPT ![SyncSource[s]] = Append(newServerMsg[SyncSource[s]], appendMsg)]
                                   IN newMsg))
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar, functionalVar>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, timeVar>>
 
 NTPSync == \* simplify NTP protocal
-    /\ ReadyToServe > 0
     /\ Pt' = [ s \in Server |-> MaxPt ] 
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars, messageVar, functionalVar>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars, messageVar>>
 
 AdvancePt == 
-    /\ ReadyToServe > 0
     /\ \E s \in Server:  
            /\ s \in Primary                    \* for simplicity
            /\ Pt[s] <= PtStop 
            /\ Pt' = [ Pt EXCEPT ![s] = @+1 ] \* advance physical time
            /\ BroadcastHeartbeat(s)          \* broadcast heartbeat periodly
-    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars, functionalVar>>
+    /\ UNCHANGED <<electionVars, storageVars, serverVars, learnableVars>>
                
 \* Replicate oplog from node j to node i, and update related structures accordingly
  Replicate == 
-    /\ ReadyToServe > 0
     /\ \E i, j \in Server: 
         /\ CanSyncFrom(i, j) \* i can sync from j only need not to rollback
         /\ i \in Secondary
@@ -312,12 +285,11 @@ AdvancePt ==
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
-    /\ UNCHANGED <<electionVars, timeVar, functionalVar>>
+    /\ UNCHANGED <<electionVars, timeVar>>
                    
 \* Rollback i's oplog and recover it to j's state   
 \* Recover to j's state immediately to prevent internal client request  
 RollbackAndRecover ==
-    /\ ReadyToServe > 0
     /\ \E i, j \in Server:
         /\ i \in Secondary
         /\ CanRollback(i, j)
@@ -340,10 +312,9 @@ RollbackAndRecover ==
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
-    /\ UNCHANGED <<electionVars, timeVar, functionalVar>> 
+    /\ UNCHANGED <<electionVars, timeVar>> 
                     
 ClientRequest ==
-    /\ ReadyToServe > 0
     /\ \E s \in Server, k \in Key, v \in Value:
         /\ s \in Primary
         /\ Tick(s)
@@ -354,7 +325,7 @@ ClientRequest ==
                     IN  [ Oplog EXCEPT ![s] = newLog ]
         /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l, CurrentTerm[s]) \* update i's state  
                     IN  [State EXCEPT ![s] = newState]       
-    /\ UNCHANGED <<electionVars, messageVar, timeVar, Cp, CurrentTerm, functionalVar, SyncSource>>       
+    /\ UNCHANGED <<electionVars, messageVar, timeVar, Cp, CurrentTerm, SyncSource>>       
                   
 \* Next state for all configurations
 Next == \/ Replicate
@@ -364,7 +335,6 @@ Next == \/ Replicate
         \/ ServerTakeUpdatePosition
         \/ Stepdown
         \/ RollbackAndRecover
-        \/ TurnOnReadyToServe
         \/ ElectPrimary
         \/ ClientRequest
         \/ NTPSync
@@ -437,5 +407,5 @@ NonTrivialSyncCycle == SyncSourceCycle /\ ~SyncSourceCycleTwoNode
 NoNonTrivialSyncCycle == ~NonTrivialSyncCycle    
 =============================================================================
 \* Modification History
-\* Last modified Fri May 13 12:27:57 CST 2022 by dh
+\* Last modified Tue May 24 16:55:51 CST 2022 by dh
 \* Created Mon Apr 18 11:38:53 CST 2022 by dh

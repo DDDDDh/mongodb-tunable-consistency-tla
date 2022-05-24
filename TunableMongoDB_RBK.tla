@@ -24,7 +24,6 @@ VARIABLES Primary,        \* Primary node
           State,          \* State[s]: the latest Ot of all servers that server s knows
           CurrentTerm,    \* CurrentTerm[s]: current election term at server s 
                           \* -> updated in update_position, heartbeat and replicate
-          ReadyToServe,   \* equal to 0 before any primary is elected
           SyncSource,     \* sync source of server node s     
           \* Following are the Tunable related vars
           BlockedClient,  \* BlockedClient: Client operations in progress
@@ -42,11 +41,10 @@ storageVars == <<Oplog, Store>>                     \* vars that are related to 
 messageVar == <<ServerMsg>>                         \* var that is related to message
 servernodeVars == <<Ot, SyncSource>>                    \* vars that each server node holds for itself
 learnableVars == <<Ct, State, Cp, CurrentTerm>>     \* vars that must learn from msgs
-timeVar == <<Pt>>                                   \* var that is used for timing
-functionalVar == <<ReadyToServe>>                   \* var that is used for some extra function  
+timeVar == <<Pt>>                                   \* var that is used for timing 
 clientnodeVars == <<History, OpCount>>
 
-serverVars == <<electionVars, storageVars, messageVar, servernodeVars, learnableVars, timeVar, functionalVar>>
+serverVars == <<electionVars, storageVars, messageVar, servernodeVars, learnableVars, timeVar>>
 tunableVars == <<BlockedClient, BlockedThread, History, InMsgc, InMsgs, OpCount, SnapshotTable>>        
 -----------------------------------------------------------------------------
 ASSUME Cardinality(Client) >= 1  \* at least one client
@@ -59,13 +57,10 @@ ASSUME ReadPreference \in {"primary", "secondary"}
 ASSUME WriteNumber <= Cardinality(Server) \* w:num cannot be greater than server number
 -----------------------------------------------------------------------------
 \* Helpers
-HLCLt(x, y) == IF x.p < y.p
-                THEN TRUE
-               ELSE IF x.p = y.p
-                THEN IF x.l < y.l
-                        THEN TRUE
-                     ELSE FALSE
-                ELSE FALSE
+HLCLt(x, y) == IF x.p < y.p THEN TRUE
+               ELSE IF x.p = y.p THEN IF x.l < y.l THEN TRUE
+                                      ELSE FALSE
+                    ELSE FALSE
                 
 HLCMin(x, y) == IF HLCLt(x, y) THEN x ELSE y
 HLCMax(x, y) == IF HLCLt(x, y) THEN y ELSE x
@@ -77,7 +72,7 @@ Max(x, y) == IF x > y THEN x ELSE y
 vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, InMsgc, 
           InMsgs, ServerMsg, BlockedClient, BlockedThread, 
           OpCount, Pt, Cp, State, SnapshotTable, 
-          History, CurrentTerm, ReadyToServe, SyncSource>>
+          History, CurrentTerm, SyncSource>>
 \* snapshot helpers
 RECURSIVE SelectSnapshot_rec(_, _, _)
 SelectSnapshot_rec(stable, cp, index) ==
@@ -106,6 +101,10 @@ MaxPt == LET x == CHOOSE s \in Server: \A s1 \in Server \ {s}:
                             
 Tick(s) == Ct' = IF Ct[s].p >= Pt[s] THEN [ Ct EXCEPT ![s] = [ p |-> @.p, l |-> @.l+1] ]
                                      ELSE [ Ct EXCEPT ![s] = [ p |-> Pt[s], l |-> 0] ]  
+UpdateAndTick(s, msgCt) ==
+    LET newCt == [ Ct EXCEPT ![s] = HLCMax(Ct[s], msgCt) ] \* Update ct first according to msg
+    IN  Ct' = IF newCt[s].p >= Pt[s] THEN [ newCt EXCEPT ![s] = [ p |-> @.p, l |-> @.l+1] ]
+                                     ELSE [ newCt EXCEPT ![s] = [ p |-> Pt[s], l |-> 0] ]                  
 
 \* heartbeat - Only Primary node sends heartbeat once advance pt
 BroadcastHeartbeat(s) == 
@@ -160,7 +159,10 @@ QuorumAgreeInSameTerm(states) ==
 ReplicatedServers(states, ot) ==
     LET serverSet == {subServers \in SUBSET(Server): \A s \in subServers: LET stateTime == [p|-> states[s].p, l|-> states[s].l]
                                                                           IN  ~HLCLt(stateTime, ot)}
-    IN  CHOOSE maxSet \in serverSet: \A otherSet \in serverSet: Cardinality(otherSet) < Cardinality(maxSet)
+    IN  CHOOSE maxSet \in serverSet: \A otherSet \in serverSet: Cardinality(otherSet) <= Cardinality(maxSet)
+\*    IN  IF Cardinality(serverSet) = 0 THEN {}
+\*        ELSE IF Cardinality(serverSet) = 1 THEN serverSet
+\*             ELSE CHOOSE maxSet \in serverSet: \A otherSet \in serverSet: Cardinality(otherSet) <= Cardinality(maxSet)
  
  \* Compute a new common point according to new update position msg
 ComputeNewCp(s) == 
@@ -214,23 +216,20 @@ InitState == State = [ s \in Server |-> [ s0 \in Server |->
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
                                                    store |-> [ k \in Key |-> Nil] ] >>]  
 InitHistory == History = [c \in Client |-> <<>>]  \* History operation seq is empty  
-InitCurrentTerm == CurrentTerm = [s \in Server |-> 0] 
-InitReadyToServe == ReadyToServe = 0
+InitCurrentTerm == CurrentTerm = [ p \in Primary |-> 1 ] @@ [ s \in Server |-> 0 ] 
 InitSyncSource == SyncSource = [ s \in Server |-> Nil]                                                                              
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
     /\ InitOt /\ InitPt /\ InitCp /\ InitInMsgc /\ InitInMsgs 
     /\ InitServerMsg /\ InitBlockedClient /\ InitBlockedThread /\ InitOpCount
-    /\ InitState /\ InitSnap /\ InitHistory /\ InitCurrentTerm /\ InitReadyToServe
-    /\ InitSyncSource
+    /\ InitState /\ InitSnap /\ InitHistory /\ InitCurrentTerm /\ InitSyncSource
      
 -----------------------------------------------------------------------------
 \* Next State Actions  
 \* Replication Protocol: possible actions 
 \* snapshot periodly
 Snapshot == 
-    /\ ReadyToServe > 0
     /\ \E s \in Server:
             SnapshotTable' =  [ SnapshotTable EXCEPT ![s] = 
                                 Append(@, [ot |-> Ot[s], store |-> Store[s] ]) ]  
@@ -238,15 +237,13 @@ Snapshot ==
     /\ UNCHANGED <<serverVars, InMsgc, InMsgs, BlockedClient, BlockedThread, OpCount, History>>                                             
 
 Stepdown == 
-    /\ ReadyToServe > 0
     /\ \E s \in Primary:
         /\ Primary' = Primary \ {s}
         /\ Secondary' = Secondary \cup {s}
-    /\ UNCHANGED <<storageVars, servernodeVars, Ct, messageVar, timeVar, Cp, State, CurrentTerm, functionalVar, tunableVars>>
+    /\ UNCHANGED <<storageVars, servernodeVars, Ct, messageVar, timeVar, Cp, State, CurrentTerm, tunableVars>>
 
 \* There are majority nodes agree to elect node i to become primary                            
 ElectPrimary ==
-    /\ ReadyToServe > 0
     /\ \E i \in Server: \E majorNodes \in SUBSET(Server):
         /\ \A j \in majorNodes: /\ NotBehind(i, j)
                                 /\ CurrentTerm[i] >= CurrentTerm[j]
@@ -262,26 +259,16 @@ ElectPrimary ==
                                                 ELSE CurrentTerm[index]]
         \* A primary node do not have any sync source                                        
         /\ SyncSource' = [SyncSource EXCEPT ![i] = Nil ]
-    /\ UNCHANGED <<storageVars, Ct, Ot, messageVar, timeVar, Cp, State, functionalVar, tunableVars>> 
-    
-TurnOnReadyToServe ==
-    /\ ReadyToServe = 0
-    /\ \E s \in Primary:
-        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = CurrentTerm[s] + 1]
-\*        /\ CurrentTerm' = [s \in Server |-> 1] ?
-        /\ ReadyToServe' = ReadyToServe + 1
-    /\ UNCHANGED<<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, Cp, State, tunableVars>>     
+    /\ UNCHANGED <<storageVars, Ct, Ot, messageVar, timeVar, Cp, State, tunableVars>> 
 
 AdvanceCp ==
-    /\ ReadyToServe > 0
     /\ \E s \in Primary:
         LET newCp == ComputeNewCp(s)
         IN Cp' = [ Cp EXCEPT ![s] = newCp]
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, State, CurrentTerm, functionalVar, tunableVars>>                                              
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, State, CurrentTerm, tunableVars>>                                              
                                                                                                                                                                                                   
 \*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
 ServerTakeHeartbeat ==
-    /\ ReadyToServe > 0
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "heartbeat"
@@ -293,10 +280,9 @@ ServerTakeHeartbeat ==
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, functionalVar, tunableVars>>
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, tunableVars>>
 
 ServerTakeUpdatePosition == 
-    /\ ReadyToServe > 0
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "update_position"
@@ -313,21 +299,19 @@ ServerTakeUpdatePosition ==
                                                     THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
                                                 ELSE [newServerMsg EXCEPT ![SyncSource[s]] = Append(newServerMsg[SyncSource[s]], appendMsg)]
                                   IN newMsg))
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, functionalVar, tunableVars>>                   
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, tunableVars>>                   
                   
 NTPSync == \* simplify NTP protocal
-    /\ ReadyToServe > 0
     /\ Pt' = [ s \in Server |-> MaxPt ] 
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, messageVar, functionalVar, tunableVars>>
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, messageVar, tunableVars>>
 
 AdvancePt == 
-    /\ ReadyToServe > 0
     /\ \E s \in Server:  
            /\ s \in Primary                    \* for simplicity
            /\ Pt[s] <= PtStop 
            /\ Pt' = [ Pt EXCEPT ![s] = @+1 ] \* advance physical time
            /\ BroadcastHeartbeat(s)          \* broadcast heartbeat periodly
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, functionalVar, tunableVars>>
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, tunableVars>>
                                      
 \* Replication                                     
 \* Idea: 进行replicate的时候，首先进行canSyncFrom的判断，拥有更多log且大于等于term的才能作为同步源
@@ -335,7 +319,6 @@ AdvancePt ==
 \* 最后，关于UpdatePosition的转发，需要加入一个额外的action，如果自己的信道里有type为updatePosition的消息，则向上层节点转发
 \* Replicate oplog from node j to node i, and update related structures accordingly
  Replicate == 
-    /\ ReadyToServe > 0
     /\ \E i, j \in Server: 
         /\ CanSyncFrom(i, j) \* i can sync from j only need not to rollback
         /\ i \in Secondary
@@ -351,12 +334,11 @@ AdvancePt ==
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
-    /\ UNCHANGED <<electionVars, timeVar, functionalVar, tunableVars>>                    
+    /\ UNCHANGED <<electionVars, timeVar, tunableVars>>                    
                     
 \* Rollback i's oplog and recover it to j's state   
 \* Recover to j's state immediately to prevent internal client request  
 RollbackAndRecover ==
-    /\ ReadyToServe > 0
     /\ \E i, j \in Server:
         /\ i \in Secondary
         /\ CanRollback(i, j)
@@ -379,20 +361,21 @@ RollbackAndRecover ==
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
-    /\ UNCHANGED <<electionVars, timeVar, functionalVar, tunableVars>>                     
+    /\ UNCHANGED <<electionVars, timeVar, tunableVars>>                     
     
 ----------------------------------------------------------------------------- 
 \* Tunable Protocol: Server Actions                 
 \* Server Get
 ServerGetReply_sleep ==
-    /\ ReadyToServe > 0
     /\ \E s \in Server:
        /\ Len(InMsgs[s]) /= 0
        /\ InMsgs[s][1].op = "get"
        /\ IF InMsgs[s][1].rc = "linearizable"
             THEN  /\ s \in Primary
-                  /\ Tick(s)  \* advance cluster time
-                  /\ Oplog' = [ Oplog EXCEPT ![s] = Append(@, <<Nil, Nil, Ct'[s]>>)]
+                  /\ UpdateAndTick(s, InMsgs[s][1].ct)  \* advance cluster time
+                  /\ Oplog' = LET entry == [k |-> Nil, v |-> Nil, ot |-> Ct'[s], term |-> CurrentTerm[s]]
+                                  newLog == Append(Oplog[s], entry)
+                              IN  [Oplog EXCEPT ![s] = newLog] 
                     \* append noop operation to oplog[s]
                   /\ Ot' = [ Ot EXCEPT ![s] =  Ct'[s] ] 
                     \* advance the last applied operation time Ot[s]
@@ -410,11 +393,10 @@ ServerGetReply_sleep ==
                /\ Ot' = Ot
                /\ State' = State
        /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@)]
-    /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, messageVar, SyncSource, Store, timeVar,
+    /\ UNCHANGED <<electionVars, Cp, CurrentTerm, messageVar, SyncSource, Store, timeVar,
                    InMsgc, BlockedClient, clientnodeVars, SnapshotTable>>
                    
 ServerGetReply_wake == 
-    /\ ReadyToServe > 0
     /\ \E c \in Client:
        /\ BlockedThread[c] /= Nil
        /\ BlockedThread[c].type ="read"
@@ -436,11 +418,10 @@ ServerGetReply_wake ==
        
 \* Server Put 注意：只有收到写操作时才会记录server的oplog
 ServerPutReply_sleep == 
-    /\ ReadyToServe > 0
     /\ \E s \in Primary:
         /\ Len(InMsgs[s]) /= 0
         /\ InMsgs[s][1].op = "put"
-        /\ Tick(s)
+        /\ UpdateAndTick(s, InMsgs[s][1].ct)
         /\ Ot' = [ Ot EXCEPT ![s] =  Ct'[s] ] \* advance the last applied operation time Ot[s]
         /\ Store' = [ Store EXCEPT ![s][InMsgs[s][1].k] = InMsgs[s][1].v ] \* append operation to oplog[s]
         /\ Oplog' = LET entry == [k |-> InMsgs[s][1].k, v |-> InMsgs[s][1].v, 
@@ -455,11 +436,10 @@ ServerPutReply_sleep ==
                                    numnode |-> InMsgs[s][1].num, ot |-> Ot'[s], s |-> s, 
                                    k |->InMsgs[s][1].k, v |-> InMsgs[s][1].v ] ] \* add the user History to BlockedThread[c]          
         /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@)] 
-    /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, messageVar, SyncSource, timeVar,
+    /\ UNCHANGED <<electionVars, Cp, CurrentTerm, messageVar, SyncSource, timeVar,
                    InMsgc, BlockedClient, clientnodeVars, SnapshotTable>> 
                                    
 ServerPutReply_wake ==
-    /\ ReadyToServe > 0
     /\ \E c \in Client:
         /\ BlockedThread[c] /=  Nil
         /\ BlockedThread[c].type = "write"
@@ -477,7 +457,6 @@ ServerPutReply_wake ==
 \* Tunable Protocol: Client Actions      
 \* Client Get
 ClientGetRequest ==
-    /\ ReadyToServe > 0
     /\ \E k \in Key, c \in Client \ BlockedClient: 
         /\ IF ReadConcern = "linearizable" \* In this case, read can only be sent to primary
            THEN \E s \in Primary:
@@ -495,7 +474,6 @@ ClientGetRequest ==
 
 \* Client Put    
 ClientPutRequest == 
-    /\ ReadyToServe > 0
     /\ \E k \in Key, v \in Value, c \in Client \ BlockedClient, s \in Primary:
         /\ OpCount[c] /= 0
         /\ InMsgs' = [InMsgs EXCEPT ![s] = Append(@, 
@@ -511,7 +489,6 @@ ClientPutRequest ==
 
 \* do we need to update Ct[c] here?                                                 
 ClientGetResponse ==
-    /\ ReadyToServe > 0
     /\ \E c \in Client:
         /\ OpCount[c] /= 0          \* client c has operation times
         /\ Len(InMsgc[c]) /= 0      \* message channel is not empty
@@ -524,11 +501,10 @@ ClientGetResponse ==
                                 THEN BlockedClient \ {c}
                             ELSE BlockedClient  \* remove blocked state
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
-    /\ UNCHANGED <<electionVars, functionalVar, learnableVars, messageVar, servernodeVars, Oplog, timeVar,
+    /\ UNCHANGED <<electionVars, learnableVars, messageVar, servernodeVars, Oplog, timeVar,
                    BlockedThread, InMsgs, SnapshotTable>>
                    
 ClientPutResponse ==
-    /\ ReadyToServe > 0
     /\ \E c \in Client:
         /\ OpCount[c] /= 0          \* client c has operation times
         /\ Len(InMsgc[c]) /= 0      \* message channel is not empty
@@ -542,7 +518,7 @@ ClientPutResponse ==
                                 THEN BlockedClient \ {c}
                             ELSE BlockedClient  \* remove blocked state
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
-    /\ UNCHANGED <<electionVars, functionalVar, Cp, CurrentTerm, State, messageVar, SyncSource, storageVars, timeVar,
+    /\ UNCHANGED <<electionVars, Cp, CurrentTerm, State, messageVar, SyncSource, storageVars, timeVar,
                    BlockedThread, InMsgs, SnapshotTable>>
                 
 -----------------------------------------------------------------------------
@@ -566,7 +542,6 @@ Next == \/ ClientGetRequest \/ ClientPutRequest
         \/ Snapshot
         \/ Stepdown
         \/ RollbackAndRecover
-        \/ TurnOnReadyToServe
         \/ ElectPrimary
         \/ AdvanceCp
         \/ NTPSync
@@ -600,5 +575,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
 =============================================================================
 \* Modification History
-\* Last modified Thu May 19 11:54:21 CST 2022 by dh
+\* Last modified Tue May 24 16:46:46 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh
