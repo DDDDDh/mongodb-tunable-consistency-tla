@@ -458,6 +458,7 @@ ServerPutReply_wake ==
 \* Client Get
 ClientGetRequest ==
     /\ \E k \in Key, c \in Client \ BlockedClient: 
+        /\ OpCount[c] /= 0
         /\ IF ReadConcern = "linearizable" \* In this case, read can only be sent to primary
            THEN \E s \in Primary:
                 InMsgs' = [InMsgs EXCEPT ![s] = Append(@,
@@ -493,6 +494,8 @@ ClientGetResponse ==
         /\ OpCount[c] /= 0          \* client c has operation times
         /\ Len(InMsgc[c]) /= 0      \* message channel is not empty
         /\ InMsgc[c][1].op = "get"  \* msg type: get
+        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, InMsgc[c][1].ct) ]
+        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, InMsgc[c][1].ot) ] 
         /\ Store' = [ Store EXCEPT ![c][InMsgc[c][1].k] = InMsgc[c][1].v ]  \* store data
         /\ History' = [ History EXCEPT ![c] = Append(@, [ op |-> "get", 
                         ts |-> InMsgc[c][1].ot, k |-> InMsgc[c][1].k, v |-> InMsgc[c][1].v ]) ]    
@@ -501,9 +504,9 @@ ClientGetResponse ==
                                 THEN BlockedClient \ {c}
                             ELSE BlockedClient  \* remove blocked state
         /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
-    /\ UNCHANGED <<electionVars, learnableVars, messageVar, servernodeVars, Oplog, timeVar,
+    /\ UNCHANGED <<electionVars, State, Cp, CurrentTerm, messageVar, SyncSource, Oplog, timeVar,
                    BlockedThread, InMsgs, SnapshotTable>>
-                   
+            
 ClientPutResponse ==
     /\ \E c \in Client:
         /\ OpCount[c] /= 0          \* client c has operation times
@@ -575,5 +578,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
 =============================================================================
 \* Modification History
-\* Last modified Tue May 24 16:46:46 CST 2022 by dh
+\* Last modified Wed May 25 11:58:13 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh
