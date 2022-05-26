@@ -1,5 +1,7 @@
 ------------------------ MODULE TunableMongoDB_Basic ------------------------
 \* Basic MongoDB xxx protocol in the failure-free deployment
+\* Q:在Basic的情况下需不需要维护Cp?
+
 EXTENDS Naturals, FiniteSets, Sequences, TLC
 
 \* constants and variables
@@ -156,17 +158,16 @@ InitState == State = [ s \in Server |-> [ s0 \in Server |->
                                               [ p |-> 0, l |-> 0] ] ] 
 InitSyncSource == SyncSource = [ s \in Server |-> Nil]    
 InitBlockedClient == BlockedClient = {}
-InitBlockedThread == BlockedThread = [ s \in Client |-> Nil ]
+InitBlockedThread == BlockedThread = [ c \in Client |-> Nil ]
 InitHistory == History = [ c \in Client |-> <<>> ]
 InitMessages == Messages = {}
 InitOpCount == OpCount = [ c \in Client |-> OpTimes ]                                                                  
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
-    /\ InitOt /\ InitPt /\ InitCp 
-    /\ InitServerMsg 
-    /\ InitState
-    /\ InitSyncSource
+    /\ InitOt /\ InitPt /\ InitCp /\ InitServerMsg /\ InitState
+    /\ InitSyncSource /\ InitBlockedClient /\ InitBlockedThread
+    /\ InitHistory /\ InitMessages /\ InitOpCount
     
 \* Next State Actions  
 \* Replication Protocol: possible actions  
@@ -256,7 +257,7 @@ ServerPutReply ==
        /\ Messages' = LET newMsgs == Messages \ {m}
                           newM == [type |-> "put_reply", dest |-> m.c, ot |-> Ot'[s], ct |-> Ct'[s], k |-> m.k, v |-> m.v]
                       IN  newMsgs \cup {newM}
-    /\ UNCHANGED <<electionVars, messageVar, servernodeVars, State, Cp, timeVar, BlockedClient, BlockedThread, History, OpCount>>                      
+    /\ UNCHANGED <<electionVars, messageVar, SyncSource, Cp, timeVar, BlockedClient, BlockedThread, History, OpCount>>                      
     
 ServerGetReply_sleep ==
     /\ \E s \in Server, m \in Messages:
@@ -265,7 +266,7 @@ ServerGetReply_sleep ==
        /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], m.ct)]
        /\ BlockedThread' = [BlockedThread EXCEPT ![m.c] = [type |-> "read", s |-> s, k |-> m.k, ot |-> m.ot]]
        /\ Messages' = Messages \ {m}
-    /\ UNCHANGED <<electionVars, messageVar, servernodeVars, State, Cp, timeVar, BlockedClient, History, OpCount>>  
+    /\ UNCHANGED <<electionVars, storageVars, messageVar, servernodeVars, State, Cp, timeVar, BlockedClient, History, OpCount>>  
 
 ServerGetReply_wake == 
     /\ \E c \in Client:
@@ -277,7 +278,7 @@ ServerGetReply_wake ==
                                 ct |-> Ct[BlockedThread[c].s], ot |-> Ot[BlockedThread[c].s]]
                       IN  Messages \cup {m}
        /\ BlockedThread' = [ BlockedThread EXCEPT ![c] = Nil ]               
-    /\UNCHANGED <<electionVars, messageVar, servernodeVars, learnableVars, timeVar,
+    /\UNCHANGED <<electionVars, storageVars, messageVar, servernodeVars, learnableVars, timeVar,
                   BlockedClient, History, OpCount>>    
                   
 ServerPutAndGet == \/ ServerPutReply      
@@ -344,8 +345,33 @@ Next == \/ Replicate
         \/ NTPSync
         
 Spec == Init /\ [][Next]_vars      
+-----------------------------------------------------------------------------
+\* Causal Specifications
+MonotonicRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
+                    /\ i<j 
+                    /\ History[c][i].op = "get"
+                    /\ History[c][j].op = "get"
+                    => ~ HLCLt(History[c][j].ts, History[c][i].ts)
+   
+MonotonicWrite == \A c \in Client: \A i,j \in DOMAIN History[c]:
+                    /\ i<j 
+                    /\ History[c][i].op = "put"
+                    /\ History[c][j].op = "put"
+                    => ~ HLCLt(History[c][j].ts, History[c][i].ts)   
+                    
+ReadYourWrite == \A c \in Client: \A i,j \in DOMAIN History[c]:
+                /\ i < j
+                /\ History[c][i].op = "put"
+                /\ History[c][j].op = "get"
+                => ~ HLCLt(History[c][j].ts, History[c][i].ts)
+                
+WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
+                /\ i < j
+                /\ History[c][i].op = "get"
+                /\ History[c][j].op = "put"
+                => ~ HLCLt(History[c][j].ts, History[c][i].ts)
 
 =============================================================================
 \* Modification History
-\* Last modified Wed May 25 11:49:52 CST 2022 by dh
+\* Last modified Thu May 26 15:01:02 CST 2022 by dh
 \* Created Tue May 24 15:18:16 CST 2022 by dh

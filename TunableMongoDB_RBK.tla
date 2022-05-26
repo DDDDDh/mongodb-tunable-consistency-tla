@@ -279,8 +279,8 @@ ServerTakeHeartbeat ==
         /\ Cp' = LET newcp == ComputeNewCp(s)
                  IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
-       /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]         
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, tunableVars>>
+\*       /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]  ->因为之前的判断，根本不会触发       
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, CurrentTerm, tunableVars>>
 
 ServerTakeUpdatePosition == 
     /\ \E s \in Server:
@@ -381,7 +381,6 @@ ServerGetReply_sleep ==
                     \* advance the last applied operation time Ot[s]
                   /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l, CurrentTerm[s])      
                               IN  [State EXCEPT ![s] = newState]      \* update primary state
-                  /\ InMsgs' = [ InMsgs EXCEPT ![s] = Tail(@) ]
                   /\ BlockedThread' = [BlockedThread EXCEPT ![InMsgs[s][1].c] = 
                                        [type |-> "read", rc |-> InMsgs[s][1].rc, ot|-> Ct'[s], s |-> s, 
                                        k |->InMsgs[s][1].k, v |-> Store[s][InMsgs[s][1].k] ] ] 
@@ -487,8 +486,7 @@ ClientPutRequest ==
                 /\ OpCount' = OpCount
                 /\ History' = History
     /\ UNCHANGED <<serverVars, BlockedThread, InMsgc, SnapshotTable>>       
-
-\* do we need to update Ct[c] here?                                                 
+                                                
 ClientGetResponse ==
     /\ \E c \in Client:
         /\ OpCount[c] /= 0          \* client c has operation times
@@ -578,5 +576,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
 =============================================================================
 \* Modification History
-\* Last modified Wed May 25 11:58:13 CST 2022 by dh
+\* Last modified Thu May 26 18:50:45 CST 2022 by dh
 \* Created Thu Mar 31 20:33:19 CST 2022 by dh
