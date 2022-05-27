@@ -198,13 +198,15 @@ InitHistory == History = [ c \in Client |-> <<>> ]
 InitMessages == Messages = {}
 InitOpCount == OpCount = [ c \in Client |-> OpTimes ]   
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
-                                                   store |-> [ k \in Key |-> Nil] ] >>]                                                                 
+                                                   store |-> [ k \in Key |-> Nil] ] >>]
+InitCurrentTerm == CurrentTerm = [ p \in Primary |-> 1 ] @@ [ s \in Server |-> 0 ]                                                                  
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
     /\ InitOt /\ InitPt /\ InitCp /\ InitServerMsg /\ InitState
     /\ InitSyncSource /\ InitBlockedClient /\ InitBlockedThread
     /\ InitHistory /\ InitMessages /\ InitOpCount /\ InitSnap
+    /\ InitCurrentTerm
     
 \* Next State Actions  
 \* Replication Protocol: possible actions  
@@ -248,8 +250,9 @@ ServerTakeUpdatePosition ==
         /\ State' = LET newState == GetNewState(s, ServerMsg[s][1].s, ServerMsg[s][1].aot.p, ServerMsg[s][1].aot.l, ServerMsg[s][1].term)
                     IN  [State EXCEPT ![s] = newState]
         /\ Cp' = LET newcp == ComputeNewCp(s)
-                 IN [ Cp EXCEPT ![s] = newcp ]                
-       /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
+                 IN [ Cp EXCEPT ![s] = newcp ]           
+        /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]              
+        /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
                        IN  ( LET  appendMsg == [ type |-> "update_position", s |-> ServerMsg[s][1].s, aot |-> ServerMsg[s][1].aot, 
                                           ct |-> ServerMsg[s][1].ct, cp |-> ServerMsg[s][1].cp, term |-> ServerMsg[s][1].term ]
                              IN ( LET newMsg == IF s \in Primary \/ SyncSource[s] = Nil
@@ -405,7 +408,7 @@ ClientPutResponse ==
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
-    /\ UNCHANGED <<electionVars, storageVars, messageVar, SyncSource, State, Cp, timeVar, BlockedThread>>
+    /\ UNCHANGED <<electionVars, storageVars, messageVar, SyncSource, State, Cp, CurrentTerm, SnapshotTable, timeVar, BlockedThread>>
     
 ClientGetRequest ==
     /\ \E k \in Key, c \in Client \ BlockedClient: 
@@ -437,7 +440,7 @@ ClientGetResponse ==
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
-    /\ UNCHANGED <<electionVars, Oplog, messageVar, SyncSource, State, Cp, timeVar, BlockedThread>>
+    /\ UNCHANGED <<electionVars, Oplog, messageVar, SyncSource, State, Cp, CurrentTerm, SnapshotTable, timeVar, BlockedThread>>
     
 ClientPutAndGet == \/ ClientPutRequest \/ ClientPutResponse
                    \/ ClientGetRequest \/ ClientGetResponse  
@@ -446,10 +449,12 @@ ClientPutAndGet == \/ ClientPutRequest \/ ClientPutResponse
 \*Simulate the situation that the primary node crash and suddently back to the state in Cp[s]
 PrimaryCrashAndBack ==
     /\ \E s \in Primary:
+       /\ Len(Oplog[s]) > 2 \* there is sth in the log
+       /\ HLCLt([p |-> 0, l |-> 0], Cp[s])
        /\ Ot' = [ Ot EXCEPT ![s] = Cp[s] ]
        /\ Ct' = [ Ct EXCEPT ![s] = Cp[s] ]
        /\ Store' = [ Store EXCEPT ![s] = SelectSnapshot(SnapshotTable[s], Cp[s])]
-       /\ Oplog' = LET logTail == CHOOSE n \in 1..Len(Oplog): Oplog[n].ot = Cp[s]
+       /\ Oplog' = LET logTail == CHOOSE n \in 1..Len(Oplog[s]): Oplog[s][n].ot = Cp[s]
                    IN  SubSeq(Oplog, 1, logTail)
        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l, CurrentTerm[s])      
                    IN  [State EXCEPT ![s] = newState]      \* update primary state
@@ -497,5 +502,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Thu May 26 22:24:59 CST 2022 by dh
+\* Last modified Fri May 27 12:18:47 CST 2022 by dh
 \* Created Wed May 25 16:43:04 CST 2022 by dh
