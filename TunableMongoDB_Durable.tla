@@ -471,6 +471,7 @@ Next == \/ Replicate
         \/ ClientPutAndGet
         \/ NTPSync
         \/ PrimaryCrashAndBack
+        \/ Snapshot
         
 Spec == Init /\ [][Next]_vars      
 
@@ -502,5 +503,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Fri May 27 12:18:47 CST 2022 by dh
+\* Last modified Mon Jun 13 15:19:31 CST 2022 by dh
 \* Created Wed May 25 16:43:04 CST 2022 by dh
