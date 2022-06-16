@@ -1,6 +1,6 @@
 ------------------------ MODULE TunableMongoDB_Basic ------------------------
 \* Basic MongoDB xxx protocol in the failure-free deployment
-\* Q:在Basic的情况下需不需要维护Cp?
+\* Q:在Basic的情况下需不需要维护Cp? -> answer0614：感觉是不需要的，因为cp的主要作用是维护持久化视图，而basic不考虑持久化
 
 EXTENDS Naturals, FiniteSets, Sequences, TLC
 
@@ -373,5 +373,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Thu May 26 15:01:02 CST 2022 by dh
+\* Last modified Tue Jun 14 21:49:54 CST 2022 by dh
 \* Created Tue May 24 15:18:16 CST 2022 by dh

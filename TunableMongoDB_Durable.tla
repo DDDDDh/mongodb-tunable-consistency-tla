@@ -285,8 +285,13 @@ AdvancePt ==
         /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i]    
         /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
         /\ CurrentTerm' = [CurrentTerm EXCEPT ![i] = Max(CurrentTerm[i], CurrentTerm[j])] \* update CurrentTerm
-        /\ State' = LET newState == GetNewState(i, j, Ot[j].p, Ot[j].l, CurrentTerm[j]) \* update j's state i knows 
-                    IN [State EXCEPT ![i] = newState]
+        /\ State' = 
+            LET newStatei == [p |-> Ot'[i].p, l |-> Ot'[i].l, term |-> CurrentTerm'[i]]
+                newStatej == [p |-> Ot[j].p, l |-> Ot[j].l,term |-> CurrentTerm[j]]
+            IN LET SubHbState == State[i]
+                   hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
+                   hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
+               IN [ State EXCEPT ![i] = hb1]
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i]]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
@@ -360,21 +365,21 @@ ServerGetReply_sleep ==
 ServerGetReply_wake == 
     /\ \E c \in Client:
        /\ BlockedThread[c] /= Nil
-       /\ BlockedThread[c].type = "read"
-       /\ IF BlockedThread[c].rc = "linearizable"
-            THEN /\ ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot) \* wait until cp[s] >= target ot 
+       /\ BlockedThread[c].type = "read"    
+       /\ IF BlockedThread[c].rc = "local"
+            THEN /\ ~ HLCLt(Ot[BlockedThread[c].s], BlockedThread[c].ot) \* wait until Ot[s] >= target ot  
                  /\ Messages' = LET m == [type |-> "get_reply", dest |-> c, k |-> BlockedThread[c].k, 
-                                    v |-> BlockedThread[c].v, ct |-> Ct[BlockedThread[c].s], ot |-> BlockedThread[c].ot ]
-                                IN  Messages \cup {m}
-          ELSE /\ ~ HLCLt(Ot[BlockedThread[c].s], BlockedThread[c].ot) \* wait until Ot[s] >= target ot  
-               /\ IF BlockedThread[c].rc = "local"
-                    THEN Messages' = LET m == [type |-> "get_reply", dest |-> c, k |-> BlockedThread[c].k, 
                                          v |-> Store[BlockedThread[c].s][BlockedThread[c].k], ct |-> Ct[BlockedThread[c].s], ot |-> Ot[BlockedThread[c].s] ]
+                                IN  Messages \cup {m}
+          ELSE /\ ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot) \* wait until cp[s] >= target ot 
+               /\ IF BlockedThread[c].rc = "linearizable"
+                    THEN Messages' = LET m == [type |-> "get_reply", dest |-> c, k |-> BlockedThread[c].k, 
+                                         v |-> BlockedThread[c].v, ct |-> Ct[BlockedThread[c].s], ot |-> BlockedThread[c].ot ]
                                      IN  Messages \cup {m}
                   ELSE Messages' = LET m == [type |-> "get_reply", dest |-> c, k |-> BlockedThread[c].k, 
                                        v |-> SelectSnapshot(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s])[BlockedThread[c].k],
                                        ct |-> Ct[BlockedThread[c].s], ot |-> Cp[BlockedThread[c].s] ] \* rc = majority
-                                   IN  Messages \cup {m}                   
+                                   IN  Messages \cup {m}                                              
        /\ BlockedThread' = [ BlockedThread EXCEPT ![c] = Nil ]               
     /\ UNCHANGED <<serverVars, History, OpCount, BlockedClient, SnapshotTable>>                    
                   
@@ -503,5 +508,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Jun 13 15:19:31 CST 2022 by dh
+\* Last modified Thu Jun 16 17:02:50 CST 2022 by dh
 \* Created Wed May 25 16:43:04 CST 2022 by dh
