@@ -475,7 +475,7 @@ Next == \/ Replicate
         \/ ServerPutAndGet
         \/ ClientPutAndGet
         \/ NTPSync
-        \/ PrimaryCrashAndBack
+\*        \/ PrimaryCrashAndBack
         \/ Snapshot
         
 Spec == Init /\ [][Next]_vars      
@@ -508,5 +508,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jun 16 17:02:50 CST 2022 by dh
+\* Last modified Thu Jun 16 17:25:37 CST 2022 by dh
 \* Created Wed May 25 16:43:04 CST 2022 by dh

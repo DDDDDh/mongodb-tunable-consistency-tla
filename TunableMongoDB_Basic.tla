@@ -234,8 +234,13 @@ AdvancePt ==
         /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
         /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i]    
         /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
-        /\ State' = LET newState == GetNewState(i, j, Ot[j].p, Ot[j].l) \* update j's state i knows 
-                    IN [State EXCEPT ![i] = newState]
+        /\ State' = 
+            LET newStatei == [p |-> Ot'[i].p, l |-> Ot'[i].l]
+                newStatej == [p |-> Ot[j].p, l |-> Ot[j].l]
+            IN LET SubHbState == State[i]
+                   hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
+                   hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
+               IN [ State EXCEPT ![i] = hb1]            
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
@@ -373,5 +378,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jun 14 21:49:54 CST 2022 by dh
+\* Last modified Tue Jun 21 20:46:01 CST 2022 by dh
 \* Created Tue May 24 15:18:16 CST 2022 by dh
