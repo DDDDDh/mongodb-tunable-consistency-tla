@@ -2,14 +2,15 @@
 \* Basic MongoDB xxx protocol in the failure-free deployment
 \* Q:在Basic的情况下需不需要维护Cp? -> answer0614：感觉是不需要的，因为cp的主要作用是维护持久化视图，而basic不考虑持久化
 
-EXTENDS Naturals, FiniteSets, Sequences, TLC
+EXTENDS Naturals, FiniteSets, Sequences, TLC, CMvSpec
 
 \* constants and variables
 CONSTANTS Client, Server,   \* the set of clients and servers
-          Key, Value,      \* the set of keys and values
-          Nil,            \* model value, place holder
-          OpTimes,        \* op count at most
-          PtStop          \* max physical time
+          Key, Value,       \* the set of keys and values
+          Nil,              \* model value, place holder
+          OpTimes,          \* op count at most
+          PtStop,           \* max physical time
+          EnableCausal      \* use causal protocol or not
 
 VARIABLES Primary,        \* Primary node
           Secondary,      \* secondary nodes
@@ -305,7 +306,7 @@ ClientPutResponse ==
        /\ m.dest = c
        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
-       /\ History' = [ History EXCEPT ![c] = Append (@, [ op |-> "put", 
+       /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "put", 
                        ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
@@ -328,7 +329,7 @@ ClientGetResponse ==
        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
        /\ Store' = [ Store EXCEPT ![c][m.k] = m.v ]
-       /\ History' = [ History EXCEPT ![c] = Append (@, [ op |-> "get", 
+       /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "get", 
                        ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
@@ -354,29 +355,34 @@ Spec == Init /\ [][Next]_vars
 \* Causal Specifications
 MonotonicRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                     /\ i<j 
-                    /\ History[c][i].op = "get"
-                    /\ History[c][j].op = "get"
+                    /\ History[c][i].type = "get"
+                    /\ History[c][j].type = "get"
                     => ~ HLCLt(History[c][j].ts, History[c][i].ts)
    
 MonotonicWrite == \A c \in Client: \A i,j \in DOMAIN History[c]:
                     /\ i<j 
-                    /\ History[c][i].op = "put"
-                    /\ History[c][j].op = "put"
+                    /\ History[c][i].type = "put"
+                    /\ History[c][j].type = "put"
                     => ~ HLCLt(History[c][j].ts, History[c][i].ts)   
                     
 ReadYourWrite == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ i < j
-                /\ History[c][i].op = "put"
-                /\ History[c][j].op = "get"
+                /\ History[c][i].type = "put"
+                /\ History[c][j].type = "get"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
                 
 WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ i < j
-                /\ History[c][i].op = "get"
-                /\ History[c][j].op = "put"
+                /\ History[c][i].type = "get"
+                /\ History[c][j].type = "put"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
+                
+\* CMv Specification (test)
+CMvSatisification == 
+                  /\ CMv(History, Client)
+                
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Jun 21 20:46:01 CST 2022 by dh
+\* Last modified Sun Jul 31 20:26:35 CST 2022 by dh
 \* Created Tue May 24 15:18:16 CST 2022 by dh
