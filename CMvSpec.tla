@@ -3,7 +3,7 @@
  TLA+ Specification for causal consistency model CMv
  ***************************************************************************)
  
-EXTENDS Naturals, Sequences, TLC, Functions, RelationUtils, SequencesExt, FiniteSetsExt
+EXTENDS Naturals, Sequences, TLC, Functions, RelationUtils, SequencesExt, FiniteSetsExt, PartialOrderExt
 
 InitVal == 0
 
@@ -18,6 +18,13 @@ Seq2OpSet(s) == \* Transform a sequence s into the set of ops in s
 Ops(h, clients) ==
     UNION { Seq2OpSet(h[c]): c \in clients }
 \* The program order of h \in History is a union of total orders among operations in the same session    
+
+WriteOps(h, clients) == 
+    {op \in Ops(h, clients): op.type = "put"}
+
+ReadOps(h, clients) == 
+    {op \in Ops(h, clients): op.type = "get"}  
+    
 PO(h, clients) == UNION {Seq2Rel(h[c]): c \in clients }      
 -------------------------------------------------
 (*
@@ -39,15 +46,25 @@ CausalHist(co, o) == co | CausalPast(co, o) \* Original definition in paper
 \* The restriction of arbitration arb to the operations in the causal past of operation o \in Operation
 StrictCausalArb(co, arb, o) == arb | StrictCausalPast(co, o)
 CausalArb(co, arb, o) == arb | CausalPast(co, o) \* Original definition in paper
+
+
+\* A set of all subset of the Cartesian Product of ops \X ops, 
+\* each of which represent a strict partial order(irreflexive and transitive)
+
+POFilePath == "/Users/dh/Projects/mongodb-tunable-consistency-tla/POFile/"
+
+StrictPartialOrderSubset(ops) == 
+    PartialOrderSubset(ops, POFilePath)
+
 -------------------------------------------------
 (*
   Axioms used in the defintions of causal consistency
 *)
 RWRegSemantics(seq, o) == \* Is o \in Operation legal when it is appended to seq
-    IF o.type = "write" THEN TRUE ELSE 
-    LET wseq == SelectSeq(seq, LAMBDA op : op.type = "write" /\ op.key = o.key)
-         IN  IF wseq = <<>> THEN o.val = InitVal
-             ELSE o.val = wseq[Len(wseq)].val
+    IF o.type = "put" THEN TRUE ELSE 
+    LET wseq == SelectSeq(seq, LAMBDA op : op.type = "put" /\ op.k = o.k)
+         IN  IF wseq = <<>> THEN o.v = InitVal
+             ELSE o.v = wseq[Len(wseq)].v
 
 PreSeq(seq, o) == \* All of the operations before o in sequence seq
     LET so == Seq2Rel(seq)
@@ -57,7 +74,7 @@ RWRegSemanticsOperations(seq, ops) == \* For ops \subseteq Range(seq), is \A o \
     \A o \in ops:
         LET preSeq == PreSeq(seq, o)
         IN RWRegSemantics(preSeq, o)
-
+        
 AxCausalValue(co, o) ==
     LET seqs == AllLinearExtensions(StrictCausalHist(co, o), StrictCausalPast(co, o))
     IN  \E seq \in seqs: RWRegSemantics(seq, o)
@@ -71,6 +88,7 @@ AxCausalArb(co, arb, o) ==
     LET seq == AnyLinearExtension(StrictCausalArb(co, arb, o), StrictCausalPast(co, o)) \* it is unique
     IN  RWRegSemantics(seq, o)
 
+\*
 CMv(h, clients) ==
     LET ops == Ops(h, clients)
     IN \E co \in StrictPartialOrderSubset(ops): \* To do 
@@ -79,8 +97,29 @@ CMv(h, clients) ==
             /\ \A o \in ops: AxCausalArb(co, arb, o)
         /\ \A o \in ops: AxCausalSeq(h, clients, co, o)    
 
+-------------------------------------------------
+\* Definition of relations used in CMv definition  
+
+RF(h, clients) == 
+    {<<w, r>> \in WriteOps(h, clients) \X ReadOps(h, clients): w.k = r.k /\ w.v = r.v }
+
+VIS(h, clients) == 
+    TC( PO(h, clients) \cup RF(h, clients) )
+
+HB(h, clients) == 
+    TC( PO(h, clients) \cup VIS(h, clients) )    \*actually, HB = VIS    
+        
+CMvDef(h, clients) ==
+    LET ops == Ops(h, clients)
+        hb == HB(h, clients)
+        vis == VIS(h, clients)
+    IN  /\ Respect(vis, hb)
+        /\ \E co \in StrictPartialOrderSubset(ops):
+            /\ \E arb \in {Seq2Rel(le) : le \in AllLinearExtensions(co, ops)}:
+                /\ Respect(arb, vis)
+            /\ \A o \in ops: AxCausalSeq(h, clients, co, o)    
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Jul 31 20:39:57 CST 2022 by dh
+\* Last modified Thu Aug 04 09:36:29 CST 2022 by dh
 \* Created Sun Jul 31 10:58:26 CST 2022 by dh

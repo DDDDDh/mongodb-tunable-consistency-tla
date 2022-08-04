@@ -379,10 +379,13 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 
 \* CMv Specification (test)
 CMvSatisification == 
-                  /\ CMv(History, Client)
+                  \*/\ CMv(History, Client)
+                  \/ \A c \in Client: Len(History[c]) <= 2
+                  \/ \E c \in Client: Len(History[c]) > 7
+                  \/ CMvDef(History, Client)
                 
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Jul 31 20:26:35 CST 2022 by dh
+\* Last modified Thu Aug 04 11:02:45 CST 2022 by dh
 \* Created Tue May 24 15:18:16 CST 2022 by dh
