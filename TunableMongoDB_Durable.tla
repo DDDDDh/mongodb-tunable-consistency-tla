@@ -399,7 +399,7 @@ ClientPutRequest ==
            ELSE /\ BlockedClient' = BlockedClient \cup {c} \*Else wait for server reply
                 /\ OpCount' = OpCount
                 /\ History' = History   
-    /\ UNCHANGED <<serverVars, BlockedThread, History, OpCount, SnapshotTable>>               
+    /\ UNCHANGED <<serverVars, BlockedThread, SnapshotTable>>               
 
 ClientPutResponse ==  
     /\ \E c \in Client, m \in Messages:
@@ -508,5 +508,5 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jun 16 17:25:37 CST 2022 by dh
+\* Last modified Fri Aug 05 15:33:33 CST 2022 by dh
 \* Created Wed May 25 16:43:04 CST 2022 by dh

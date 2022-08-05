@@ -1,6 +1,5 @@
------------------------- MODULE TunableMongoDB_Basic ------------------------
-\* Basic MongoDB xxx protocol in the failure-free deployment
-\* Q:在Basic的情况下需不需要维护Cp? -> answer0614：感觉是不需要的，因为cp的主要作用是维护持久化视图，而basic不考虑持久化
+-------------------------- MODULE MongoDBCC_Basic --------------------------
+\* Basic MongoDB causal consistency protocol in the failure-free deployment
 
 EXTENDS Naturals, FiniteSets, Sequences, TLC, CMvSpec
 
@@ -9,38 +8,39 @@ CONSTANTS Client, Server,   \* the set of clients and servers
           Key, Value,       \* the set of keys and values
           Nil,              \* model value, place holder
           OpTimes,          \* op count at most
-          PtStop,           \* max physical time
-          EnableCausal      \* use causal protocol or not
+          PtStop            \* max physical time
 
-VARIABLES Primary,        \* Primary node
-          Secondary,      \* secondary nodes
-          Oplog,          \* oplog[s]: oplog at server[s]
-          Store,          \* store[s]: data stored at server[s]
-          Ct,             \* Ct[s]: cluster time at node s
-          Ot,             \* Ot[s]: the last applied operation time at server s
-          ServerMsg,      \* ServerMsg[s]: the channel of heartbeat msgs at server s
-          Pt,             \* Pt[s]: physical time at server s
-          Cp,             \* Cp[s]: majority commit point at server s
-          State,          \* State[s]: the latest Ot of all servers that server s knows   
-          SyncSource,     \* SyncSource[s]: sync source of server node s
-          \* Following are the Tunable related vars
-          BlockedClient,
-          BlockedThread,
-          History,
-          Messages,
-          OpCount
+VARIABLES Primary,          \* Primary node
+          Secondary,        \* secondary nodes
+          Oplog,            \* oplog[s]: oplog at server[s]
+          Store,            \* store[s]: data stored at server[s]
+          Ct,               \* Ct[s]: cluster time at node s
+          Ot,               \* Ot[s]: the last applied operation time at server s
+          ServerMsg,        \* ServerMsg[s]: the channel of heartbeat msgs at server s
+          Pt,               \* Pt[s]: physical time at server s
+          State,            \* State[s]: the latest Ot of all servers that server s knows   
+          SyncSource,       \* SyncSource[s]: sync source of server node s
+          BlockedClient,    \* Functional var: mark a blocked client before it receive reply from server
+          BlockedThread,    \* Functional var: mark a blocked server thread before it can return to client
+          History,          \* Client history to record operations
+          Messages,         \* Message channels in the system
+          OpCount           \* OpCount[c]: left op times at client c
           
 -----------------------------------------------------------------------------          
 \* group related vars to optimize code
 electionVars == <<Primary, Secondary>>              \* vars that are related to election  
 storageVars == <<Oplog, Store>>                     \* vars that are related to storage
 messageVar == <<ServerMsg>>                         \* var that is related to message
-servernodeVars == <<Ot, SyncSource>>                    \* vars that each server node holds for itself
-learnableVars == <<Ct, State, Cp>>     \* vars that must learn from msgs
+servernodeVars == <<Ot, SyncSource>>                \* vars that each server node holds for itself
+learnableVars == <<Ct, State>>                      \* vars that must learn from msgs
 timeVar == <<Pt>>                                   \* var that is used for timing
 
 serverVars == <<electionVars, storageVars, messageVar, servernodeVars, learnableVars, timeVar>>
 tunableVars == <<BlockedClient, BlockedThread, History, Messages, OpCount>>
+
+vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, messageVar, 
+          Pt, State, SyncSource, BlockedClient, BlockedThread,
+          History, Messages, OpCount>>
 -----------------------------------------------------------------------------
 ASSUME Cardinality(Client) >= 1  \* at least one clinet
 ASSUME Cardinality(Server) >= 2  \* at least one primary and one secondary
@@ -59,10 +59,6 @@ HLCMax(x, y) == IF HLCLt(x, y) THEN y ELSE x
 HLCType == [ p : Nat, l : Nat ]
 Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
-
-vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, messageVar, 
-          Pt, Cp, State, SyncSource, BlockedClient, BlockedThread,
-          History, Messages, OpCount>>
           
 \* Is node i ahead of node j
 NotBehind(i, j) == Len(Oplog[i]) >= Len(Oplog[j])                           
@@ -90,15 +86,13 @@ UpdateAndTick(s, msgCt) ==
 \* heartbeat
 \* Only Primary node sends heartbeat once advance pt
 BroadcastHeartbeat(s) == 
-    LET msg == [ type|-> "heartbeat", s |-> s, aot |-> Ot[s], 
-                 ct |-> Ct[s], cp |-> Cp[s]]
+    LET msg == [ type|-> "heartbeat", s |-> s, aot |-> Ot[s], ct |-> Ct[s]]
     IN ServerMsg' = [x \in Server |-> IF x = s THEN ServerMsg[x]
                                                ELSE Append(ServerMsg[x], msg)]                                                                                   
 
-\* Can node i sync from node j?
+\* Can node i sync from node j? Since basic is failure free case, we can only compare the log length
 CanSyncFrom(i, j) == Len(Oplog[i]) < Len(Oplog[j])
    
-    
 \* Oplog entries needed to replicate from j to i
 ReplicateOplog(i, j) ==     
     LET len_i == Len(Oplog[i])
@@ -118,26 +112,6 @@ QuorumAgree(states) ==
                     \/ /\ \A s \in Q : states[s].p = 0
                        /\ \A s \in Q : states[s].l > 0}
     IN quorums   
-    
-\* compute a new common point according to new update position msg
-ComputeNewCp(s) == 
-    \* primary node: compute new mcp
-    IF s \in Primary THEN 
-        LET quorumAgree == QuorumAgree(State[s]) IN
-            IF  Cardinality(quorumAgree) > 0 
-                THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
-                         StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
-                         newCommitPoint == HLCMinSet(StateSet)
-                     IN  [p |-> newCommitPoint.p, l |-> newCommitPoint.l]
-            ELSE Cp[s]
-    \* secondary node: update mcp   
-    ELSE IF Len(ServerMsg[s]) /= 0 THEN
-            LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN 
-            IF /\ ~ HLCLt(msgCP, Cp[s])
-               /\ ~ HLCLt(Ot[s], msgCP)
-               THEN ServerMsg[s][1].cp
-            ELSE Cp[s]
-         ELSE Cp[s]
 
 \* Helper function to compute new state for state view of d at s by np and nl
 GetNewState(s, d, np, nl) == 
@@ -155,9 +129,7 @@ InitCt == Ct = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitOt == Ot = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitServerMsg == ServerMsg = [ s \in Server |-> <<>> ]
 InitPt == Pt = [ s \in Server |-> 1 ]
-InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
-InitState == State = [ s \in Server |-> [ s0 \in Server |-> 
-                                              [ p |-> 0, l |-> 0] ] ] 
+InitState == State = [ s \in Server |-> [ s0 \in Server |-> [ p |-> 0, l |-> 0] ] ] 
 InitSyncSource == SyncSource = [ s \in Server |-> Nil]    
 InitBlockedClient == BlockedClient = {}
 InitBlockedThread == BlockedThread = [ c \in Client |-> Nil ]
@@ -167,7 +139,7 @@ InitOpCount == OpCount = [ c \in Client |-> OpTimes ]
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
-    /\ InitOt /\ InitPt /\ InitCp /\ InitServerMsg /\ InitState
+    /\ InitOt /\ InitPt /\ InitServerMsg /\ InitState
     /\ InitSyncSource /\ InitBlockedClient /\ InitBlockedThread
     /\ InitHistory /\ InitMessages /\ InitOpCount
     
@@ -176,12 +148,6 @@ Init ==
 -----------------------------------------------------------------------------                                                           
 \* Todo: Stepdown when receiving a higher term heartbeat                            
 
-AdvanceCp ==
-    /\ \E s \in Primary:
-        LET newCp == ComputeNewCp(s)
-        IN Cp' = [ Cp EXCEPT ![s] = newCp]
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, State, tunableVars>>                                
-           
 \*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
 ServerTakeHeartbeat ==
     /\ \E s \in Server:
@@ -190,23 +156,20 @@ ServerTakeHeartbeat ==
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ]          
         /\ State' = LET newState == GetNewState(s, ServerMsg[s][1].s, ServerMsg[s][1].aot.p, ServerMsg[s][1].aot.l)
                     IN  [State EXCEPT ![s] = newState]
-        /\ Cp' = LET newcp == ComputeNewCp(s)
-                 IN [ Cp EXCEPT ![s] = newcp ]
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]       
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, tunableVars>>
 
+\*UpdatePosition is a special type of heartbeat
 ServerTakeUpdatePosition == 
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "update_position"
         /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], ServerMsg[s][1].ct) ] \* update ct accordingly
         /\ State' = LET newState == GetNewState(s, ServerMsg[s][1].s, ServerMsg[s][1].aot.p, ServerMsg[s][1].aot.l)
-                    IN  [State EXCEPT ![s] = newState]
-        /\ Cp' = LET newcp == ComputeNewCp(s)
-                 IN [ Cp EXCEPT ![s] = newcp ]                
-       /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
+                    IN  [State EXCEPT ![s] = newState]             
+        /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
                        IN  ( LET  appendMsg == [ type |-> "update_position", s |-> ServerMsg[s][1].s, aot |-> ServerMsg[s][1].aot, 
-                                          ct |-> ServerMsg[s][1].ct, cp |-> ServerMsg[s][1].cp]
+                                                ct |-> ServerMsg[s][1].ct, cp |-> ServerMsg[s][1].cp]
                              IN ( LET newMsg == IF s \in Primary \/ SyncSource[s] = Nil
                                                     THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
                                                 ELSE [newServerMsg EXCEPT ![SyncSource[s]] = Append(newServerMsg[SyncSource[s]], appendMsg)]
@@ -235,7 +198,6 @@ AdvancePt ==
         /\ Store' = [Store EXCEPT ![i] =  Store[j]]
         /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
         /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i]    
-        /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
         /\ State' = 
             LET newStatei == [p |-> Ot'[i].p, l |-> Ot'[i].l]
                 newStatej == [p |-> Ot[j].p, l |-> Ot[j].l]
@@ -243,7 +205,7 @@ AdvancePt ==
                    hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
                    hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
                IN [ State EXCEPT ![i] = hb1]            
-        /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i] ]
+        /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i]]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
     /\ UNCHANGED <<electionVars, timeVar, tunableVars>>        
@@ -264,7 +226,7 @@ ServerPutReply ==
        /\ Messages' = LET newMsgs == Messages \ {m}
                           newM == [type |-> "put_reply", dest |-> m.c, ot |-> Ot'[s], ct |-> Ct'[s], k |-> m.k, v |-> m.v]
                       IN  newMsgs \cup {newM}
-    /\ UNCHANGED <<electionVars, messageVar, SyncSource, Cp, timeVar, BlockedClient, BlockedThread, History, OpCount>>                      
+    /\ UNCHANGED <<electionVars, messageVar, SyncSource, timeVar, BlockedClient, BlockedThread, History, OpCount>>                      
     
 ServerGetReply_sleep ==
     /\ \E s \in Server, m \in Messages:
@@ -273,7 +235,7 @@ ServerGetReply_sleep ==
        /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], m.ct)]
        /\ BlockedThread' = [BlockedThread EXCEPT ![m.c] = [type |-> "read", s |-> s, k |-> m.k, ot |-> m.ot]]
        /\ Messages' = Messages \ {m}
-    /\ UNCHANGED <<electionVars, storageVars, messageVar, servernodeVars, State, Cp, timeVar, BlockedClient, History, OpCount>>  
+    /\ UNCHANGED <<electionVars, storageVars, messageVar, servernodeVars, State, timeVar, BlockedClient, History, OpCount>>  
 
 ServerGetReply_wake == 
     /\ \E c \in Client:
@@ -312,7 +274,7 @@ ClientPutResponse ==
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
-    /\ UNCHANGED <<electionVars, storageVars, messageVar, SyncSource, State, Cp, timeVar, BlockedThread>>
+    /\ UNCHANGED <<electionVars, storageVars, messageVar, SyncSource, State, timeVar, BlockedThread>>
     
  ClientGetRequest ==
     /\ \E k \in Key, c \in Client \ BlockedClient, s \in Server:
@@ -335,7 +297,7 @@ ClientGetResponse ==
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
-    /\ UNCHANGED <<electionVars, Oplog, messageVar, SyncSource, State, Cp, timeVar, BlockedThread>>
+    /\ UNCHANGED <<electionVars, Oplog, messageVar, SyncSource, State, timeVar, BlockedThread>>
     
 ClientPutAndGet == \/ ClientPutRequest \/ ClientPutResponse
                    \/ ClientGetRequest \/ ClientGetResponse  
@@ -344,7 +306,6 @@ ClientPutAndGet == \/ ClientPutRequest \/ ClientPutResponse
 \* Next state for all configurations
 Next == \/ Replicate
         \/ AdvancePt
-        \/ AdvanceCp
         \/ ServerTakeHeartbeat
         \/ ServerTakeUpdatePosition
         \/ ServerPutAndGet
@@ -384,9 +345,8 @@ CMvSatisification ==
                   \/ \A c \in Client: Len(History[c]) <= 2
                   \/ \E c \in Client: Len(History[c]) > 7
                   \/ CMvDef(History, Client)
-                
-
+               
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 05 15:51:08 CST 2022 by dh
-\* Created Tue May 24 15:18:16 CST 2022 by dh
+\* Last modified Fri Aug 05 10:45:25 CST 2022 by dh
+\* Created Fri Aug 05 10:02:28 CST 2022 by dh
