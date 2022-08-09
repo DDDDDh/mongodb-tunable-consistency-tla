@@ -57,6 +57,7 @@ HLCLt(x, y) == IF x.p < y.p THEN TRUE
 HLCMin(x, y) == IF HLCLt(x, y) THEN x ELSE y
 HLCMax(x, y) == IF HLCLt(x, y) THEN y ELSE x
 HLCType == [ p : Nat, l : Nat ]
+HLCMinSet(s) == CHOOSE x \in s: \A y \in s: ~HLCLt(y, x)    
 Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
           
@@ -67,8 +68,7 @@ IsMajority(servers) == Cardinality(servers) * 2 > Cardinality(Server)
                                       
 \* Return the maximum value from a set, or undefined if the set is empty.
 MaxVal(s) == CHOOSE x \in s : \A y \in s : x >= y        
-HLCMinSet(s) == CHOOSE x \in s: \A y \in s: ~HLCLt(y, x)                    
-
+                
 \* clock
 MaxPt == LET x == CHOOSE s \in Server: \A s1 \in Server \ {s}:
                             Pt[s] >= Pt[s1] 
@@ -169,7 +169,7 @@ ServerTakeUpdatePosition ==
                     IN  [State EXCEPT ![s] = newState]             
         /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
                        IN  ( LET  appendMsg == [ type |-> "update_position", s |-> ServerMsg[s][1].s, aot |-> ServerMsg[s][1].aot, 
-                                                ct |-> ServerMsg[s][1].ct, cp |-> ServerMsg[s][1].cp]
+                                                ct |-> ServerMsg[s][1].ct ]
                              IN ( LET newMsg == IF s \in Primary \/ SyncSource[s] = Nil
                                                     THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
                                                 ELSE [newServerMsg EXCEPT ![SyncSource[s]] = Append(newServerMsg[SyncSource[s]], appendMsg)]
@@ -348,5 +348,5 @@ CMvSatisification ==
                
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 05 10:45:25 CST 2022 by dh
+\* Last modified Mon Aug 08 18:11:20 CST 2022 by dh
 \* Created Fri Aug 05 10:02:28 CST 2022 by dh

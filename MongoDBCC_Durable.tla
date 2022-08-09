@@ -17,7 +17,6 @@ VARIABLES Primary,        \* Primary node
           Ot,             \* Ot[s]: the last applied operation time at server s
           ServerMsg,      \* ServerMsg[s]: the channel of heartbeat msgs at server s
           Pt,             \* Pt[s]: physical time at server s
-          Cp,             \* Cp[s]: majority commit point at server s
           State,          \* State[s]: the latest Ot of all servers that server s knows
           SyncSource,      \* SyncSource[s]: sync source of server node s
           \* Following are the Tunable related vars
@@ -26,6 +25,7 @@ VARIABLES Primary,        \* Primary node
           History,
           Messages,
           OpCount,
+          Cp,             \* Cp[s]: majority commit point at server s
           SnapshotTable
           
 -----------------------------------------------------------------------------          
@@ -39,6 +39,10 @@ timeVar == <<Pt>>                                   \* var that is used for timi
 
 serverVars == <<electionVars, storageVars, messageVar, servernodeVars, learnableVars, timeVar>>
 tunableVars == <<BlockedClient, BlockedThread, History, Messages, OpCount, SnapshotTable>>
+
+vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, ServerMsg, 
+          Pt, Cp, State, SyncSource, BlockedClient, BlockedThread,
+          History, Messages, OpCount, SnapshotTable>>
 -----------------------------------------------------------------------------
 ASSUME Cardinality(Client) >= 1  \* at least one clinet
 ASSUME Cardinality(Server) >= 2  \* at least one primary and one secondary
@@ -58,10 +62,6 @@ HLCType == [ p : Nat, l : Nat ]
 HLCMinSet(s) == CHOOSE x \in s: \A y \in s: ~HLCLt(y, x)    
 Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
-
-vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, ServerMsg, 
-          Pt, Cp, State, SyncSource, BlockedClient, BlockedThread,
-          History, Messages, OpCount, SnapshotTable>>
         
 \* snapshot helpers
 RECURSIVE SelectSnapshot_rec(_, _, _)
@@ -116,13 +116,13 @@ ReplicateOplog(i, j) ==
 \* The set of all quorums. This just calculates simple majorities, but the only
 \* important property is that every quorum overlaps with every other.
 Quorum == {i \in SUBSET(Server) : Cardinality(i) * 2 > Cardinality(Server)}
-QuorumAgreeInSameTerm(states) == 
+QuorumAgree(states) == 
     LET quorums == {Q \in Quorum :
                     \* Make sure all nodes in quorum have actually applied some entries.
-                       \/ \A s \in Q : states[s].p > 0
-                       \/ /\ \A s \in Q : states[s].p = 0
-                          /\ \A s \in Q : states[s].l > 0}
-    IN quorums
+                    \/ \A s \in Q : states[s].p > 0
+                    \/ /\ \A s \in Q : states[s].p = 0
+                       /\ \A s \in Q : states[s].l > 0}
+    IN quorums  
     
 ReplicatedServers(states, ot) ==
     LET serverSet == {subServers \in SUBSET(Server): \A s \in subServers: LET stateTime == [p|-> states[s].p, l|-> states[s].l]
@@ -133,7 +133,7 @@ ReplicatedServers(states, ot) ==
 ComputeNewCp(s) == 
     \* primary node: compute new mcp
     IF s \in Primary THEN 
-        LET quorumAgree == QuorumAgreeInSameTerm(State[s]) IN
+        LET quorumAgree == QuorumAgree(State[s]) IN
         IF  Cardinality(quorumAgree) > 0 
             THEN LET QuorumSet == CHOOSE i \in quorumAgree: TRUE
                      StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
@@ -164,23 +164,23 @@ InitCt == Ct = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitOt == Ot = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitServerMsg == ServerMsg = [ s \in Server |-> <<>> ]
 InitPt == Pt = [ s \in Server |-> 1 ]
-InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
-InitState == State = [ s \in Server |-> [ s0 \in Server |-> 
-                                              [ p |-> 0, l |-> 0] ] ] 
+InitState == State = [ s \in Server |-> [ s0 \in Server |-> [ p |-> 0, l |-> 0] ] ] 
 InitSyncSource == SyncSource = [ s \in Server |-> Nil]    
 InitBlockedClient == BlockedClient = {}
 InitBlockedThread == BlockedThread = [ s \in Client |-> Nil ]
 InitHistory == History = [ c \in Client |-> <<>> ]
 InitMessages == Messages = {}
 InitOpCount == OpCount = [ c \in Client |-> OpTimes ]   
+InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
                                                    store |-> [ k \in Key |-> Nil] ] >>]                                                                
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
-    /\ InitOt /\ InitPt /\ InitCp /\ InitServerMsg /\ InitState
+    /\ InitOt /\ InitPt /\ InitServerMsg /\ InitState
     /\ InitSyncSource /\ InitBlockedClient /\ InitBlockedThread
-    /\ InitHistory /\ InitMessages /\ InitOpCount /\ InitSnap
+    /\ InitHistory /\ InitMessages /\ InitOpCount 
+    /\ InitCp /\ InitSnap
     
 \* Next State Actions  
 \* Replication Protocol: possible actions  
@@ -226,7 +226,7 @@ ServerTakeUpdatePosition ==
                  IN [ Cp EXCEPT ![s] = newcp ]                       
         /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
                        IN  ( LET  appendMsg == [ type |-> "update_position", s |-> ServerMsg[s][1].s, aot |-> ServerMsg[s][1].aot, 
-                                          ct |-> ServerMsg[s][1].ct, cp |-> ServerMsg[s][1].cp, term |-> ServerMsg[s][1].term ]
+                                          ct |-> ServerMsg[s][1].ct, cp |-> ServerMsg[s][1].cp ]
                              IN ( LET newMsg == IF s \in Primary \/ SyncSource[s] = Nil
                                                     THEN newServerMsg \* If s is primary, accept the msg, else forward it to its sync source
                                                 ELSE [newServerMsg EXCEPT ![SyncSource[s]] = Append(newServerMsg[SyncSource[s]], appendMsg)]
@@ -345,13 +345,12 @@ ClientPutResponse ==
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
-    /\ UNCHANGED <<electionVars, storageVars, messageVar, SyncSource, State, Cp, SnapshotTable, timeVar, BlockedThread>>
+    /\ UNCHANGED <<electionVars, storageVars, messageVar, SyncSource, State, timeVar, BlockedThread, Cp, SnapshotTable>>
     
 ClientGetRequest ==
-    /\ \E k \in Key, c \in Client \ BlockedClient: 
+    /\ \E k \in Key, c \in Client \ BlockedClient, s \in Server: 
         /\ OpCount[c] /= 0
-        /\ \E s \in Server:
-           LET m == [ type |-> "get", dest |-> s, c |-> c, k |-> k, ct |-> Ct[c], ot |-> Ot[c]]
+        /\ LET m == [ type |-> "get", dest |-> s, c |-> c, k |-> k, ct |-> Ct[c], ot |-> Ot[c]]
            IN  Messages' = Messages \cup {m}
         /\ BlockedClient' = BlockedClient \cup {c}          
     /\ UNCHANGED <<serverVars, History, OpCount, BlockedThread, SnapshotTable>>
@@ -369,7 +368,7 @@ ClientGetResponse ==
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
-    /\ UNCHANGED <<electionVars, Oplog, messageVar, SyncSource, State, Cp, SnapshotTable, timeVar, BlockedThread>>
+    /\ UNCHANGED <<electionVars, Oplog, messageVar, SyncSource, State, timeVar, BlockedThread, Cp, SnapshotTable>>
     
 ClientPutAndGet == \/ ClientPutRequest \/ ClientPutResponse
                    \/ ClientGetRequest \/ ClientGetResponse  
@@ -393,14 +392,14 @@ PrimaryCrashAndBack ==
 \* Next state for all configurations
 Next == \/ Replicate
         \/ AdvancePt
-        \/ AdvanceCp
         \/ ServerTakeHeartbeat
         \/ ServerTakeUpdatePosition
         \/ ServerPutAndGet
         \/ ClientPutAndGet
         \/ NTPSync
-\*        \/ PrimaryCrashAndBack
+        \/ AdvanceCp
         \/ Snapshot
+ \*        \/ PrimaryCrashAndBack
         
 Spec == Init /\ [][Next]_vars      
 
@@ -439,5 +438,5 @@ CMvSatisification ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 05 15:48:59 CST 2022 by dh
+\* Last modified Mon Aug 08 18:28:38 CST 2022 by dh
 \* Created Fri Aug 05 11:00:19 CST 2022 by dh
