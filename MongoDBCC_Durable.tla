@@ -26,7 +26,7 @@ VARIABLES Primary,        \* Primary node
           Messages,
           OpCount,
           Cp,             \* Cp[s]: majority commit point at server s
-          SnapshotTable
+          SnapshotTable   \* SnapshotTable[s] : snapshot mapping table at server s  
           
 -----------------------------------------------------------------------------          
 \* group related vars to optimize code
@@ -340,7 +340,7 @@ ClientPutResponse ==
        /\ m.dest = c
        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
-       /\ History' = [ History EXCEPT ![c] = Append (@, [ op |-> "put", 
+       /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "put", 
                        ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
@@ -363,7 +363,7 @@ ClientGetResponse ==
        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
        /\ Store' = [ Store EXCEPT ![c][m.k] = m.v ]
-       /\ History' = [ History EXCEPT ![c] = Append (@, [ op |-> "get", 
+       /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "get", 
                        ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
@@ -435,8 +435,13 @@ CMvSatisification ==
                   \/ \A c \in Client: Len(History[c]) <= 2
                   \/ \E c \in Client: Len(History[c]) > 7
                   \/ CMvDef(History, Client)
+                  
+\*BASIC == INSTANCE MongoDBCC_Basic 
+
+\*THEOREM Refinement == Spec => BASIC!Spec                  
+                  
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Aug 08 18:28:38 CST 2022 by dh
+\* Last modified Fri Aug 12 21:48:07 CST 2022 by dh
 \* Created Fri Aug 05 11:00:19 CST 2022 by dh

@@ -16,30 +16,34 @@ VARIABLES Primary,        \* Primary node
           Ot,             \* Ot[s]: the last applied operation time at server s
           ServerMsg,      \* ServerMsg[s]: the channel of heartbeat msgs at server s
           Pt,             \* Pt[s]: physical time at server s
-          Cp,             \* Cp[s]: majority commit point at server s
           State,          \* State[s]: the latest Ot of all servers that server s knows
-          CurrentTerm,    \* CurrentTerm[s]: current election term at server s 
-                          \* -> updated in update_position, heartbeat and replicate
           SyncSource,     \* sync source of server node s     
           BlockedClient,  \* BlockedClient: Client operations in progress
           BlockedThread,  \* BlockedThread: blocked user thread and content
           History,        \* History[c]: History sequence at client c
           Messages,       \* Message channels
           OpCount,        \* OpCount[c]: op count for client c  
-          SnapshotTable   \* SnapshotTable[s] : snapshot mapping table at server s  
+          Cp,             \* Cp[s]: majority commit point at server s
+          SnapshotTable,  \* SnapshotTable[s] : snapshot mapping table at server s  
+          CurrentTerm     \* CurrentTerm[s]: current election term at server s 
+                          \* -> updated in update_position, heartbeat and replicate
           
 -----------------------------------------------------------------------------          
 \* group related vars to optimize code
 electionVars == <<Primary, Secondary>>              \* vars that are related to election  
 storageVars == <<Oplog, Store>>                     \* vars that are related to storage
 messageVar == <<ServerMsg>>                         \* var that is related to message
-servernodeVars == <<Ot, SyncSource>>                    \* vars that each server node holds for itself
+servernodeVars == <<Ot, SyncSource>>                \* vars that each server node holds for itself
 learnableVars == <<Ct, State, Cp, CurrentTerm>>     \* vars that must learn from msgs
 timeVar == <<Pt>>                                   \* var that is used for timing 
 clientnodeVars == <<History, OpCount>>
 
 serverVars == <<electionVars, storageVars, messageVar, servernodeVars, learnableVars, timeVar>>
-tunableVars == <<BlockedClient, BlockedThread, History, Messages, OpCount, SnapshotTable>>        
+tunableVars == <<BlockedClient, BlockedThread, History, Messages, OpCount, SnapshotTable>>  
+
+vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, Messages, 
+          ServerMsg, BlockedClient, BlockedThread, OpCount, Pt, Cp, 
+          State, SnapshotTable, History, CurrentTerm, SyncSource>>      
 -----------------------------------------------------------------------------
 ASSUME Cardinality(Client) >= 1  \* at least one client
 ASSUME Cardinality(Server) >= 2  \* at least one primary and one secondary
@@ -59,10 +63,6 @@ HLCMinSet(s) == CHOOSE x \in s: \A y \in s: ~HLCLt(y, x)
 Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
 
-vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, Messages, 
-          ServerMsg, BlockedClient, BlockedThread, OpCount, Pt, Cp, 
-          State, SnapshotTable, History, CurrentTerm, SyncSource>>
-          
 \* snapshot helpers
 RECURSIVE SelectSnapshot_rec(_, _, _)
 SelectSnapshot_rec(stable, cp, index) ==
@@ -193,26 +193,28 @@ InitOplog == Oplog = [ s \in Server |-> <<>> ]
 InitStore == Store = [ n \in Server \cup Client  |-> [ k \in Key |-> Nil ] ]
 InitCt == Ct = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitOt == Ot = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
-InitMessages == Messages = {}
 InitServerMsg == ServerMsg = [ s \in Server |-> <<>> ]
-InitBlockedClient == BlockedClient = {}
-InitBlockedThread == BlockedThread = [s \in Client |-> Nil ] 
-InitOpCount == OpCount = [ c \in Client |-> OpTimes ]
 InitPt == Pt = [ s \in Server |-> 1 ]
-InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitState == State = [ s \in Server |-> [ s0 \in Server |-> 
                                               [ p |-> 0, l |-> 0, term |-> 0 ] ] ]
+InitSyncSource == SyncSource = [ s \in Server |-> Nil] 
+InitBlockedClient == BlockedClient = {}
+InitBlockedThread == BlockedThread = [s \in Client |-> Nil ] 
+InitHistory == History = [c \in Client |-> <<>>]  \* History operation seq is empty  
+InitMessages == Messages = {}
+InitOpCount == OpCount = [ c \in Client |-> OpTimes ]
+InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
                                                    store |-> [ k \in Key |-> Nil] ] >>]  
-InitHistory == History = [c \in Client |-> <<>>]  \* History operation seq is empty  
 InitCurrentTerm == CurrentTerm = [ p \in Primary |-> 1 ] @@ [ s \in Server |-> 0 ] 
-InitSyncSource == SyncSource = [ s \in Server |-> Nil]                                                                              
+                                                                             
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
-    /\ InitOt /\ InitPt /\ InitCp /\ InitMessages
-    /\ InitServerMsg /\ InitBlockedClient /\ InitBlockedThread /\ InitOpCount
-    /\ InitState /\ InitSnap /\ InitHistory /\ InitCurrentTerm /\ InitSyncSource
+    /\ InitOt /\ InitPt  /\ InitServerMsg /\ InitState 
+    /\ InitSyncSource /\ InitBlockedClient /\ InitBlockedThread 
+    /\ InitHistory /\ InitMessages /\ InitOpCount
+    /\ InitCp /\ InitSnap /\ InitCurrentTerm 
      
 -----------------------------------------------------------------------------
 \* Next State Actions  
@@ -234,9 +236,9 @@ Stepdown ==
 \* There are majority nodes agree to elect node i to become primary                            
 ElectPrimary ==
     /\ \E i \in Server: \E majorNodes \in SUBSET(Server):
+        /\ IsMajority(majorNodes) 
         /\ \A j \in majorNodes: /\ NotBehind(i, j)
                                 /\ CurrentTerm[i] >= CurrentTerm[j]
-        /\ IsMajority(majorNodes)         
        \* voted nodes for i cannot be primary anymore
         /\ Primary' = LET possiblePrimary == Primary \ majorNodes
                       IN possiblePrimary \cup {i}
@@ -418,10 +420,9 @@ ServerPutReply_wake ==
 \* Client Actions      
 \* Client Get
 ClientGetRequest ==
-    /\ \E k \in Key, c \in Client \ BlockedClient: 
+    /\ \E k \in Key, c \in Client \ BlockedClient, s \in Server: 
         /\ OpCount[c] /= 0
-        /\ \E s \in Server:
-           LET m == [ type |-> "get", dest |-> s, c |-> c, k |-> k, ct |-> Ct[c], ot |-> Ot[c]]
+        /\ LET m == [ type |-> "get", dest |-> s, c |-> c, k |-> k, ct |-> Ct[c], ot |-> Ot[c]]
            IN  Messages' = Messages \cup {m}
         /\ BlockedClient' = BlockedClient \cup {c}          
     /\ UNCHANGED <<serverVars, clientnodeVars, BlockedThread, SnapshotTable>>  
@@ -434,7 +435,7 @@ ClientGetResponse ==
        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
        /\ Store' = [ Store EXCEPT ![c][m.k] = m.v ]
-       /\ History' = [ History EXCEPT ![c] = Append (@, [ op |-> "get", 
+       /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "get", 
                        ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
@@ -457,7 +458,7 @@ ClientPutResponse ==
        /\ m.dest = c
        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
-       /\ History' = [ History EXCEPT ![c] = Append (@, [ op |-> "put", 
+       /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "put", 
                        ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
@@ -479,16 +480,20 @@ Next == \/ ClientGetRequest \/ ClientPutRequest
         \/ ServerGetReply \/ ServerPutReply
         \/ Replicate 
         \/ AdvancePt
+        \/ NTPSync
         \/ ServerTakeHeartbeat
         \/ ServerTakeUpdatePosition
+        \/ AdvanceCp
         \/ Snapshot
         \/ Stepdown
         \/ RollbackAndRecover
         \/ ElectPrimary
-        \/ AdvanceCp
-        \/ NTPSync
-        
-Spec == Init /\ [][Next]_vars       
+              
+Spec == Init /\ [][Next]_vars     
+
+DURABLE == INSTANCE MongoDBCC_Durable
+
+THEOREM Refinement == Spec => DURABLE!Spec     
 
 -----------------------------------------------------------------------------
 \* Causal Specifications
@@ -524,5 +529,5 @@ CMvSatisification ==
                   \/ CMvDef(History, Client)
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 05 22:18:37 CST 2022 by dh
+\* Last modified Fri Aug 12 21:48:34 CST 2022 by dh
 \* Created Fri Aug 05 15:50:01 CST 2022 by dh

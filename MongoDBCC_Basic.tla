@@ -211,22 +211,51 @@ AdvancePt ==
     /\ UNCHANGED <<electionVars, timeVar, tunableVars>>        
        
 ----------------------------------------------------------------------------- 
-ServerPutReply ==
+\*ServerPutReply ==
+\*    /\ \E s \in Primary, m \in Messages:
+\*       /\ m.type = "put"
+\*       /\ m.dest = s
+\*       /\ UpdateAndTick(s, m.ct)
+\*       /\ Ot' = [ Ot EXCEPT ![s] = Ct'[s] ]
+\*       /\ Store' = [ Store EXCEPT ![s][m.k] = m.v ] 
+\*       /\ Oplog' = LET entry == [ k|-> m.k, v |-> m.v, ot |-> Ot'[s]]
+\*                        newLog == Append(Oplog[s], entry)
+\*                   IN  [ Oplog EXCEPT ![s] = newLog ]
+\*       /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l) 
+\*                   IN  [State EXCEPT ![s] = newState]              
+\*       /\ Messages' = LET newMsgs == Messages \ {m}
+\*                          newM == [type |-> "put_reply", dest |-> m.c, ot |-> Ot'[s], ct |-> Ct'[s], k |-> m.k, v |-> m.v]
+\*                      IN  newMsgs \cup {newM}
+\*    /\ UNCHANGED <<electionVars, messageVar, SyncSource, timeVar, BlockedClient, BlockedThread, History, OpCount>>    
+    
+ServerPutReply_sleep == 
     /\ \E s \in Primary, m \in Messages:
-       /\ m.type = "put"
-       /\ m.dest = s
-       /\ UpdateAndTick(s, m.ct)
-       /\ Ot' = [ Ot EXCEPT ![s] = Ct'[s] ]
-       /\ Store' = [ Store EXCEPT ![s][m.k] = m.v ] 
-       /\ Oplog' = LET entry == [ k|-> m.k, v |-> m.v, ot |-> Ot'[s]]
+        /\ m.type = "put"
+        /\ m.dest = s
+        /\ UpdateAndTick(s, m.ct)
+        /\ Ot' = [ Ot EXCEPT ![s] =  Ct'[s] ] \* advance the last applied operation time Ot[s]
+        /\ Store' = [ Store EXCEPT ![s][m.k] = m.v ] \* append operation to oplog[s]
+        /\ Oplog' = LET entry == [k |-> m.k, v |-> m.v, ot |-> Ot'[s] ]
                         newLog == Append(Oplog[s], entry)
-                   IN  [ Oplog EXCEPT ![s] = newLog ]
-       /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l) 
-                   IN  [State EXCEPT ![s] = newState]              
-       /\ Messages' = LET newMsgs == Messages \ {m}
-                          newM == [type |-> "put_reply", dest |-> m.c, ot |-> Ot'[s], ct |-> Ct'[s], k |-> m.k, v |-> m.v]
-                      IN  newMsgs \cup {newM}
-    /\ UNCHANGED <<electionVars, messageVar, SyncSource, timeVar, BlockedClient, BlockedThread, History, OpCount>>                      
+                    IN [Oplog EXCEPT ![s] = newLog] 
+        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l)      
+                    IN  [State EXCEPT ![s] = newState]      \* update primary state    
+        /\ BlockedThread' = [BlockedThread EXCEPT ![m.c] = [type |-> "write", ot |-> Ot'[s], s |-> s, 
+                                   k |-> m.k, v |-> m.v ] ] \* add the user History to BlockedThread[c]          
+        /\ Messages' = Messages \ {m}
+    /\ UNCHANGED <<electionVars, messageVar, SyncSource, timeVar,
+                   BlockedClient, History, OpCount>> 
+                                   
+ServerPutReply_wake ==
+    /\ \E c \in Client:
+        /\ BlockedThread[c] /=  Nil
+        /\ BlockedThread[c].type = "write"
+\*        /\ ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot) \* w:majority
+        /\ Messages' = LET newMsgs == [ type |-> "put_reply", dest |-> c, ot |-> BlockedThread[c].ot, ct |-> Ct[BlockedThread[c].s], 
+                                        k |-> BlockedThread[c].k, v |-> BlockedThread[c].v ]
+                       IN  Messages \cup {newMsgs}   
+        /\ BlockedThread' =  [ BlockedThread EXCEPT ![c] = Nil ] \* remove blocked state     
+    /\ UNCHANGED <<serverVars, History, OpCount, BlockedClient>>                       
     
 ServerGetReply_sleep ==
     /\ \E s \in Server, m \in Messages:
@@ -250,7 +279,8 @@ ServerGetReply_wake ==
     /\UNCHANGED <<electionVars, storageVars, messageVar, servernodeVars, learnableVars, timeVar,
                   BlockedClient, History, OpCount>>    
                   
-ServerPutAndGet == \/ ServerPutReply      
+ServerPutAndGet == \*\/ ServerPutReply      
+                   \/ ServerPutReply_sleep \/ ServerPutReply_wake
                    \/ ServerGetReply_sleep \/ ServerGetReply_wake 
 
 ----------------------------------------------------------------------------- 
@@ -348,5 +378,5 @@ CMvSatisification ==
                
 =============================================================================
 \* Modification History
-\* Last modified Mon Aug 08 18:11:20 CST 2022 by dh
+\* Last modified Fri Aug 12 21:32:50 CST 2022 by dh
 \* Created Fri Aug 05 10:02:28 CST 2022 by dh
