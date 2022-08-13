@@ -490,10 +490,10 @@ Next == \/ ClientGetRequest \/ ClientPutRequest
         \/ ElectPrimary
               
 Spec == Init /\ [][Next]_vars     
-
-DURABLE == INSTANCE MongoDBCC_Durable
-
-THEOREM Refinement == Spec => DURABLE!Spec     
+\*
+\*DURABLE == INSTANCE MongoDBCC_Durable
+\*
+\*THEOREM Refinement == Spec => DURABLE!Spec     
 
 -----------------------------------------------------------------------------
 \* Causal Specifications
@@ -529,5 +529,5 @@ CMvSatisification ==
                   \/ CMvDef(History, Client)
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 12 21:48:34 CST 2022 by dh
+\* Last modified Sat Aug 13 18:00:04 CST 2022 by dh
 \* Created Fri Aug 05 15:50:01 CST 2022 by dh
