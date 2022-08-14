@@ -203,7 +203,7 @@ InitBlockedThread == BlockedThread = [s \in Client |-> Nil ]
 InitHistory == History = [c \in Client |-> <<>>]  \* History operation seq is empty  
 InitMessages == Messages = {}
 InitOpCount == OpCount = [ c \in Client |-> OpTimes ]
-InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
+InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0, term |-> 0 ] ]
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
                                                    store |-> [ k \in Key |-> Nil] ] >>]  
 InitCurrentTerm == CurrentTerm = [ p \in Primary |-> 1 ] @@ [ s \in Server |-> 0 ] 
@@ -378,10 +378,11 @@ ServerGetReply_wake ==
        /\ BlockedThread[c] /= Nil
        /\ BlockedThread[c].type ="read"
        /\ ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot) \* wait until cp[s] >= target ot 
-       /\ Messages' = LET m == [type |-> "get_reply", dest |-> c, k |-> BlockedThread[c].k, 
-                                       v |-> SelectSnapshot(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s])[BlockedThread[c].k],
-                                       ct |-> Ct[BlockedThread[c].s], ot |-> Cp[BlockedThread[c].s] ] \* read from snapshot table
-                      IN  Messages \cup {m}                                              
+       /\ Messages' = LET otTime == [ p|-> Cp[BlockedThread[c].s].p, l |-> Cp[BlockedThread[c].s].l ]
+                      IN  LET m == [type |-> "get_reply", dest |-> c, k |-> BlockedThread[c].k, 
+                                v |-> SelectSnapshot(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s])[BlockedThread[c].k],
+                                ct |-> Ct[BlockedThread[c].s], ot |-> otTime ] \* read from snapshot table
+                          IN  Messages \cup {m}                                              
        /\ BlockedThread' = [BlockedThread EXCEPT ![c] = Nil]
     /\ UNCHANGED <<serverVars, clientnodeVars, BlockedClient,  SnapshotTable>>                
        
@@ -485,9 +486,9 @@ Next == \/ ClientGetRequest \/ ClientPutRequest
         \/ ServerTakeUpdatePosition
         \/ AdvanceCp
         \/ Snapshot
-        \/ Stepdown
-        \/ RollbackAndRecover
-        \/ ElectPrimary
+\*        \/ Stepdown
+\*        \/ RollbackAndRecover
+\*        \/ ElectPrimary
               
 Spec == Init /\ [][Next]_vars     
 \*
@@ -529,5 +530,5 @@ CMvSatisification ==
                   \/ CMvDef(History, Client)
 =============================================================================
 \* Modification History
-\* Last modified Sat Aug 13 18:00:04 CST 2022 by dh
+\* Last modified Sun Aug 14 20:00:12 CST 2022 by dh
 \* Created Fri Aug 05 15:50:01 CST 2022 by dh
