@@ -250,7 +250,6 @@ ServerPutReply_wake ==
     /\ \E c \in Client:
         /\ BlockedThread[c] /=  Nil
         /\ BlockedThread[c].type = "write"
-\*        /\ ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot) \* w:majority
         /\ Messages' = LET newMsgs == [ type |-> "put_reply", dest |-> c, ot |-> BlockedThread[c].ot, ct |-> Ct[BlockedThread[c].s], 
                                         k |-> BlockedThread[c].k, v |-> BlockedThread[c].v ]
                        IN  Messages \cup {newMsgs}   
@@ -372,11 +371,11 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 \* CMv Specification (test)
 CMvSatisification == 
                   \*/\ CMv(History, Client)
-                  \/ \A c \in Client: Len(History[c]) <= 2
+                  \/ \A c \in Client: Len(History[c]) < 2
                   \/ \E c \in Client: Len(History[c]) > 7
                   \/ CMvDef(History, Client)
                
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 12 21:32:50 CST 2022 by dh
+\* Last modified Fri Aug 19 21:22:27 CST 2022 by dh
 \* Created Fri Aug 05 10:02:28 CST 2022 by dh

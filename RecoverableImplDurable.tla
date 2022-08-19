@@ -18,7 +18,6 @@ RebuildOplog(oplog) ==
     ELSE LET head == Head(oplog)
          IN  LET newLog == [ k |-> head.k, v |-> head.v, ot |-> head.ot ]
              IN  <<newLog>> \o RebuildOplog(Tail(oplog))
-        
                          
 RebuildState(state, server) ==
     [s \in server |-> [s0 \in server |-> [p |-> state[s][s0].p, l |-> state[s][s0].l ] ] ]
@@ -39,5 +38,5 @@ THEOREM Refinement == Spec => DURABLE!Spec
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Aug 14 19:50:09 CST 2022 by dh
+\* Last modified Sun Aug 14 21:38:23 CST 2022 by dh
 \* Created Sat Aug 13 17:58:14 CST 2022 by dh

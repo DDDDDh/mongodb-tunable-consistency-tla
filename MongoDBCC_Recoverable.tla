@@ -64,16 +64,22 @@ Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
 
 \* snapshot helpers
-RECURSIVE SelectSnapshot_rec(_, _, _)
-SelectSnapshot_rec(stable, cp, index) ==
-    IF HLCLt(cp, stable[index].ot) THEN stable[index - 1].store
-    ELSE IF index = Len(stable) THEN stable[index].store
-    ELSE SelectSnapshot_rec(stable, cp, index + 1)
-    
-SelectSnapshot(stable, cp) == SelectSnapshot_rec(stable, cp, 1)
+RECURSIVE SelectSnapshotIndex_Rec(_, _, _)
+SelectSnapshotIndex_Rec(stable, cp, index) ==
+    IF index > Len(stable) THEN Nil \* cannot find such snapshot at cp
+    ELSE IF HLCLt(stable[index], cp) THEN SelectSnapshotIndex_Rec(stable, cp, index + 1) \* go further
+         ELSE IF HLCLt(cp, stable[index]) THEN Nil
+              ELSE index \* match
+              
+SelectSnapshot(stable, cp) == LET index == SelectSnapshotIndex_Rec(stable, cp, 1)
+                              IN  IF index /= Nil THEN stable[index].store  
+                                  ELSE Nil
+                                  
+SelectSnapshotIndex(stable, cp) == SelectSnapshotIndex_Rec(stable, cp, 1)
 
+\* The election term of each oplog entry
 LogTerm(i, index) == IF index = 0 THEN 0 ELSE Oplog[i][index].term   
-LastTerm(i) == CurrentTerm[i]  \*LastTerm(i) == LogTerm(i, Len(Oplog[i]))   
+LastTerm(i) == LogTerm(i, Len(Oplog[i]))   
                               
 \* Is node i ahead of node j
 NotBehind(i, j) == \/ LastTerm(i) > LastTerm(j)
@@ -91,6 +97,8 @@ MaxPt == LET x == CHOOSE s \in Server: \A s1 \in Server \ {s}:
                             
 Tick(s) == Ct' = IF Ct[s].p >= Pt[s] THEN [ Ct EXCEPT ![s] = [ p |-> @.p, l |-> @.l+1] ]
                                      ELSE [ Ct EXCEPT ![s] = [ p |-> Pt[s], l |-> 0] ]  
+                                     
+\* Server s update its Ct according to msgCt and then tick                                     
 UpdateAndTick(s, msgCt) ==
     LET newCt == [ Ct EXCEPT ![s] = HLCMax(Ct[s], msgCt) ] \* Update ct first according to msg
     IN  Ct' = IF newCt[s].p >= Pt[s] THEN [ newCt EXCEPT ![s] = [ p |-> @.p, l |-> @.l+1] ]
@@ -119,10 +127,10 @@ ReplicateOplog(i, j) ==
 \* Can node i rollback its log based on j's log
 CanRollback(i, j) == /\ Len(Oplog[i]) > 0       
                      /\ Len(Oplog[j]) > 0
-                     /\ CurrentTerm[i] < CurrentTerm[j]
+                     /\ LastTerm(i) < LastTerm(j)
                      /\ \/ Len(Oplog[i]) > Len(Oplog[j])
                         \/ /\ Len(Oplog[i]) <= Len(Oplog[j])
-                           /\ CurrentTerm[i] /= LogTerm(j, Len(Oplog[i]))
+                           /\ LastTerm(i) /= LogTerm(j, Len(Oplog[i]))
                            
 \* Returns the highest common index between two divergent logs. 
 \* If there is no common index between the logs, returns 0.
@@ -146,15 +154,13 @@ QuorumAgreeInSameTerm(states) ==
                        s # t => states[s].term = states[s].term} 
     IN quorums            
 
+\* The set of servers whose replicate progress are greater than ot
 ReplicatedServers(states, ot) ==
     LET serverSet == {subServers \in SUBSET(Server): \A s \in subServers: LET stateTime == [p|-> states[s].p, l|-> states[s].l]
                                                                           IN  ~HLCLt(stateTime, ot)}
     IN  CHOOSE maxSet \in serverSet: \A otherSet \in serverSet: Cardinality(otherSet) <= Cardinality(maxSet)
-\*    IN  IF Cardinality(serverSet) = 0 THEN {}
-\*        ELSE IF Cardinality(serverSet) = 1 THEN serverSet
-\*             ELSE CHOOSE maxSet \in serverSet: \A otherSet \in serverSet: Cardinality(otherSet) <= Cardinality(maxSet)
  
- \* Compute a new common point according to new update position msg
+\* Compute a new common point according to new update position msg
 ComputeNewCp(s) == 
     \* primary node: compute new mcp
     IF s \in Primary THEN 
@@ -219,14 +225,18 @@ Init ==
 -----------------------------------------------------------------------------
 \* Next State Actions  
 \* Replication Protocol: possible actions 
+
 \* snapshot periodly
 Snapshot == 
-    /\ \E s \in Server:
-            SnapshotTable' =  [ SnapshotTable EXCEPT ![s] = 
-                                Append(@, [ot |-> Ot[s], store |-> Store[s] ]) ]  
-                               \* create a new snapshot
-    /\ UNCHANGED <<serverVars, Messages, BlockedClient, BlockedThread, OpCount, History>>                                             
-
+    /\ \E s \in Server:      
+       LET SnapshotIndex == SelectSnapshotIndex(SnapshotTable[s], Ot[s]) 
+       IN  IF SnapshotIndex /= Nil
+               THEN SnapshotTable' = [ SnapshotTable EXCEPT ![s][SnapshotIndex] = [ot |-> Ot[s], store |-> Store[s] ] ]
+           ELSE SnapshotTable' = [ SnapshotTable EXCEPT ![s] =  \* create a new snapshot     
+                                   Append(@, [ot |-> Ot[s], store |-> Store[s] ]) ]  
+    /\ UNCHANGED <<serverVars, Messages, BlockedClient, BlockedThread, OpCount, History>> 
+      
+\* A primary node steps down to secondary
 Stepdown == 
     /\ \E s \in Primary:
         /\ Primary' = Primary \ {s}
@@ -244,21 +254,29 @@ ElectPrimary ==
                       IN possiblePrimary \cup {i}
        \* add voted nodes into secondaries          
         /\ Secondary' = LET possibleSecondary == Secondary \cup majorNodes
-                        IN possibleSecondary \ {i}                                           
+                        IN possibleSecondary \ {i}    
+       \* advance the term of voted nodes by magic                                                        
         /\ CurrentTerm' = [index \in Server |-> IF index \in (majorNodes \cup {i})
                                                 THEN CurrentTerm[i] + 1
                                                 ELSE CurrentTerm[index]]
+       \* perform noop                                         
+        /\ Oplog' = LET entry == [k |-> Nil, v |-> Nil, 
+                                  ot |-> Ot'[i], term |-> CurrentTerm'[i]]
+                        newLog == Append(Oplog[i], entry)
+                    IN [Oplog EXCEPT ![i] = newLog]                                         
         \* A primary node do not have any sync source                                        
         /\ SyncSource' = [SyncSource EXCEPT ![i] = Nil ]
-    /\ UNCHANGED <<storageVars, Ct, Ot, messageVar, timeVar, Cp, State, tunableVars>> 
+    /\ UNCHANGED <<Store, Ct, Ot, messageVar, timeVar, Cp, State, tunableVars>> 
 
+\* A primary node advance its commit point
 AdvanceCp ==
     /\ \E s \in Primary:
         LET newCp == ComputeNewCp(s)
         IN Cp' = [ Cp EXCEPT ![s] = newCp]
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, State, CurrentTerm, tunableVars>>                                              
                                                                                                                                                                                                   
-\*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
+\*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态     
+\* A server node deal with heartbeat msg                                                                                                                                                                                                  
 ServerTakeHeartbeat ==
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
@@ -269,10 +287,10 @@ ServerTakeHeartbeat ==
                     IN  [ State EXCEPT ![s] = newState]
         /\ Cp' = LET newcp == ComputeNewCp(s)
                  IN [ Cp EXCEPT ![s] = newcp ]
-       /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]
-\*       /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]  ->因为之前的判断，根本不会触发       
+       /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]       
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, CurrentTerm, tunableVars>>
 
+\* A server node deal with update position msg
 ServerTakeUpdatePosition == 
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
@@ -292,10 +310,12 @@ ServerTakeUpdatePosition ==
                                   IN newMsg))
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, tunableVars>>                   
                   
-NTPSync == \* simplify NTP protocal
+\* simplify NTP protocal                  
+NTPSync == 
     /\ Pt' = [ s \in Server |-> MaxPt ] 
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, messageVar, tunableVars>>
 
+\* A primary node advance its physical time
 AdvancePt == 
     /\ \E s \in Server:  
            /\ s \in Primary                    \* for simplicity
@@ -307,7 +327,7 @@ AdvancePt ==
 \* Replication                                     
 \* Idea: 进行replicate的时候，首先进行canSyncFrom的判断，拥有更多log且大于等于term的才能作为同步源
 \* 其次，开始同步之后，把当前节点的同步源设置为SyncSource[s]，随后向SyncSource的信道里加入UpdatePosition消息
-\* 最后，关于UpdatePosition的转发，需要加入一个额外的action，如果自己的信道里有type为updatePosition的消息，则向上层节点转发
+\* 最后，关于UpdatePosition的转发，如果自己的信道里有type为updatePosition的消息，则向上层节点转发
 \* Replicate oplog from node j to node i, and update related structures accordingly
  Replicate == 
     /\ \E i, j \in Server: 
@@ -360,7 +380,7 @@ RollbackAndRecover ==
     /\ UNCHANGED <<electionVars, timeVar, tunableVars>>                     
     
 ----------------------------------------------------------------------------- 
-\* Tunable Protocol: Server Actions                 
+\* Server Actions                 
 \* Server Get
 ServerGetReply_sleep ==
     /\ \E s \in Server, m \in Messages:
@@ -378,6 +398,8 @@ ServerGetReply_wake ==
        /\ BlockedThread[c] /= Nil
        /\ BlockedThread[c].type ="read"
        /\ ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot) \* wait until cp[s] >= target ot 
+       /\ ~ HLCLt(Ot[BlockedThread[c].s], Cp[BlockedThread[c].s]) \* wait until Ot[s] >= Cp[s] to ensure an availiable snapshot
+       /\ SelectSnapshotIndex(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s]) /= Nil \* exist related snapshot
        /\ Messages' = LET otTime == [ p|-> Cp[BlockedThread[c].s].p, l |-> Cp[BlockedThread[c].s].l ]
                       IN  LET m == [type |-> "get_reply", dest |-> c, k |-> BlockedThread[c].k, 
                                 v |-> SelectSnapshot(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s])[BlockedThread[c].k],
@@ -473,8 +495,10 @@ ServerGetReply == \/ ServerGetReply_sleep
 
 \* all possible server put actions                 
 ServerPutReply == \/ ServerPutReply_sleep
-                  \/ ServerPutReply_wake                  
------------------------------------------------------------------------------   
+                  \/ ServerPutReply_wake 
+                                   
+-----------------------------------------------------------------------------
+   
 \* Next state for all configurations
 Next == \/ ClientGetRequest \/ ClientPutRequest
         \/ ClientGetResponse \/ ClientPutResponse
@@ -486,9 +510,9 @@ Next == \/ ClientGetRequest \/ ClientPutRequest
         \/ ServerTakeUpdatePosition
         \/ AdvanceCp
         \/ Snapshot
-\*        \/ Stepdown
-\*        \/ RollbackAndRecover
-\*        \/ ElectPrimary
+        \/ Stepdown
+        \/ RollbackAndRecover
+        \/ ElectPrimary
               
 Spec == Init /\ [][Next]_vars     
 \*
@@ -525,10 +549,10 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 \* CMv Specification (test)
 CMvSatisification == 
                   \*/\ CMv(History, Client)
-                  \/ \A c \in Client: Len(History[c]) <= 2
+                  \/ \A c \in Client: Len(History[c]) < 2
                   \/ \E c \in Client: Len(History[c]) > 7
                   \/ CMvDef(History, Client)
 =============================================================================
 \* Modification History
-\* Last modified Sun Aug 14 20:00:12 CST 2022 by dh
+\* Last modified Fri Aug 19 21:22:31 CST 2022 by dh
 \* Created Fri Aug 05 15:50:01 CST 2022 by dh

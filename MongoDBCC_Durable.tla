@@ -18,13 +18,12 @@ VARIABLES Primary,        \* Primary node
           ServerMsg,      \* ServerMsg[s]: the channel of heartbeat msgs at server s
           Pt,             \* Pt[s]: physical time at server s
           State,          \* State[s]: the latest Ot of all servers that server s knows
-          SyncSource,      \* SyncSource[s]: sync source of server node s
-          \* Following are the Tunable related vars
-          BlockedClient,
-          BlockedThread,
-          History,
-          Messages,
-          OpCount,
+          SyncSource,     \* SyncSource[s]: sync source of server node s
+          BlockedClient,  \* BlockedClient: Client operations in progress
+          BlockedThread,  \* BlockedThread: blocked user thread and content
+          History,        \* History[c]: History sequence at client c
+          Messages,       \* Message channels
+          OpCount,        \* OpCount[c]: op count for client c  
           Cp,             \* Cp[s]: majority commit point at server s
           SnapshotTable   \* SnapshotTable[s] : snapshot mapping table at server s  
           
@@ -64,14 +63,19 @@ Min(x, y) == IF x < y THEN x ELSE y
 Max(x, y) == IF x > y THEN x ELSE y
         
 \* snapshot helpers
-RECURSIVE SelectSnapshot_rec(_, _, _)
-SelectSnapshot_rec(stable, cp, index) ==
-    IF HLCLt(cp, stable[index].ot) THEN stable[index - 1].store
-    ELSE IF index = Len(stable) THEN stable[index].store
-    ELSE SelectSnapshot_rec(stable, cp, index + 1)  
-            
-SelectSnapshot(stable, cp) == SelectSnapshot_rec(stable, cp, 1)    
-          
+RECURSIVE SelectSnapshotIndex_Rec(_, _, _)
+SelectSnapshotIndex_Rec(stable, cp, index) ==
+    IF index > Len(stable) THEN Nil \* cannot find such snapshot at cp
+    ELSE IF HLCLt(stable[index], cp) THEN SelectSnapshotIndex_Rec(stable, cp, index + 1) \* go further
+         ELSE IF HLCLt(cp, stable[index]) THEN Nil
+              ELSE index \* match
+              
+SelectSnapshot(stable, cp) == LET index == SelectSnapshotIndex_Rec(stable, cp, 1)
+                              IN  IF index /= Nil THEN stable[index].store  
+                                  ELSE Nil
+                                  
+SelectSnapshotIndex(stable, cp) == SelectSnapshotIndex_Rec(stable, cp, 1)
+
 \* Is node i ahead of node j
 NotBehind(i, j) == Len(Oplog[i]) >= Len(Oplog[j])                       
 
@@ -87,7 +91,8 @@ MaxPt == LET x == CHOOSE s \in Server: \A s1 \in Server \ {s}:
 Tick(s) == Ct' = IF Ct[s].p >= Pt[s] 
                     THEN [ Ct EXCEPT ![s] = [ p |-> @.p, l |-> @.l+1] ]
                  ELSE [ Ct EXCEPT ![s] = [ p |-> Pt[s], l |-> 0] ]  
-                 
+
+\* Server s update its Ct according to msgCt and then tick                     
 UpdateAndTick(s, msgCt) ==
     LET newCt == [ Ct EXCEPT ![s] = HLCMax(Ct[s], msgCt) ] \* Update ct first according to msg
     IN  Ct' = IF newCt[s].p >= Pt[s] THEN [ newCt EXCEPT ![s] = [ p |-> @.p, l |-> @.l+1] ]
@@ -104,7 +109,6 @@ BroadcastHeartbeat(s) ==
 \* Can node i sync from node j?
 CanSyncFrom(i, j) == Len(Oplog[i]) < Len(Oplog[j])
 
-    
 \* Oplog entries needed to replicate from j to i
 ReplicateOplog(i, j) ==     
     LET len_i == Len(Oplog[i])
@@ -123,7 +127,8 @@ QuorumAgree(states) ==
                     \/ /\ \A s \in Q : states[s].p = 0
                        /\ \A s \in Q : states[s].l > 0}
     IN quorums  
-    
+
+\* The set of servers whose replicate progress are greater than ot    
 ReplicatedServers(states, ot) ==
     LET serverSet == {subServers \in SUBSET(Server): \A s \in subServers: LET stateTime == [p|-> states[s].p, l|-> states[s].l]
                                                                           IN  ~HLCLt(stateTime, ot)}
@@ -189,19 +194,23 @@ Init ==
 
 \* snapshot periodly
 Snapshot == 
-    /\ \E s \in Server:
-            SnapshotTable' =  [ SnapshotTable EXCEPT ![s] = 
-                                Append(@, [ot |-> Ot[s], store |-> Store[s] ]) ]  
-                               \* create a new snapshot
+    /\ \E s \in Server:      
+       LET SnapshotIndex == SelectSnapshotIndex(SnapshotTable[s], Ot[s]) 
+       IN  IF SnapshotIndex /= Nil
+               THEN SnapshotTable' = [ SnapshotTable EXCEPT ![s][SnapshotIndex] = [ot |-> Ot[s], store |-> Store[s] ] ]
+           ELSE SnapshotTable' = [ SnapshotTable EXCEPT ![s] =  \* create a new snapshot     
+                                   Append(@, [ot |-> Ot[s], store |-> Store[s] ]) ]  
     /\ UNCHANGED <<serverVars, Messages, BlockedClient, BlockedThread, OpCount, History>>                        
 
+\* A primary node advance its commit point
 AdvanceCp ==
     /\ \E s \in Primary:
         LET newCp == ComputeNewCp(s)
         IN Cp' = [ Cp EXCEPT ![s] = newCp]
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, State, tunableVars>>                                
            
-\*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态                                                                                                                                                                                                       
+\*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态  
+\* A server node deal with heartbeat msg                                                                                                                                                                                                          
 ServerTakeHeartbeat ==
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
@@ -215,6 +224,7 @@ ServerTakeHeartbeat ==
 \*       /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]  \* -> 因为之前的判断，这里根本不会触发   
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, tunableVars>>
 
+\* A server node deal with update position msg
 ServerTakeUpdatePosition == 
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
@@ -233,10 +243,12 @@ ServerTakeUpdatePosition ==
                                   IN newMsg))
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, tunableVars>>
 
-NTPSync == \* simplify NTP protocal
+\* simplify NTP protocal  
+NTPSync == 
     /\ Pt' = [ s \in Server |-> MaxPt ] 
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, messageVar, tunableVars>>
 
+\* A primary node advance its physical time
 AdvancePt == 
     /\ \E s \in Server:  
            /\ s \in Primary                    \* for simplicity
@@ -269,6 +281,8 @@ AdvancePt ==
     /\ UNCHANGED <<electionVars, timeVar, tunableVars>>        
        
 ----------------------------------------------------------------------------- 
+\* Server Actions                 
+\* Server Put
 ServerPutReply_sleep == 
     /\ \E s \in Primary, m \in Messages:
         /\ m.type = "put"
@@ -298,6 +312,7 @@ ServerPutReply_wake ==
         /\ BlockedThread' =  [ BlockedThread EXCEPT ![c] = Nil ] \* remove blocked state     
     /\ UNCHANGED <<serverVars, History, OpCount, BlockedClient, SnapshotTable>>                   
     
+\* Server Get
 ServerGetReply_sleep ==
     /\ \E s \in Server, m \in Messages:
        /\ m.type = "get"
@@ -314,6 +329,8 @@ ServerGetReply_wake ==
        /\ BlockedThread[c] /= Nil
        /\ BlockedThread[c].type = "read"    
        /\ ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot) \* wait until cp[s] >= target ot 
+       /\ ~ HLCLt(Ot[BlockedThread[c].s], Cp[BlockedThread[c].s]) \* wait until Ot[s] >= Cp[s] to ensure an availiable snapshot
+       /\ SelectSnapshotIndex(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s]) /= Nil \* exist related snapshot
        /\ Messages' = LET m == [type |-> "get_reply", dest |-> c, k |-> BlockedThread[c].k, 
                                        v |-> SelectSnapshot(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s])[BlockedThread[c].k],
                                        ct |-> Ct[BlockedThread[c].s], ot |-> Cp[BlockedThread[c].s] ] \* read from snapshot table
@@ -325,6 +342,8 @@ ServerPutAndGet == \/ ServerPutReply_sleep \/ ServerPutReply_wake
                    \/ ServerGetReply_sleep \/ ServerGetReply_wake 
 
 ----------------------------------------------------------------------------- 
+\* Client Actions      
+\* Client Put
 ClientPutRequest ==
     /\ \E k \in Key, v \in Value, c \in Client \ BlockedClient, s \in Primary:
         /\ OpCount[c] /= 0
@@ -346,7 +365,8 @@ ClientPutResponse ==
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
     /\ UNCHANGED <<electionVars, storageVars, messageVar, SyncSource, State, timeVar, BlockedThread, Cp, SnapshotTable>>
-    
+
+\* Client Get    
 ClientGetRequest ==
     /\ \E k \in Key, c \in Client \ BlockedClient, s \in Server: 
         /\ OpCount[c] /= 0
@@ -374,10 +394,10 @@ ClientPutAndGet == \/ ClientPutRequest \/ ClientPutResponse
                    \/ ClientGetRequest \/ ClientGetResponse  
 
 ----------------------------------------------------------------------------- 
-\*Simulate the situation that the primary node crash and suddently back to the state in Cp[s]
+\* Simulate the situation that the primary node crash and suddently back to the state in Cp[s]
 PrimaryCrashAndBack ==
     /\ \E s \in Primary:
-       /\ Len(Oplog[s]) > 2 \* there is sth in the log
+       /\ Len(Oplog[s]) >= 2 \* there is sth in the log
        /\ HLCLt([p |-> 0, l |-> 0], Cp[s])
        /\ Ot' = [ Ot EXCEPT ![s] = Cp[s] ]
        /\ Ct' = [ Ct EXCEPT ![s] = Cp[s] ]
@@ -399,7 +419,7 @@ Next == \/ Replicate
         \/ NTPSync
         \/ AdvanceCp
         \/ Snapshot
- \*        \/ PrimaryCrashAndBack
+         \/ PrimaryCrashAndBack
         
 Spec == Init /\ [][Next]_vars      
 
@@ -432,7 +452,7 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
 \* CMv Specification (test)
 CMvSatisification == 
                   \*/\ CMv(History, Client)
-                  \/ \A c \in Client: Len(History[c]) <= 2
+                  \/ \A c \in Client: Len(History[c]) < 2
                   \/ \E c \in Client: Len(History[c]) > 7
                   \/ CMvDef(History, Client)
                   
@@ -443,5 +463,5 @@ CMvSatisification ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 12 21:48:07 CST 2022 by dh
+\* Last modified Fri Aug 19 21:22:23 CST 2022 by dh
 \* Created Fri Aug 05 11:00:19 CST 2022 by dh
