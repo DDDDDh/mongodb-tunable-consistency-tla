@@ -66,8 +66,8 @@ Max(x, y) == IF x > y THEN x ELSE y
 RECURSIVE SelectSnapshotIndex_Rec(_, _, _)
 SelectSnapshotIndex_Rec(stable, cp, index) ==
     IF index > Len(stable) THEN Nil \* cannot find such snapshot at cp
-    ELSE IF HLCLt(stable[index], cp) THEN SelectSnapshotIndex_Rec(stable, cp, index + 1) \* go further
-         ELSE IF HLCLt(cp, stable[index]) THEN Nil
+    ELSE IF HLCLt(stable[index].ot, cp) THEN SelectSnapshotIndex_Rec(stable, cp, index + 1) \* go further
+         ELSE IF HLCLt(cp, stable[index].ot) THEN Nil
               ELSE index \* match
               
 SelectSnapshot(stable, cp) == LET index == SelectSnapshotIndex_Rec(stable, cp, 1)
@@ -401,9 +401,11 @@ PrimaryCrashAndBack ==
        /\ HLCLt([p |-> 0, l |-> 0], Cp[s])
        /\ Ot' = [ Ot EXCEPT ![s] = Cp[s] ]
        /\ Ct' = [ Ct EXCEPT ![s] = Cp[s] ]
+       /\ SelectSnapshotIndex(SnapshotTable[s], Cp[s]) /= Nil \* exist related snapshot
        /\ Store' = [ Store EXCEPT ![s] = SelectSnapshot(SnapshotTable[s], Cp[s])]
        /\ Oplog' = LET logTail == CHOOSE n \in 1..Len(Oplog[s]): Oplog[s][n].ot = Cp[s]
-                   IN  SubSeq(Oplog, 1, logTail)
+                   IN  LET remainLog == SubSeq(Oplog[s], 1, logTail)
+                       IN  [Oplog EXCEPT ![s] = remainLog]
        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l)      
                    IN  [State EXCEPT ![s] = newState]      \* update primary state
     /\ UNCHANGED <<electionVars, ServerMsg, Pt, Cp, SyncSource, tunableVars>>
@@ -427,32 +429,32 @@ Spec == Init /\ [][Next]_vars
 \* Causal Specifications
 MonotonicRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                     /\ i<j 
-                    /\ History[c][i].op = "get"
-                    /\ History[c][j].op = "get"
+                    /\ History[c][i].type = "get"
+                    /\ History[c][j].type = "get"
                     => ~ HLCLt(History[c][j].ts, History[c][i].ts)
    
 MonotonicWrite == \A c \in Client: \A i,j \in DOMAIN History[c]:
                     /\ i<j 
-                    /\ History[c][i].op = "put"
-                    /\ History[c][j].op = "put"
+                    /\ History[c][i].type = "put"
+                    /\ History[c][j].type = "put"
                     => ~ HLCLt(History[c][j].ts, History[c][i].ts)   
                     
 ReadYourWrite == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ i < j
-                /\ History[c][i].op = "put"
-                /\ History[c][j].op = "get"
+                /\ History[c][i].type = "put"
+                /\ History[c][j].type = "get"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
                 
 WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ i < j
-                /\ History[c][i].op = "get"
-                /\ History[c][j].op = "put"
+                /\ History[c][i].type = "get"
+                /\ History[c][j].type = "put"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
                 
 \* CMv Specification (test)
 CMvSatisification == 
                   \*/\ CMv(History, Client)
-                  \/ \A c \in Client: Len(History[c]) < 2
+                  \/ \A c \in Client: Len(History[c]) <= 2
                   \/ \E c \in Client: Len(History[c]) > 7
                   \/ CMvDef(History, Client)
                   
@@ -463,5 +465,5 @@ CMvSatisification ==
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 19 21:22:23 CST 2022 by dh
+\* Last modified Wed Aug 24 17:22:30 CST 2022 by dh
 \* Created Fri Aug 05 11:00:19 CST 2022 by dh
