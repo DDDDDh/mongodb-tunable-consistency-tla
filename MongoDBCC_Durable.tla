@@ -193,21 +193,22 @@ Init ==
 \* Todo: Stepdown when receiving a higher term heartbeat           
 
 \* snapshot periodly
-Snapshot == 
-    /\ \E s \in Server:      
-       LET SnapshotIndex == SelectSnapshotIndex(SnapshotTable[s], Ot[s]) 
-       IN  IF SnapshotIndex /= Nil
-               THEN SnapshotTable' = [ SnapshotTable EXCEPT ![s][SnapshotIndex] = [ot |-> Ot[s], store |-> Store[s] ] ]
-           ELSE SnapshotTable' = [ SnapshotTable EXCEPT ![s] =  \* create a new snapshot     
-                                   Append(@, [ot |-> Ot[s], store |-> Store[s] ]) ]  
-    /\ UNCHANGED <<serverVars, Messages, BlockedClient, BlockedThread, OpCount, History>>                        
+\*Snapshot == 
+\*    /\ \E s \in Server:      
+\*       LET SnapshotIndex == SelectSnapshotIndex(SnapshotTable[s], Ot[s]) 
+\*       IN  IF SnapshotIndex /= Nil
+\*               THEN SnapshotTable' = [ SnapshotTable EXCEPT ![s][SnapshotIndex] = [ot |-> Ot[s], store |-> Store[s] ] ]
+\*           ELSE SnapshotTable' = [ SnapshotTable EXCEPT ![s] =  \* create a new snapshot     
+\*                                   Append(@, [ot |-> Ot[s], store |-> Store[s] ]) ]  
+\*    /\ UNCHANGED <<serverVars, Messages, BlockedClient, BlockedThread, OpCount, History>>                        
 
 \* A primary node advance its commit point
-AdvanceCp ==
-    /\ \E s \in Primary:
-        LET newCp == ComputeNewCp(s)
-        IN Cp' = [ Cp EXCEPT ![s] = newCp]
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, State, tunableVars>>                                
+\* Leave out this action for the moment because ServerTakeHeartbeat or SeverTakeUpdatePosition will do this
+\*AdvanceCp ==
+\*    /\ \E s \in Primary:
+\*        LET newCp == ComputeNewCp(s)
+\*        IN Cp' = [ Cp EXCEPT ![s] = newCp]
+\*    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, State, tunableVars>>                                
            
 \*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态  
 \* A server node deal with heartbeat msg                                                                                                                                                                                                          
@@ -275,10 +276,15 @@ AdvancePt ==
                    hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
                    hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
                IN [ State EXCEPT ![i] = hb1]
+        /\ SnapshotTable' = 
+           LET SnapshotIndex == SelectSnapshotIndex(SnapshotTable[i], Ot'[i]) \* snapshot after store[i] changes
+           IN  IF SnapshotIndex /= Nil
+                THEN [ SnapshotTable EXCEPT ![i][SnapshotIndex] = [ot |-> Ot'[i], store |-> Store'[i]]]
+               ELSE [ SnapshotTable EXCEPT ![i] = Append(@, [ot |-> Ot'[i], store |-> Store'[i] ]) ]      \* create a new snapshot        
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
-    /\ UNCHANGED <<electionVars, timeVar, tunableVars>>        
+    /\ UNCHANGED <<electionVars, timeVar, BlockedClient, BlockedThread, History, Messages, OpCount>>        
        
 ----------------------------------------------------------------------------- 
 \* Server Actions                 
@@ -289,17 +295,22 @@ ServerPutReply_sleep ==
         /\ m.dest = s
         /\ UpdateAndTick(s, m.ct)
         /\ Ot' = [ Ot EXCEPT ![s] =  Ct'[s] ] \* advance the last applied operation time Ot[s]
-        /\ Store' = [ Store EXCEPT ![s][m.k] = m.v ] \* append operation to oplog[s]
-        /\ Oplog' = LET entry == [k |-> m.k, v |-> m.v, ot |-> Ot'[s] ]
+        /\ Store' = [ Store EXCEPT ![s][m.k] = m.v ] 
+        /\ SnapshotTable' = 
+           LET SnapshotIndex == SelectSnapshotIndex(SnapshotTable[s], Ot'[s]) \* snapshot after store[i] changes
+           IN  IF SnapshotIndex /= Nil
+                THEN [ SnapshotTable EXCEPT ![s][SnapshotIndex] = [ot |-> Ot'[s], store |-> Store'[s]]]
+               ELSE [ SnapshotTable EXCEPT ![s] = Append(@, [ot |-> Ot'[s], store |-> Store'[s] ]) ]      \* create a new snapshot 
+        /\ Oplog' = LET entry == [k |-> m.k, v |-> m.v, ot |-> Ot'[s] ] \* append operation to oplog[s]
                         newLog == Append(Oplog[s], entry)
                     IN [Oplog EXCEPT ![s] = newLog] 
         /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l)      
                     IN  [State EXCEPT ![s] = newState]      \* update primary state    
         /\ BlockedThread' = [BlockedThread EXCEPT ![m.c] = [type |-> "write", ot |-> Ot'[s], s |-> s, 
-                                   k |-> m.k, v |-> m.v ] ] \* add the user History to BlockedThread[c]          
+                                   k |-> m.k, v |-> m.v ] ] \* add the user History to BlockedThread[c]                                     
         /\ Messages' = Messages \ {m}
     /\ UNCHANGED <<electionVars, Cp, messageVar, SyncSource, timeVar,
-                   BlockedClient, History, OpCount, SnapshotTable>> 
+                   BlockedClient, History, OpCount>> 
                                    
 ServerPutReply_wake ==
     /\ \E c \in Client:
@@ -395,20 +406,24 @@ ClientPutAndGet == \/ ClientPutRequest \/ ClientPutResponse
 
 ----------------------------------------------------------------------------- 
 \* Simulate the situation that the primary node crash and suddently back to the state in Cp[s]
-PrimaryCrashAndBack ==
-    /\ \E s \in Primary:
+NodeCrashAndBack ==
+    /\ \E s \in Server:
        /\ Len(Oplog[s]) >= 2 \* there is sth in the log
        /\ HLCLt([p |-> 0, l |-> 0], Cp[s])
+       /\ SelectSnapshotIndex(SnapshotTable[s], Cp[s]) /= Nil \* exist related snapshot
        /\ Ot' = [ Ot EXCEPT ![s] = Cp[s] ]
        /\ Ct' = [ Ct EXCEPT ![s] = Cp[s] ]
-       /\ SelectSnapshotIndex(SnapshotTable[s], Cp[s]) /= Nil \* exist related snapshot
        /\ Store' = [ Store EXCEPT ![s] = SelectSnapshot(SnapshotTable[s], Cp[s])]
+       /\ SnapshotTable' = LET snapTail == CHOOSE n \in 1..Len(SnapshotTable[s]): SnapshotTable[s][n].ot = Cp[s]
+                           IN  LET remainSnap == SubSeq(SnapshotTable[s], 1, snapTail)
+                               IN  [SnapshotTable EXCEPT ![s] = remainSnap]
        /\ Oplog' = LET logTail == CHOOSE n \in 1..Len(Oplog[s]): Oplog[s][n].ot = Cp[s]
                    IN  LET remainLog == SubSeq(Oplog[s], 1, logTail)
                        IN  [Oplog EXCEPT ![s] = remainLog]
        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l)      
                    IN  [State EXCEPT ![s] = newState]      \* update primary state
-    /\ UNCHANGED <<electionVars, ServerMsg, Pt, Cp, SyncSource, tunableVars>>
+    /\ UNCHANGED <<electionVars, ServerMsg, Pt, Cp, SyncSource, 
+                   BlockedClient, BlockedThread, History, Messages, OpCount>>
 
 -----------------------------------------------------------------------------                 
 \* Next state for all configurations
@@ -419,9 +434,9 @@ Next == \/ Replicate
         \/ ServerPutAndGet
         \/ ClientPutAndGet
         \/ NTPSync
-        \/ AdvanceCp
-        \/ Snapshot
-         \/ PrimaryCrashAndBack
+\*        \/ AdvanceCp
+\*        \/ Snapshot
+         \/ NodeCrashAndBack
         
 Spec == Init /\ [][Next]_vars      
 
@@ -465,5 +480,5 @@ CMvSatisification ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Aug 24 17:22:30 CST 2022 by dh
+\* Last modified Tue Aug 30 00:21:46 CST 2022 by dh
 \* Created Fri Aug 05 11:00:19 CST 2022 by dh
