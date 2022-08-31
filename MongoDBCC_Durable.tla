@@ -164,7 +164,7 @@ GetNewState(s, d, np, nl) ==
 InitPrimary == Primary = {CHOOSE s \in Server: TRUE}
 InitSecondary == Secondary = Server \ Primary
 InitOplog == Oplog = [ s \in Server |-> <<>> ]
-InitStore == Store = [ n \in Server \cup Client  |-> [ k \in Key |-> Nil ] ]
+InitStore == Store = [ n \in Server \cup Client  |-> [ k \in Key |-> 0 ] ]
 InitCt == Ct = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitOt == Ot = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitServerMsg == ServerMsg = [ s \in Server |-> <<>> ]
@@ -178,7 +178,7 @@ InitMessages == Messages = {}
 InitOpCount == OpCount = [ c \in Client |-> OpTimes ]   
 InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
-                                                   store |-> [ k \in Key |-> Nil] ] >>]                                                                
+                                                   store |-> [ k \in Key |-> 0] ] >>]                                                                
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
@@ -467,10 +467,11 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
                 
 \* CMv Specification (test)
-CMvSatisification == 
+CMvSatisfication == 
                   \*/\ CMv(History, Client)
-                  \/ \A c \in Client: Len(History[c]) <= 2
-                  \/ \E c \in Client: Len(History[c]) > 7
+                  \*\/ \A c \in Client: Len(History[c]) <= 2
+                  \/ \A c \in Client: Len(History[c]) = 0
+\*                  \/ \E c \in Client: Len(History[c]) > 7
                   \/ CMvDef(History, Client)
                   
 \*BASIC == INSTANCE MongoDBCC_Basic 
@@ -480,5 +481,5 @@ CMvSatisification ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 30 00:21:46 CST 2022 by dh
+\* Last modified Wed Aug 31 17:54:31 CST 2022 by dh
 \* Created Fri Aug 05 11:00:19 CST 2022 by dh

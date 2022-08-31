@@ -3,7 +3,7 @@
  TLA+ Specification for causal consistency model CMv
  ***************************************************************************)
  
-EXTENDS Naturals, Sequences, TLC, Functions, RelationUtils, SequencesExt, FiniteSetsExt, PartialOrderExt
+EXTENDS Naturals, Sequences, TLC, Functions, RelationUtils, SequencesExt, FiniteSetsExt, PartialOrderExt, FiniteSets
 
 InitVal == 0
 
@@ -12,7 +12,7 @@ Seq2OpSet(s) == \* Transform a sequence s into the set of ops in s
     IF s = <<>> THEN {}
     ELSE LET h == Head(s)
              t == Tail(s)
-         IN  h \cup Seq2OpSet(t)   
+         IN  {h} \cup Seq2OpSet(t)   
          
 
 Ops(h, clients) ==
@@ -73,7 +73,10 @@ PreSeq(seq, o) == \* All of the operations before o in sequence seq
 RWRegSemanticsOperations(seq, ops) == \* For ops \subseteq Range(seq), is \A o \in ops legal 
     \A o \in ops:
         LET preSeq == PreSeq(seq, o)
-        IN RWRegSemantics(preSeq, o)
+        IN 
+\*           /\ PrintT("preSeq:")
+\*           /\ PrintT(preSeq)
+           /\ RWRegSemantics(preSeq, o)
         
 AxCausalValue(co, o) ==
     LET seqs == AllLinearExtensions(StrictCausalHist(co, o), StrictCausalPast(co, o))
@@ -82,7 +85,14 @@ AxCausalValue(co, o) ==
 AxCausalSeq(h, clients, co, o) ==
     LET popast == POPast(h, clients, o)
         seqs == AllLinearExtensions(CausalHist(co, o), CausalPast(co, o))
-    IN  \E seq \in seqs: RWRegSemanticsOperations(seq, popast)
+    IN  
+\*        /\ PrintT("PoPast for o:" \o ToString(o))
+\*        /\ PrintT(popast)
+\*        /\ PrintT("Seqs:")
+\*        /\ PrintT(seqs)
+\*        /\ PrintT("Begin Test Semantics")
+        /\ \E seq \in seqs: RWRegSemanticsOperations(seq, popast)
+\*        /\ PrintT("Respect...")
 
 AxCausalArb(co, arb, o) == 
     LET seq == AnyLinearExtension(StrictCausalArb(co, arb, o), StrictCausalPast(co, o)) \* it is unique
@@ -113,13 +123,28 @@ CMvDef(h, clients) ==
     LET ops == Ops(h, clients)
         hb == HB(h, clients)
         vis == VIS(h, clients)
-    IN  /\ Respect(vis, hb)
-        /\ \E co \in StrictPartialOrderSubset(ops):
-            /\ \E arb \in {Seq2Rel(le) : le \in AllLinearExtensions(co, ops)}:
+    IN  \/ Cardinality(ops) <= 1
+        \/ Cardinality(ops) > 8
+        \/ /\ Respect(vis, hb)
+\*           /\ PrintT("TestCmv Begin")
+\*           /\ PrintT(ops)
+\*           /\ PrintT(StrictPartialOrderSubset(ops))
+\*           /\ PrintT("Over")
+           /\ \E co \in StrictPartialOrderSubset(ops):
+\*              /\ PrintT("CO:")
+\*              /\ PrintT(co)
+\*              /\ PrintT("AllLinearExtensions:")
+\*              /\ PrintT(AllLinearExtensions(co, ops))
+              /\ \E arb \in {Seq2Rel(le) : le \in AllLinearExtensions(co, ops)}:
+\*                /\ PrintT("arb:")
+\*                /\ PrintT(arb)
                 /\ Respect(arb, vis)
-            /\ \A o \in ops: AxCausalSeq(h, clients, co, o)    
+\*                /\ PrintT("Respect arb")
+              /\ \A o \in ops: AxCausalSeq(h, clients, co, o)    
+\*              /\ PrintT("End for this CO")
+\*           /\ PrintT("TestCMv End")    
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Aug 04 09:36:29 CST 2022 by dh
+\* Last modified Wed Aug 31 18:04:06 CST 2022 by dh
 \* Created Sun Jul 31 10:58:26 CST 2022 by dh
