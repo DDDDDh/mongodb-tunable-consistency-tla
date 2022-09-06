@@ -196,7 +196,7 @@ GetNewState(s, d, np, nl, nterm) ==
 InitPrimary == Primary = {CHOOSE s \in Server: TRUE}
 InitSecondary == Secondary = Server \ Primary
 InitOplog == Oplog = [ s \in Server |-> <<>> ]
-InitStore == Store = [ n \in Server \cup Client  |-> [ k \in Key |-> Nil ] ]
+InitStore == Store = [ n \in Server \cup Client  |-> [ k \in Key |-> 0 ] ]
 InitCt == Ct = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitOt == Ot = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitServerMsg == ServerMsg = [ s \in Server |-> <<>> ]
@@ -211,7 +211,7 @@ InitMessages == Messages = {}
 InitOpCount == OpCount = [ c \in Client |-> OpTimes ]
 InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0, term |-> 0 ] ]
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
-                                                   store |-> [ k \in Key |-> Nil] ] >>]  
+                                                   store |-> [ k \in Key |-> 0] ] >>]  
 InitCurrentTerm == CurrentTerm = [ p \in Primary |-> 1 ] @@ [ s \in Server |-> 0 ] 
                                                                              
 
@@ -357,7 +357,7 @@ AdvancePt ==
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j] 
     /\ UNCHANGED <<electionVars, timeVar, BlockedClient, BlockedThread, History, Messages, OpCount>>    
     
-\* Simulate the situation that the primary node crash and suddently back to the state in Cp[s]
+\* Simulate the situation that a node crash and suddently back to the state in Cp[s]
 NodeCrashAndBack ==
     /\ \E s \in Server:
        /\ Len(Oplog[s]) >= 2 \* there is sth in the log
@@ -578,14 +578,23 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ History[c][i].op = "get"
                 /\ History[c][j].op = "put"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
+                
+TotoalOrderForWrites == LET writes == WriteOps(History, Client)
+                        IN  \A w \in writes:
+                                \A w1 \in writes:
+                                   \/ w1 = w
+                                   \/ w1.ts /= w.ts
 
+MonotonicOt == \A c \in Client: \A i,j \in DOMAIN History[c]:
+                /\ i < j 
+                => ~HLCLt(History[c][j].ts, History[c][i].is)
+                
 \* CMv Specification (test)
-CMvSatisification == 
-                  \*/\ CMv(History, Client)
-                  \/ \A c \in Client: Len(History[c]) < 2
-                  \/ \E c \in Client: Len(History[c]) > 7
+CMvSatisfication == 
+                  \/ \A c \in Client: Len(History[c]) = 0
+\*                  \/ \E c \in Client: Len(History[c]) > 7
                   \/ CMvDef(History, Client)
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 30 00:27:25 CST 2022 by dh
+\* Last modified Mon Sep 05 16:50:14 CST 2022 by dh
 \* Created Fri Aug 05 15:50:01 CST 2022 by dh

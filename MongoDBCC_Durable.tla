@@ -371,7 +371,7 @@ ClientPutResponse ==
        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
        /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "put", 
-                       ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
+                       ts |-> m.ot, k |-> m.k, v |-> m.v, count |-> OpCount[c]]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
@@ -395,7 +395,7 @@ ClientGetResponse ==
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
        /\ Store' = [ Store EXCEPT ![c][m.k] = m.v ]
        /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "get", 
-                       ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
+                       ts |-> m.ot, k |-> m.k, v |-> m.v, count |-> OpCount[c]]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
@@ -466,6 +466,17 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ History[c][j].type = "put"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
                 
+ 
+TotoalOrderForWrites == LET writes == WriteOps(History, Client)
+                        IN  \A w \in writes:
+                                \A w1 \in writes:
+                                   \/ w1 = w
+                                   \/ w1.ts /= w.ts
+
+MonotonicOt == \A c \in Client: \A i,j \in DOMAIN History[c]:
+                /\ i < j 
+                => ~HLCLt(History[c][j].ts, History[c][i].is)
+                
 \* CMv Specification (test)
 CMvSatisfication == 
                   \*/\ CMv(History, Client)
@@ -481,5 +492,5 @@ CMvSatisfication ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Aug 31 17:54:31 CST 2022 by dh
+\* Last modified Mon Sep 05 11:34:03 CST 2022 by dh
 \* Created Fri Aug 05 11:00:19 CST 2022 by dh
