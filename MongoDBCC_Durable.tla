@@ -475,7 +475,7 @@ TotoalOrderForWrites == LET writes == WriteOps(History, Client)
 
 MonotonicOt == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ i < j 
-                => ~HLCLt(History[c][j].ts, History[c][i].is)
+                => ~HLCLt(History[c][j].ts, History[c][i].ts)
                 
 \* CMv Specification (test)
 CMvSatisfication == 
@@ -492,5 +492,5 @@ CMvSatisfication ==
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 05 11:34:03 CST 2022 by dh
+\* Last modified Wed Sep 07 07:28:33 CST 2022 by dh
 \* Created Fri Aug 05 11:00:19 CST 2022 by dh

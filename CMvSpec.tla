@@ -3,7 +3,7 @@
  TLA+ Specification for causal consistency model CMv
  ***************************************************************************)
  
-EXTENDS Naturals, Sequences, TLC, Functions, RelationUtils, SequencesExt, FiniteSetsExt, FiniteSets
+EXTENDS Naturals, Sequences, TLC, Functions, RelationUtils, SequencesExt, FiniteSets
 
 InitVal == 0
 
@@ -74,5 +74,5 @@ CMvDef(h, clients) ==
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Sep 06 22:54:20 CST 2022 by dh
+\* Last modified Wed Sep 07 10:03:32 CST 2022 by dh
 \* Created Sun Jul 31 10:58:26 CST 2022 by dh

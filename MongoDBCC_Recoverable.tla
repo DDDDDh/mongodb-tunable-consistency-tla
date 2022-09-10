@@ -55,6 +55,10 @@ HLCLt(x, y) == IF x.p < y.p THEN TRUE
                ELSE IF x.p = y.p THEN IF x.l < y.l THEN TRUE
                                       ELSE FALSE
                     ELSE FALSE
+HLCEq(x, y) == IF x.p = y.p
+                    THEN IF x.l = y.l THEN TRUE
+                         ELSE FALSE
+               ELSE FALSE                    
                 
 HLCMin(x, y) == IF HLCLt(x, y) THEN x ELSE y
 HLCMax(x, y) == IF HLCLt(x, y) THEN y ELSE x
@@ -67,8 +71,8 @@ Max(x, y) == IF x > y THEN x ELSE y
 RECURSIVE SelectSnapshotIndex_Rec(_, _, _)
 SelectSnapshotIndex_Rec(stable, cp, index) ==
     IF index > Len(stable) THEN Nil \* cannot find such snapshot at cp
-    ELSE IF HLCLt(stable[index], cp) THEN SelectSnapshotIndex_Rec(stable, cp, index + 1) \* go further
-         ELSE IF HLCLt(cp, stable[index]) THEN Nil
+    ELSE IF HLCLt(stable[index].ot, cp) THEN SelectSnapshotIndex_Rec(stable, cp, index + 1) \* go further
+         ELSE IF HLCLt(cp, stable[index].ot) THEN Nil
               ELSE index \* match
               
 SelectSnapshot(stable, cp) == LET index == SelectSnapshotIndex_Rec(stable, cp, 1)
@@ -261,7 +265,7 @@ ElectPrimary ==
                                                 ELSE CurrentTerm[index]]
        \* perform noop                                         
         /\ Oplog' = LET entry == [k |-> Nil, v |-> Nil, 
-                                  ot |-> Ot'[i], term |-> CurrentTerm'[i]]
+                                  ot |-> Ot[i], term |-> CurrentTerm'[i]]
                         newLog == Append(Oplog[i], entry)
                     IN [Oplog EXCEPT ![i] = newLog]                                         
         \* A primary node do not have any sync source                                        
@@ -366,16 +370,16 @@ NodeCrashAndBack ==
        /\ Ot' = [ Ot EXCEPT ![s] = Cp[s] ]
        /\ Ct' = [ Ct EXCEPT ![s] = Cp[s] ]
        /\ Store' = [ Store EXCEPT ![s] = SelectSnapshot(SnapshotTable[s], Cp[s])]
-       /\ SnapshotTable' = LET snapTail == CHOOSE n \in 1..Len(SnapshotTable[s]): SnapshotTable[s][n].ot = Cp[s]
+       /\ SnapshotTable' = LET snapTail == CHOOSE n \in 1..Len(SnapshotTable[s]): HLCEq(SnapshotTable[s][n].ot, Cp[s])
                            IN  LET remainSnap == SubSeq(SnapshotTable[s], 1, snapTail)
                                IN  [SnapshotTable EXCEPT ![s] = remainSnap]
-       /\ Oplog' = LET logTail == CHOOSE n \in 1..Len(Oplog[s]): Oplog[s][n].ot = Cp[s]
+       /\ Oplog' = LET logTail == CHOOSE n \in 1..Len(Oplog[s]): HLCEq(Oplog[s][n].ot, Cp[s])
                    IN  LET remainLog == SubSeq(Oplog[s], 1, logTail)
                        IN  [Oplog EXCEPT ![s] = remainLog]
        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l, CurrentTerm[s])      
                    IN  [State EXCEPT ![s] = newState]      \* update primary state
     /\ UNCHANGED <<electionVars, ServerMsg, Pt, Cp, SyncSource, 
-                   BlockedClient, BlockedThread, History, Messages, OpCount>>                    
+                   BlockedClient, BlockedThread, History, Messages, OpCount, CurrentTerm>>                    
                     
 \* Rollback i's oplog and recover it to j's state   
 \* Recover to j's state immediately to prevent internal client request  
@@ -383,6 +387,7 @@ RollbackAndRecover ==
     /\ \E i, j \in Server:
         /\ i \in Secondary
         /\ CanRollback(i, j)
+\*        /\ SelectSnapshotIndex(SnapshotTable[s], Cp[s]) /= Nil \* exist related snapshot
         /\ LET cmp == RollbackCommonPoint(i, j)  IN
            LET commonLog == SubSeq(Oplog[i], 1, cmp)
                appendLog == SubSeq(Oplog[j], cmp+1, Len(Oplog[j]))
@@ -399,13 +404,13 @@ RollbackAndRecover ==
                    hb == [ SubHbState EXCEPT ![i] = newStatei ] \* update i's self state (used in mcp computation
                    hb1 == [hb EXCEPT ![j] = newStatej ] \* update j's state i knows 
                IN [ State EXCEPT ![i] = hb1]
-        /\ SnapshotTable' = LET snapTail == CHOOSE n \in 1..Len(SnapshotTable[i]): SnapshotTable[i][n].ot = Cp'[i]
+        /\ SnapshotTable' = LET snapTail == CHOOSE n \in 1..Len(SnapshotTable[i]): HLCEq(SnapshotTable[i][n].ot, Cp'[i])
                             IN  LET remainSnap == SubSeq(SnapshotTable[i], 1, snapTail)
                                IN  [SnapshotTable EXCEPT ![i] = remainSnap]       
         /\ LET msg == [ type |-> "update_position", s |-> i, aot |-> Ot'[i], ct |-> Ct'[i], cp |-> Cp'[i], term |-> CurrentTerm'[i] ]
            IN ServerMsg' = [ ServerMsg EXCEPT ![j] = Append(ServerMsg[j], msg) ]
         /\ SyncSource' = [SyncSource EXCEPT ![i] = j]  
-    /\ UNCHANGED <<electionVars, timeVar, tunableVars>>                     
+    /\ UNCHANGED <<electionVars, timeVar, BlockedClient, BlockedThread, History, Messages, OpCount>>                     
     
 ----------------------------------------------------------------------------- 
 \* Server Actions                 
@@ -492,7 +497,7 @@ ClientGetResponse ==
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
        /\ Store' = [ Store EXCEPT ![c][m.k] = m.v ]
        /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "get", 
-                       ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
+                       ts |-> m.ot, k |-> m.k, v |-> m.v, count |-> OpCount[c]]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
@@ -515,7 +520,7 @@ ClientPutResponse ==
        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
        /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "put", 
-                       ts |-> m.ot, k |-> m.k, v |-> m.v]) ]
+                       ts |-> m.ot, k |-> m.k, v |-> m.v, count |-> OpCount[c]]) ]
        /\ Messages' = Messages \ {m}
        /\ BlockedClient' = BlockedClient \ {c}
        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
@@ -543,6 +548,7 @@ Next == \/ ClientGetRequest \/ ClientPutRequest
         \/ ServerTakeUpdatePosition
 \*        \/ AdvanceCp
 \*        \/ Snapshot
+        \/ NodeCrashAndBack
         \/ Stepdown
         \/ RollbackAndRecover
         \/ ElectPrimary
@@ -579,7 +585,7 @@ WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ History[c][j].op = "put"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
                 
-TotoalOrderForWrites == LET writes == WriteOps(History, Client)
+TotalOrderForWrites == LET writes == WriteOps(History, Client)
                         IN  \A w \in writes:
                                 \A w1 \in writes:
                                    \/ w1 = w
@@ -587,7 +593,7 @@ TotoalOrderForWrites == LET writes == WriteOps(History, Client)
 
 MonotonicOt == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ i < j 
-                => ~HLCLt(History[c][j].ts, History[c][i].is)
+                => ~HLCLt(History[c][j].ts, History[c][i].ts)
                 
 \* CMv Specification (test)
 CMvSatisfication == 
@@ -596,5 +602,5 @@ CMvSatisfication ==
                   \/ CMvDef(History, Client)
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 05 16:50:14 CST 2022 by dh
+\* Last modified Wed Sep 07 11:22:51 CST 2022 by dh
 \* Created Fri Aug 05 15:50:01 CST 2022 by dh
