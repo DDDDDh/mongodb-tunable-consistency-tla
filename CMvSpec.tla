@@ -7,6 +7,11 @@ EXTENDS Naturals, Sequences, TLC, Functions, RelationUtils, SequencesExt, Finite
 
 InitVal == 0
 
+HLCeq(x, y) == IF x.p = y.p
+                    THEN IF x.l = y.l THEN TRUE
+                         ELSE FALSE
+               ELSE FALSE   
+
 RECURSIVE Seq2OpSet(_)
 Seq2OpSet(s) == \* Transform a sequence s into the set of ops in s
     IF s = <<>> THEN {}
@@ -19,10 +24,10 @@ Ops(h, clients) ==
 \* The program order of h \in History is a union of total orders among operations in the same session    
 
 WriteOps(h, clients) == 
-    {op \in Ops(h, clients): op.type = "put"}
+    {op \in Ops(h, clients): op.type = "write"}
 
 ReadOps(h, clients) == 
-    {op \in Ops(h, clients): op.type = "get"}  
+    {op \in Ops(h, clients): op.type = "read"}  
     
 SO(h, clients) == UNION {Seq2Rel(h[c]): c \in clients }      
 -------------------------------------------------
@@ -35,8 +40,8 @@ PreSeq(seq, o) == \* All of the operations before o in sequence seq
     IN SelectSeq(seq, LAMBDA op: <<op, o>> \in so)
 -------------------------------------------------
 KvsSemantics(seq, o) == \* Is o \in Operation legal when it is appended to seq
-    IF o.type = "put" THEN TRUE ELSE
-    LET wseq == SelectSeq(seq, LAMBDA op: op.type = "put" /\ op.k = o.k)
+    IF o.type = "write" THEN TRUE ELSE
+    LET wseq == SelectSeq(seq, LAMBDA op: op.type = "write" /\ op.k = o.k)
     IN  IF wseq = <<>> THEN o.v = InitVal
         ELSE o.v = wseq[Len(wseq)].v
                 
@@ -54,7 +59,7 @@ ReturnValueConisnstency(h, clients, seq, ops) ==
 \* Definition of relations used in CMv definition  
 
 RF(h, clients) == 
-    {<<w, r>> \in WriteOps(h, clients) \X ReadOps(h, clients): w.k = r.k /\ w.v = r.v }
+    {<<w, r>> \in WriteOps(h, clients) \X ReadOps(h, clients): w.k = r.k /\ w.v = r.v /\ HLCeq(w.ts,r.ts)}
 
 VIS(h, clients) == 
     TC( SO(h, clients) \cup RF(h, clients) )
@@ -74,5 +79,5 @@ CMvDef(h, clients) ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Sep 07 10:03:32 CST 2022 by dh
+\* Last modified Sun Sep 11 23:36:48 CST 2022 by dh
 \* Created Sun Jul 31 10:58:26 CST 2022 by dh

@@ -134,7 +134,7 @@ CanRollback(i, j) == /\ Len(Oplog[i]) > 0
                      /\ LastTerm(i) < LastTerm(j)
                      /\ \/ Len(Oplog[i]) > Len(Oplog[j])
                         \/ /\ Len(Oplog[i]) <= Len(Oplog[j])
-                           /\ LastTerm(i) /= LogTerm(j, Len(Oplog[i]))
+                           /\ LastTerm(i) /= LogTerm(j, Len(Oplog[i]))                       
                            
 \* Returns the highest common index between two divergent logs. 
 \* If there is no common index between the logs, returns 0.
@@ -602,5 +602,5 @@ CMvSatisfication ==
                   \/ CMvDef(History, Client)
 =============================================================================
 \* Modification History
-\* Last modified Wed Sep 07 11:22:51 CST 2022 by dh
+\* Last modified Sat Sep 10 18:24:45 CST 2022 by dh
 \* Created Fri Aug 05 15:50:01 CST 2022 by dh

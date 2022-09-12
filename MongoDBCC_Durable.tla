@@ -25,7 +25,8 @@ VARIABLES Primary,        \* Primary node
           Messages,       \* Message channels
           OpCount,        \* OpCount[c]: op count for client c  
           Cp,             \* Cp[s]: majority commit point at server s
-          SnapshotTable   \* SnapshotTable[s] : snapshot mapping table at server s  
+          SnapshotTable,   \* SnapshotTable[s] : snapshot mapping table at server s  
+          BlockedVar
           
 -----------------------------------------------------------------------------          
 \* group related vars to optimize code
@@ -41,7 +42,7 @@ tunableVars == <<BlockedClient, BlockedThread, History, Messages, OpCount, Snaps
 
 vars == <<Primary, Secondary, Oplog, Store, Ct, Ot, ServerMsg, 
           Pt, Cp, State, SyncSource, BlockedClient, BlockedThread,
-          History, Messages, OpCount, SnapshotTable>>
+          History, Messages, OpCount, SnapshotTable, BlockedVar>>
 -----------------------------------------------------------------------------
 ASSUME Cardinality(Client) >= 1  \* at least one clinet
 ASSUME Cardinality(Server) >= 2  \* at least one primary and one secondary
@@ -54,6 +55,10 @@ HLCLt(x, y) == IF x.p < y.p THEN TRUE
                        THEN IF x.l < y.l THEN TRUE
                             ELSE FALSE
                     ELSE FALSE
+HLCEq(x, y) == IF x.p = y.p
+                    THEN IF x.l = y.l THEN TRUE
+                         ELSE FALSE
+               ELSE FALSE                      
                 
 HLCMin(x, y) == IF HLCLt(x, y) THEN x ELSE y
 HLCMax(x, y) == IF HLCLt(x, y) THEN y ELSE x
@@ -144,7 +149,7 @@ ComputeNewCp(s) ==
                      StateSet == {[p |-> State[s][j].p, l |-> State[s][j].l]: j \in QuorumSet}
                      newCommitPoint == HLCMinSet(StateSet)
                  IN  [p |-> newCommitPoint.p, l |-> newCommitPoint.l]
-          ELSE Cp[s]
+        ELSE Cp[s]
     \* secondary node: update mcp   
     ELSE IF Len(ServerMsg[s]) /= 0 THEN
             LET msgCP == [ p |-> ServerMsg[s][1].cp.p, l |-> ServerMsg[s][1].cp.l ] IN 
@@ -157,8 +162,8 @@ ComputeNewCp(s) ==
 GetNewState(s, d, np, nl) == 
     LET newSubState == [p |-> np, l |-> nl] 
         sState == State[s]
-    IN  [sState EXCEPT ![d] = newSubState]    
-           
+    IN  [sState EXCEPT ![d] = newSubState]  
+                  
 \* Init Part                       
 -----------------------------------------------------------------------------
 InitPrimary == Primary = {CHOOSE s \in Server: TRUE}
@@ -178,41 +183,25 @@ InitMessages == Messages = {}
 InitOpCount == OpCount = [ c \in Client |-> OpTimes ]   
 InitCp == Cp = [ n \in Server \cup Client |-> [ p |-> 0, l |-> 0 ] ]
 InitSnap == SnapshotTable = [ s \in Server |-> <<[ ot |-> [ p |-> 0, l |-> 0 ], 
-                                                   store |-> [ k \in Key |-> 0] ] >>]                                                                
+                                                   store |-> [ k \in Key |-> 0] ] >>]     
+InitBlockedVar == BlockedVar = {}                                                                                                             
 
 Init == 
     /\ InitPrimary /\ InitSecondary /\ InitOplog /\ InitStore /\ InitCt 
     /\ InitOt /\ InitPt /\ InitServerMsg /\ InitState
     /\ InitSyncSource /\ InitBlockedClient /\ InitBlockedThread
     /\ InitHistory /\ InitMessages /\ InitOpCount 
-    /\ InitCp /\ InitSnap
+    /\ InitCp /\ InitSnap /\ InitBlockedVar
     
 \* Next State Actions  
 \* Replication Protocol: possible actions  
 -----------------------------------------------------------------------------                                                           
 \* Todo: Stepdown when receiving a higher term heartbeat           
-
-\* snapshot periodly
-\*Snapshot == 
-\*    /\ \E s \in Server:      
-\*       LET SnapshotIndex == SelectSnapshotIndex(SnapshotTable[s], Ot[s]) 
-\*       IN  IF SnapshotIndex /= Nil
-\*               THEN SnapshotTable' = [ SnapshotTable EXCEPT ![s][SnapshotIndex] = [ot |-> Ot[s], store |-> Store[s] ] ]
-\*           ELSE SnapshotTable' = [ SnapshotTable EXCEPT ![s] =  \* create a new snapshot     
-\*                                   Append(@, [ot |-> Ot[s], store |-> Store[s] ]) ]  
-\*    /\ UNCHANGED <<serverVars, Messages, BlockedClient, BlockedThread, OpCount, History>>                        
-
-\* A primary node advance its commit point
-\* Leave out this action for the moment because ServerTakeHeartbeat or SeverTakeUpdatePosition will do this
-\*AdvanceCp ==
-\*    /\ \E s \in Primary:
-\*        LET newCp == ComputeNewCp(s)
-\*        IN Cp' = [ Cp EXCEPT ![s] = newCp]
-\*    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Ct, messageVar, timeVar, State, tunableVars>>                                
-           
+          
 \*注意：heartbeat没有更新oplog，没有更新Ot，也没有更新store状态  
 \* A server node deal with heartbeat msg                                                                                                                                                                                                          
 ServerTakeHeartbeat ==
+    /\ BlockedVar = {}
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "heartbeat"
@@ -221,12 +210,14 @@ ServerTakeHeartbeat ==
                     IN  [State EXCEPT ![s] = newState]
         /\ Cp' = LET newcp == ComputeNewCp(s)
                  IN [ Cp EXCEPT ![s] = newcp ]
+        /\ IF HLCLt(Cp[s], Cp'[s]) THEN BlockedVar' = BlockedVar \cup { c \in BlockedClient: BlockedThread[c].s = s}
+           ELSE BlockedVar' = BlockedVar         
        /\ ServerMsg' = [ ServerMsg EXCEPT ![s] = Tail(@) ]    
-\*       /\ CurrentTerm' = [CurrentTerm EXCEPT ![s] = Max(CurrentTerm[s], ServerMsg[s][1].term)]  \* -> 因为之前的判断，这里根本不会触发   
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, tunableVars>>
 
 \* A server node deal with update position msg
 ServerTakeUpdatePosition == 
+    /\ BlockedVar = {}
     /\ \E s \in Server:
         /\ Len(ServerMsg[s]) /= 0  \* message channel is not empty
         /\ ServerMsg[s][1].type = "update_position"
@@ -234,7 +225,9 @@ ServerTakeUpdatePosition ==
         /\ State' = LET newState == GetNewState(s, ServerMsg[s][1].s, ServerMsg[s][1].aot.p, ServerMsg[s][1].aot.l)
                     IN  [State EXCEPT ![s] = newState]
         /\ Cp' = LET newcp == ComputeNewCp(s)
-                 IN [ Cp EXCEPT ![s] = newcp ]                       
+                 IN [ Cp EXCEPT ![s] = newcp ] 
+        /\ IF HLCLt(Cp[s], Cp'[s]) THEN BlockedVar' = BlockedVar \cup { c \in BlockedClient: BlockedThread[c].s = s}
+           ELSE BlockedVar' = BlockedVar
         /\ ServerMsg' = LET newServerMsg == [ServerMsg EXCEPT ![s] = Tail(@)]
                        IN  ( LET  appendMsg == [ type |-> "update_position", s |-> ServerMsg[s][1].s, aot |-> ServerMsg[s][1].aot, 
                                           ct |-> ServerMsg[s][1].ct, cp |-> ServerMsg[s][1].cp ]
@@ -244,22 +237,27 @@ ServerTakeUpdatePosition ==
                                   IN newMsg))
     /\ UNCHANGED <<electionVars, storageVars, servernodeVars, timeVar, tunableVars>>
 
-\* simplify NTP protocal  
-NTPSync == 
-    /\ Pt' = [ s \in Server |-> MaxPt ] 
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, messageVar, tunableVars>>
+\* simplify NTP protocol  
+\*NTPSync == 
+\*    /\ BlockedVar = {}
+\*    /\ Pt' = [ s \in Server |-> MaxPt ] 
+\*    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, messageVar, tunableVars, BlockedVar>>
 
 \* A primary node advance its physical time
 AdvancePt == 
-    /\ \E s \in Server:  
-           /\ s \in Primary                    \* for simplicity
+    /\ BlockedVar = {}
+    /\ \E s \in Primary:            \* for simplicity
            /\ Pt[s] <= PtStop 
-           /\ Pt' = [ Pt EXCEPT ![s] = @+1 ] \* advance physical time
+           /\ LET tickedPt == Pt[s] + 1
+                  maxPt == Max(MaxPt, tickedPt)
+              IN Pt' = [ s1 \in Server |-> maxPt ] 
+\*           /\ Pt' = [ Pt EXCEPT ![s] = @+1 ] \* advance physical time
            /\ BroadcastHeartbeat(s)          \* broadcast heartbeat periodly
-    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, tunableVars>>
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, learnableVars, tunableVars, BlockedVar>>
                
 \* Replicate oplog from node j to node i, and update related structures accordingly
  Replicate == 
+    /\ BlockedVar = {}
     /\ \E i, j \in Server: 
         /\ CanSyncFrom(i, j) \* i can sync from j
         /\ i \in Secondary
@@ -269,6 +267,8 @@ AdvancePt ==
         /\ Ct' = [Ct EXCEPT ![i] = HLCMax(Ct[i], Ct[j])] \* update Ct[i] 
         /\ Ot' = [Ot EXCEPT ![i] = HLCMax(Ot[i], Ot[j])] \* update Ot[i]    
         /\ Cp' = [Cp EXCEPT ![i] = HLCMax(Cp[i], Cp[j])] \* update Cp[i]
+        /\ IF HLCLt(Cp[i], Cp'[i]) THEN BlockedVar' = BlockedVar \cup { c \in BlockedClient: BlockedThread[c].s = i}
+           ELSE BlockedVar' = BlockedVar
         /\ State' = 
             LET newStatei == [p |-> Ot'[i].p, l |-> Ot'[i].l ]
                 newStatej == [p |-> Ot[j].p, l |-> Ot[j].l ]
@@ -287,126 +287,90 @@ AdvancePt ==
     /\ UNCHANGED <<electionVars, timeVar, BlockedClient, BlockedThread, History, Messages, OpCount>>        
        
 ----------------------------------------------------------------------------- 
-\* Server Actions                 
-\* Server Put
-ServerPutReply_sleep == 
-    /\ \E s \in Primary, m \in Messages:
-        /\ m.type = "put"
-        /\ m.dest = s
-        /\ UpdateAndTick(s, m.ct)
-        /\ Ot' = [ Ot EXCEPT ![s] =  Ct'[s] ] \* advance the last applied operation time Ot[s]
-        /\ Store' = [ Store EXCEPT ![s][m.k] = m.v ] 
+PutRequest == 
+    /\ BlockedVar = {}
+    /\ \E k \in Key, v \in Value, c \in Client \ BlockedClient, s \in Primary:
+        /\ OpCount[c] /= 0 \* have chance to do an op
+        /\ UpdateAndTick(s, Ct[c]) \* update and tick the ct of s according to c
+        /\ Ot' = [ Ot EXCEPT ![s] = Ct'[s] ] \* advance the last applied operation time Ot[s]
+        /\ Store' = [ Store EXCEPT ![s][k] = v ] 
         /\ SnapshotTable' = 
            LET SnapshotIndex == SelectSnapshotIndex(SnapshotTable[s], Ot'[s]) \* snapshot after store[i] changes
            IN  IF SnapshotIndex /= Nil
                 THEN [ SnapshotTable EXCEPT ![s][SnapshotIndex] = [ot |-> Ot'[s], store |-> Store'[s]]]
                ELSE [ SnapshotTable EXCEPT ![s] = Append(@, [ot |-> Ot'[s], store |-> Store'[s] ]) ]      \* create a new snapshot 
-        /\ Oplog' = LET entry == [k |-> m.k, v |-> m.v, ot |-> Ot'[s] ] \* append operation to oplog[s]
+        /\ Oplog' = LET entry == [k |-> k, v |-> v, ot |-> Ot'[s] ] \* append operation to oplog[s]
                         newLog == Append(Oplog[s], entry)
-                    IN [Oplog EXCEPT ![s] = newLog] 
+                    IN [Oplog EXCEPT ![s] = newLog]  
         /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l)      
-                    IN  [State EXCEPT ![s] = newState]      \* update primary state    
-        /\ BlockedThread' = [BlockedThread EXCEPT ![m.c] = [type |-> "write", ot |-> Ot'[s], s |-> s, 
-                                   k |-> m.k, v |-> m.v ] ] \* add the user History to BlockedThread[c]                                     
-        /\ Messages' = Messages \ {m}
-    /\ UNCHANGED <<electionVars, Cp, messageVar, SyncSource, timeVar,
-                   BlockedClient, History, OpCount>> 
-                                   
-ServerPutReply_wake ==
-    /\ \E c \in Client:
+                    IN  [State EXCEPT ![s] = newState]      \* update primary state               
+        /\ BlockedThread' = [BlockedThread EXCEPT ![c] = [type |-> "write", ot |-> Ot'[s], s |-> s, 
+                                   k |-> k, v |-> v ] ] \* add the user History to BlockedThread[c]  
+        /\ BlockedClient' = BlockedClient \cup {c} \* wait for server reply
+    /\ UNCHANGED <<electionVars, messageVar, Messages, SyncSource, timeVar, Cp, History, OpCount, BlockedVar>>     
+ 
+GetRequest ==
+    /\ BlockedVar = {}
+    /\ \E k \in Key, c \in Client \ BlockedClient, s \in Server: 
+       /\ OpCount[c] /= 0
+       /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], Ct[c]) ] \* update the ct of s according to c
+       /\ BlockedThread' = [BlockedThread EXCEPT ![c] = 
+                            [type |-> "read", s |-> s, k |-> k, ot |-> Ot[c]]]
+       /\ BlockedClient' = BlockedClient \cup {c} 
+    /\ UNCHANGED <<electionVars, storageVars, servernodeVars, Messages, ServerMsg, History, OpCount, 
+                   Pt, Cp, State, SnapshotTable, BlockedVar>>   
+
+----------------------------------------------------------------------------- 
+PendingReply == 
+    /\ BlockedVar /= {}
+    /\ \E c \in BlockedVar:
+        /\ \/ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot)
+           \/ SelectSnapshotIndex(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s]) = Nil
+        /\ BlockedVar' = BlockedVar \ {c} \* wait for next wake up
+    /\ UNCHANGED <<serverVars, tunableVars>>    
+
+PutReply == 
+    /\ BlockedVar /= {} \* There is some op wait to be returned
+    /\ \E c \in BlockedVar:
+\*    /\ \E c \in Client:
         /\ BlockedThread[c] /=  Nil
         /\ BlockedThread[c].type = "write"
         /\ ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot) \* w:majority
-        /\ Messages' = LET newMsgs == [ type |-> "put_reply", dest |-> c, ot |-> BlockedThread[c].ot, ct |-> Ct[BlockedThread[c].s], 
-                                        k |-> BlockedThread[c].k, v |-> BlockedThread[c].v ]
-                       IN  Messages \cup {newMsgs}   
-        /\ BlockedThread' =  [ BlockedThread EXCEPT ![c] = Nil ] \* remove blocked state     
-    /\ UNCHANGED <<serverVars, History, OpCount, BlockedClient, SnapshotTable>>                   
-    
-\* Server Get
-ServerGetReply_sleep ==
-    /\ \E s \in Server, m \in Messages:
-       /\ m.type = "get"
-       /\ m.dest = s
-       /\ Ct' = [ Ct EXCEPT ![s] = HLCMax(Ct[s], m.ct) ] 
-       /\ BlockedThread' = [BlockedThread EXCEPT ![m.c] = 
-                            [type |-> "read", s |-> s, k |-> m.k, ot |-> m.ot]]
-       /\ Messages' = Messages \ {m}
-    /\ UNCHANGED <<electionVars, Cp, Oplog, Ot, State, messageVar, SyncSource, Store, timeVar,
-                   BlockedClient, History, OpCount, SnapshotTable>>  
+        /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, Ct[BlockedThread[c].s]) ]
+        /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, BlockedThread[c].ot) ]
+        /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "write", ts |-> BlockedThread[c].ot, 
+                        k |-> BlockedThread[c].k, v |-> BlockedThread[c].v, count |-> OpCount[c]]) ]
+        /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]
+        /\ BlockedClient' = BlockedClient \ {c}
+        /\ BlockedThread' =  [ BlockedThread EXCEPT ![c] = Nil ] \* remove blocked state
+        /\ BlockedVar' = BlockedVar \ {c}
+     /\ UNCHANGED <<electionVars, storageVars, messageVar, Messages, SyncSource, State, Pt, Cp, SnapshotTable>>
 
-ServerGetReply_wake == 
-    /\ \E c \in Client:
+GetReply ==
+    /\ BlockedVar /= {}
+    /\ \A v \in BlockedVar: BlockedThread[v].type /= "write"
+    /\ \E c \in BlockedVar:
+\*    /\ \E c \in Client:
        /\ BlockedThread[c] /= Nil
        /\ BlockedThread[c].type = "read"    
        /\ ~ HLCLt(Cp[BlockedThread[c].s], BlockedThread[c].ot) \* wait until cp[s] >= target ot 
-       /\ ~ HLCLt(Ot[BlockedThread[c].s], Cp[BlockedThread[c].s]) \* wait until Ot[s] >= Cp[s] to ensure an availiable snapshot
        /\ SelectSnapshotIndex(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s]) /= Nil \* exist related snapshot
-       /\ Messages' = LET m == [type |-> "get_reply", dest |-> c, k |-> BlockedThread[c].k, 
-                                       v |-> SelectSnapshot(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s])[BlockedThread[c].k],
-                                       ct |-> Ct[BlockedThread[c].s], ot |-> Cp[BlockedThread[c].s] ] \* read from snapshot table
-                      IN  Messages \cup {m}                                              
-       /\ BlockedThread' = [ BlockedThread EXCEPT ![c] = Nil ]               
-    /\ UNCHANGED <<serverVars, History, OpCount, BlockedClient, SnapshotTable>>                    
-                  
-ServerPutAndGet == \/ ServerPutReply_sleep \/ ServerPutReply_wake      
-                   \/ ServerGetReply_sleep \/ ServerGetReply_wake 
-
------------------------------------------------------------------------------ 
-\* Client Actions      
-\* Client Put
-ClientPutRequest ==
-    /\ \E k \in Key, v \in Value, c \in Client \ BlockedClient, s \in Primary:
-        /\ OpCount[c] /= 0
-        /\ LET m == [ type |-> "put", dest |-> s, c |-> c, k |-> k, v |-> v, ct |-> Ct[c] ] 
-           IN  Messages' = Messages \cup {m}
-       /\ BlockedClient' = BlockedClient \cup {c} \* wait for server reply
-    /\ UNCHANGED <<serverVars, BlockedThread, History, OpCount, SnapshotTable>>               
-
-ClientPutResponse ==  
-    /\ \E c \in Client, m \in Messages:
-       /\ OpCount[c] /= 0
-       /\ m.type = "put_reply"
-       /\ m.dest = c
-       /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
-       /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
-       /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "put", 
-                       ts |-> m.ot, k |-> m.k, v |-> m.v, count |-> OpCount[c]]) ]
-       /\ Messages' = Messages \ {m}
+       /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, Ct[BlockedThread[c].s]) ]
+       /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, Cp[BlockedThread[c].s]) ]
+       /\ LET retVal == SelectSnapshot(SnapshotTable[BlockedThread[c].s], Cp[BlockedThread[c].s])[BlockedThread[c].k]
+          IN /\ Store' = [ Store EXCEPT ![c][BlockedThread[c].k] =  retVal]
+             /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "read", 
+                             ts |-> Cp[BlockedThread[c].s], k |-> BlockedThread[c].k, 
+                             v |-> retVal, count |-> OpCount[c]]) ]
        /\ BlockedClient' = BlockedClient \ {c}
-       /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
-    /\ UNCHANGED <<electionVars, storageVars, messageVar, SyncSource, State, timeVar, BlockedThread, Cp, SnapshotTable>>
-
-\* Client Get    
-ClientGetRequest ==
-    /\ \E k \in Key, c \in Client \ BlockedClient, s \in Server: 
-        /\ OpCount[c] /= 0
-        /\ LET m == [ type |-> "get", dest |-> s, c |-> c, k |-> k, ct |-> Ct[c], ot |-> Ot[c]]
-           IN  Messages' = Messages \cup {m}
-        /\ BlockedClient' = BlockedClient \cup {c}          
-    /\ UNCHANGED <<serverVars, History, OpCount, BlockedThread, SnapshotTable>>
-
-ClientGetResponse ==  
-    /\ \E c \in Client, m \in Messages:
-       /\ OpCount[c] /= 0
-       /\ m.type = "get_reply"
-       /\ m.dest = c
-       /\ Ct' = [ Ct EXCEPT ![c] = HLCMax(@, m.ct) ]
-       /\ Ot' = [ Ot EXCEPT ![c] = HLCMax(@, m.ot) ]
-       /\ Store' = [ Store EXCEPT ![c][m.k] = m.v ]
-       /\ History' = [ History EXCEPT ![c] = Append (@, [ type |-> "get", 
-                       ts |-> m.ot, k |-> m.k, v |-> m.v, count |-> OpCount[c]]) ]
-       /\ Messages' = Messages \ {m}
-       /\ BlockedClient' = BlockedClient \ {c}
-       /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]                
-    /\ UNCHANGED <<electionVars, Oplog, messageVar, SyncSource, State, timeVar, BlockedThread, Cp, SnapshotTable>>
-    
-ClientPutAndGet == \/ ClientPutRequest \/ ClientPutResponse
-                   \/ ClientGetRequest \/ ClientGetResponse  
-
+       /\ OpCount' = [ OpCount EXCEPT ![c] = @-1 ]             
+       /\ BlockedThread' = [ BlockedThread EXCEPT ![c] = Nil ]  
+       /\ BlockedVar' = BlockedVar \ {c}   
+    /\ UNCHANGED <<electionVars, Oplog, messageVar, Messages, SyncSource, State, Pt, Cp, SnapshotTable>>
 ----------------------------------------------------------------------------- 
 \* Simulate the situation that the primary node crash and suddently back to the state in Cp[s]
 NodeCrashAndBack ==
+    /\ BlockedVar = {}
     /\ \E s \in Server:
        /\ Len(Oplog[s]) >= 2 \* there is sth in the log
        /\ HLCLt([p |-> 0, l |-> 0], Cp[s])
@@ -414,7 +378,7 @@ NodeCrashAndBack ==
        /\ Ot' = [ Ot EXCEPT ![s] = Cp[s] ]
        /\ Ct' = [ Ct EXCEPT ![s] = Cp[s] ]
        /\ Store' = [ Store EXCEPT ![s] = SelectSnapshot(SnapshotTable[s], Cp[s])]
-       /\ SnapshotTable' = LET snapTail == CHOOSE n \in 1..Len(SnapshotTable[s]): SnapshotTable[s][n].ot = Cp[s]
+       /\ SnapshotTable' = LET snapTail == CHOOSE n \in 1..Len(SnapshotTable[s]): HLCEq(SnapshotTable[s][n].ot, Cp[s])
                            IN  LET remainSnap == SubSeq(SnapshotTable[s], 1, snapTail)
                                IN  [SnapshotTable EXCEPT ![s] = remainSnap]
        /\ Oplog' = LET logTail == CHOOSE n \in 1..Len(Oplog[s]): Oplog[s][n].ot = Cp[s]
@@ -423,7 +387,7 @@ NodeCrashAndBack ==
        /\ State' = LET newState == GetNewState(s, s, Ot'[s].p, Ot'[s].l)      
                    IN  [State EXCEPT ![s] = newState]      \* update primary state
     /\ UNCHANGED <<electionVars, ServerMsg, Pt, Cp, SyncSource, 
-                   BlockedClient, BlockedThread, History, Messages, OpCount>>
+                   BlockedClient, BlockedThread, History, Messages, OpCount, BlockedVar>>
 
 -----------------------------------------------------------------------------                 
 \* Next state for all configurations
@@ -431,12 +395,13 @@ Next == \/ Replicate
         \/ AdvancePt
         \/ ServerTakeHeartbeat
         \/ ServerTakeUpdatePosition
-        \/ ServerPutAndGet
-        \/ ClientPutAndGet
-        \/ NTPSync
-\*        \/ AdvanceCp
-\*        \/ Snapshot
-         \/ NodeCrashAndBack
+\*        \/ NTPSync
+        \/ PutRequest
+        \/ GetRequest
+        \/ PendingReply
+        \/ PutReply
+        \/ GetReply
+        \/ NodeCrashAndBack
         
 Spec == Init /\ [][Next]_vars      
 
@@ -444,29 +409,28 @@ Spec == Init /\ [][Next]_vars
 \* Causal Specifications
 MonotonicRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                     /\ i<j 
-                    /\ History[c][i].type = "get"
-                    /\ History[c][j].type = "get"
+                    /\ History[c][i].type = "read"
+                    /\ History[c][j].type = "read"
                     => ~ HLCLt(History[c][j].ts, History[c][i].ts)
    
 MonotonicWrite == \A c \in Client: \A i,j \in DOMAIN History[c]:
                     /\ i<j 
-                    /\ History[c][i].type = "put"
-                    /\ History[c][j].type = "put"
+                    /\ History[c][i].type = "write"
+                    /\ History[c][j].type = "write"
                     => ~ HLCLt(History[c][j].ts, History[c][i].ts)   
                     
 ReadYourWrite == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ i < j
-                /\ History[c][i].type = "put"
-                /\ History[c][j].type = "get"
+                /\ History[c][i].type = "write"
+                /\ History[c][j].type = "read"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
                 
 WriteFollowRead == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ i < j
-                /\ History[c][i].type = "get"
-                /\ History[c][j].type = "put"
+                /\ History[c][i].type = "read"
+                /\ History[c][j].type = "write"
                 => ~ HLCLt(History[c][j].ts, History[c][i].ts)
                 
- 
 TotoalOrderForWrites == LET writes == WriteOps(History, Client)
                         IN  \A w \in writes:
                                 \A w1 \in writes:
@@ -477,20 +441,12 @@ MonotonicOt == \A c \in Client: \A i,j \in DOMAIN History[c]:
                 /\ i < j 
                 => ~HLCLt(History[c][j].ts, History[c][i].ts)
                 
-\* CMv Specification (test)
+\* CMv Specification
 CMvSatisfication == 
-                  \*/\ CMv(History, Client)
-                  \*\/ \A c \in Client: Len(History[c]) <= 2
                   \/ \A c \in Client: Len(History[c]) = 0
-\*                  \/ \E c \in Client: Len(History[c]) > 7
                   \/ CMvDef(History, Client)
-                  
-\*BASIC == INSTANCE MongoDBCC_Basic 
-
-\*THEOREM Refinement == Spec => BASIC!Spec                  
-                  
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Sep 07 07:28:33 CST 2022 by dh
+\* Last modified Sun Sep 11 23:35:43 CST 2022 by dh
 \* Created Fri Aug 05 11:00:19 CST 2022 by dh
